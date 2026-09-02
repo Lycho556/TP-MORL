@@ -1,0 +1,67 @@
+{
+  "name": "gm_dataset_v1",
+  "area": "深圳市光明区",
+  "crs": "EPSG:2383",
+  "crs_note": "从 pSO GMCase/Ws/road.tif 转写，LU.tif 原缺投影",
+  "raster_5m": {
+    "file": "raster_5m/LU_geo.tif",
+    "shape": [
+      3401,
+      3217
+    ],
+    "cellsize_m": 5,
+    "transform": [
+      5.0,
+      0.0,
+      484462.19257441495,
+      0.0,
+      -5.0,
+      2526377.007475015
+    ],
+    "nodata": 15
+  },
+  "grid_100m": {
+    "shape": [
+      171,
+      161
+    ],
+    "cellsize_m": 100,
+    "factor": 20,
+    "n_cells": 27531,
+    "n_inside": 16858,
+    "n_actionable": 12454,
+    "pad_note": "右侧/底部补齐至 3420×3220 像元，边缘格 valid_frac<1"
+  },
+  "extent_wgs84": {
+    "lon": [
+      113.8488,
+      114.0053
+    ],
+    "lat": [
+      22.6824,
+      22.836
+    ]
+  },
+  "classes": [
+    "Restrict",
+    "R1",
+    "R2",
+    "RC",
+    "C",
+    "CBD",
+    "IH",
+    "I1",
+    "I2",
+    "A",
+    "E",
+    "G",
+    "U"
+  ],
+  "n_classes": 12,
+  "parameters": {
+    "road": "距道路距离(m)",
+    "water": "距水体距离(m)",
+    "slope": "坡度(原始值域 -0.5~92，单位待核)"
+  },
+  "temporal_status": "仅 t=0。时间轴需由 tables/ 的制度事件数据构成，尚未生成"
+}

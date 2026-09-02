@@ -1,0 +1,23 @@
+﻿类别,论文,年份,载体,DOI/ID,是否RL,是否含真实日历时序,与本课题关系,关键点,来源与核实程度
+A 端到端用地/功能区RL（无真实时间）,Spatial planning of urban communities via deep reinforcement learning (Zheng et al.),2023,Nature Computational Science,10.1038/s43588-023-00503-5,是,否：episode内序贯，非日历时间,基线方法,图表示+GNN价值网络+双策略网络；一次性生成全套方案,用户上传PDF（本会话已读全文）
+A 端到端用地/功能区RL（无真实时间）,Intelli-Planner: Customized Urban Planning via LLM Empowered RL,2026,arXiv / ACM Web Conf,arXiv:2601.21212,是,否,基线方法+参与式定制,LLM把人口/自然语言目标转成各功能类型覆盖配额；LLM模拟利益相关者打分,用户上传PDF + arXiv检索命中
+A 端到端用地/功能区RL（无真实时间）,Hierarchical Reinforced Urban Planning: Jointly Steering Region and Block Configurations,2023,SIAM SDM,10.1137/1.9781611977653.ch39,是,否,多尺度参考,区域级功能配置与街区级建筑配置的层级依赖 + 同尺度内序贯依赖,OpenAlex检索命中并已取回摘要
+A 端到端用地/功能区RL（无真实时间）,LUP-PPO: Prior Urban Knowledge Enhanced RL for Parcel-Level Land Use Optimization,2026,figshare(预印/附件),10.6084/m9.figshare.32524416.v1,是,否,最接近的地块级RL,自述缺口：现有RL难以表达复杂规划情境、难以形成自适应多目标,OpenAlex检索命中并已取回摘要
+A 端到端用地/功能区RL（无真实时间）,Graph neural network actor-critic model for smart and resilient parcel-based land use allocation,2026,Sustainable Cities and Society,10.1016/j.scs.2026.107421,是,否,地块级GNN+AC,最新同类工作，需下载全文核对是否含时间维,OpenAlex检索命中并已取回摘要
+B 有真实多期/时序结构的空间RL,Deep RL for Multi-Period Facility Location (pk-median Dynamic Location Problem),2024,ACM SIGSPATIAL,10.1145/3678717.3691249,是,是：显式多期,★最关键的方法先例,作者自述为首次将DRL用于多期设施选址；encoder-decoder+跨期时间特征结构,OpenAlex检索命中并已取回摘要
+B 有真实多期/时序结构的空间RL,Reinforcement learning-based approach for urban road project scheduling considering alternative closure types,2024,Computer-Aided Civil & Infrastructure Eng.,10.1111/mice.13365,是,是：施工排期,★施工期扰动成本先例,双层优化：上层机构最优排期，下层出行者成本；全封闭vs半封闭,OpenAlex检索命中并已取回摘要
+B 有真实多期/时序结构的空间RL,Multi-Year Maintenance Planning for Large-Scale Infrastructure Systems: Network Deep Q-Learning,2025,arXiv,arXiv:2507.18732,是,是：逐年决策,★状态退化动力学先例,以年为决策时点，资产按退化动力学演化,web_search持久化结果（arxiv.org/pdf/2507.18732），仅标题级核实
+B 有真实多期/时序结构的空间RL,Variational Bayesian Deep RL Framework for Urban Infrastructure Investment Planning,2025,SSRN,SSRN(2025),是,是：投资时序,不确定性下的时序投资,需核对全文，SSRN工作论文,OpenAlex检索命中，仅标题级核实（摘要未取到）
+C 相邻空间分配RL（单期）,Large-scale Urban Facility Location Selection with Knowledge-informed RL (Su et al.),2024,ACM SIGSPATIAL,SIGSPATIAL 2024,是,否,相邻,swap图MDP+知识引导GNN+禁忌搜索剪枝；约千倍加速,用户上传PDF（本会话已读摘要/方法）
+C 相邻空间分配RL（单期）,Sponet: solve spatial optimization problem using deep RL,2023,Int. J. Digital Earth,IJDE 2023,是,否,相邻,p-median/p-center/MCLP统一求解,用户上传PDF + OpenAlex检索命中
+C 相邻空间分配RL（单期）,Deep reinforcement learning for spatial resource allocation: school districting (Zhang et al.),2024,Environment and Planning B,EPB 2024,是,否,相邻：存量约束下的划分,districting，给学生划片,用户上传PDF + OpenAlex检索命中
+C 相邻空间分配RL（单期）,Transit-oriented land use planning for regional metro networks via deep RL,2026,Transportation Research Part A,TR-A 2026,是,否（以既有线网为外生条件）,轨道-用地耦合,把地铁线网作为用地规划的外生结构,OpenAlex检索命中，仅标题级核实（摘要未取到）
+C 相邻空间分配RL（单期）,Automated architectural spatial composition via multi-agent DRL for building renovation,2024,Automation in Construction,S0926580524004382,是,否,建筑改造尺度,更新语境下的多智能体RL，但尺度是单体建筑内部,web_search持久化结果（ScienceDirect PII），仅标题级核实
+D 深圳更新实证（非RL，供数据与变量参考）,Spatial determinants of land redevelopment in the urban renewal processes in Shenzhen,2021,Land Use Policy,10.1016/j.landusepol.2021.105330,否,—,变量与数据来源参考,更新发生概率的空间决定因素,OpenAlex检索命中并已取回摘要
+D 深圳更新实证（非RL，供数据与变量参考）,Evaluating and Analyzing Urban Renewal and Transformation Potential Based on AET Models: Shenzhen,2023,Sustainability,10.3390/su151813528,否,2010–2020面板,更新潜力评价,以符合更新条件的地块为评价单元，分居住/工业/商业,OpenAlex检索命中并已取回摘要
+D 深圳更新实证（非RL，供数据与变量参考）,Method for Evaluating Urban Building Renewal Potential (Longgang & Longhua),2024,Land,10.3390/land14010015,否,2018–2023,★建筑级状态特征来源,用2018年深圳建筑物普查+堆叠集成ML识别单体建筑更新,OpenAlex检索命中并已取回摘要
+D 深圳更新实证（非RL，供数据与变量参考）,Integrating technology and economic rationality: Shenzhen's urban renewal capacity policy,2025,自然资源学报,10.31497/zrzyxb.20250608,否,—,容积率/拆建比等奖励项参考,拆建比、拆赔比等四指标经济效益模型,OpenAlex检索命中并已取回摘要
+D 深圳更新实证（非RL，供数据与变量参考）,How does urban renewal affect residential segregation in Shenzhen? A multi-scale study,2024,Sustainable Cities and Society,SCS 2024,否,—,社会公平目标项参考,更新对居住分异的影响,OpenAlex检索命中，摘要抓取未命中
+E 非平稳RL理论（层面5备用）,Optimizing for the Future in Non-Stationary MDPs,2020,arXiv/ICML,arXiv:2005.08158,是,是,理论工具,—,web_search持久化结果（arxiv.org/pdf/2005.08158），仅标题级核实
+E 非平稳RL理论（层面5备用）,"Non-Stationary Markov Decision Processes, a Worst-Case Approach using Model-Based Reinforcement Learning (Extended version)",2019,arXiv,arXiv:1904.10090,是,是,理论工具,—,web_search持久化结果（arxiv.org/pdf/1904.10090），仅标题级核实
+E 非平稳RL理论（层面5备用）,Non-Stationary Reinforcement Learning: The Blessing of (More) Optimism,2019,arXiv,arXiv:1906.02922,是,是,理论工具,—,web_search持久化结果（arxiv.org/pdf/1906.02922），仅标题级核实

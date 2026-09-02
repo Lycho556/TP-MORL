@@ -1,0 +1,12 @@
+﻿OpenAlex 标题+摘要检索式 (2019年至今),命中数
+"""reinforcement learning"" AND ""urban renewal""",4
+"""reinforcement learning"" AND ""urban regeneration""",2
+"""reinforcement learning"" AND ""urban redevelopment""",2
+"""reinforcement learning"" AND redevelopment AND timing",0
+"""reinforcement learning"" AND ""urban village""",0
+"""urban regeneration"" AND ""multi-period"" AND optimization",0
+"""land use"" AND ""temporal"" AND ""reinforcement learning"" AND parcel",0
+"""multi-period"" AND ""facility location"" AND ""reinforcement learning""",2
+"""reinforcement learning"" AND ""land use"" AND allocation",10
+"""reinforcement learning"" AND ""project scheduling"" AND urban",2
+"""urban renewal"" AND (scheduling OR sequencing OR phasing OR timing) AND optimization",29
