@@ -1,0 +1,30 @@
+{
+ "hazard": [
+  0.174,
+  0.212,
+  0.239,
+  0.277,
+  0.179
+ ],
+ "tau_valid": 3,
+ "tau_ext": 2,
+ "quota": 3,
+ "build_years": 3,
+ "cooldown": 2,
+ "T": 15,
+ "n_units": 717,
+ "actionable_channels": [
+  1,
+  2,
+  3,
+  5
+ ],
+ "calibration_source": {
+  "hazard": "109 对计划公告→单元规划批准配对的逐年条件批准率（实测）",
+  "tau_valid": "配对时滞中位数 3.00 年（实测）",
+  "tau_ext": "τ 上限 5 年覆盖 70.6% 实际案例（实测）",
+  "quota": "光明区 2011-2018 计划公告均值 3.1、上限 6（实测）",
+  "build_years": "无实测数据，超参数",
+  "cooldown": "无实测数据，超参数"
+ }
+}
