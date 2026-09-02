@@ -8,3 +8,4 @@ __pycache__/
 .venv/
 # macOS
 .DS_Store
+data/processed/**/rl_v0_sel/
