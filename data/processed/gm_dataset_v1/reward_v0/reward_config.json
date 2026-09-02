@@ -1,0 +1,39 @@
+{
+ "far_cap": {
+  "1": 6.82,
+  "2": 7.45,
+  "3": 8.37,
+  "5": 6.98
+ },
+ "gamma": 0.95,
+ "T": 15,
+ "pool_r": 5,
+ "obj_spatial": [
+  "Gdp",
+  "Eco",
+  "Res",
+  "Emp",
+  "Aec",
+  "E2r",
+  "Cpt"
+ ],
+ "obj_temporal": [
+  "Floor",
+  "Cost",
+  "Disrupt",
+  "Expire"
+ ],
+ "sign": {
+  "Gdp": 1,
+  "Eco": 1,
+  "Res": 1,
+  "Emp": 1,
+  "Aec": 1,
+  "E2r": -1,
+  "Cpt": 1,
+  "Floor": 1,
+  "Cost": -1,
+  "Disrupt": -1,
+  "Expire": -1
+ }
+}
