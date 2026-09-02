@@ -19,8 +19,34 @@ from tpmorl.objectives.reward import Reward, FAR_CAP, OBJ_NAMES, SIGN
 from tpmorl.objectives.run_reward_demo import load, pick_target, ALLOWED
 
 N_FEAT = 16
-N_PAIR_FEAT = N_FEAT + 12 + 2
+N_PAIR_FEAT = N_FEAT + 12 + 2 + 3     # +本对成本/预算, +当前可用预算/年度额度, +是否为「到此为止」
 CH_ORDER = [1, 2, 3, 5]
+
+# ---------------------------------------------------------------- 年度资金约束
+# 计量口径与奖励里的 Cost 目标完全相同（CCM[from,to] × 格数），不引入新的标定量。
+# 实测配对成本：P25=300 中位=390 P90=600 最大=1160；满配额 3 个约需 1050。
+# BUDGET 是**情景参数**，不是标定值——必须扫。CARRY_CAP 决定能攒几年。
+#
+# 口径修正（v1）：只用 CCM 计资金是错的。CCM 对角线为 0，于是「原类重建」不花钱
+# 却照样计入交付建面——策略可以用零成本动作填满配额，预算永远不咬。
+# 现实里拆迁补偿主要与**拆除面积**成正比，改成什么用途只影响附加的改造成本。
+# 故 资金成本 = CELL_COST × 格数 + Σ CCM[现状,目标] × 格数。
+CELL_COST = 50.0       # 每格拆除补偿基数（情景参数，与 CCM 同量纲）
+BUDGET = 900.0
+# 结转上限须 ≥ 最贵单元 / BUDGET，否则大单元永远不可达（实测最贵 2610，900×3=2700）。
+CARRY_CAP = 3.0        # 可用预算上限 = CARRY_CAP × BUDGET，超出部分作废（防止无限攒钱）
+
+# ---------------------------------------------------------------- 非平稳性
+# 实测结论：单靠资金约束**不能**让「等待」成为最优决策。原因是机会集平稳——
+# 预算结转只改变「能做多少」，不改变「何时做更好」；成本与收益都与面积线性，
+# 无规模报酬，故攒钱无回报，且明年的候选集不优于今年，等待永不严格占优。
+# 等待有价值当且仅当未来的机会集优于现在，即环境必须非平稳。
+#
+# FAR_GROWTH 就是这个非平稳通道：容积率上限逐年上浮（对应政策红利预期），
+# 于是推迟立项可换取更高的交付建面。**这是未标定的情景参数**，默认 0（关闭）；
+# 待取得深圳历年更新单元规划容积率上限的时间序列后按实测替换，不得当作实证结果报告。
+FAR_GROWTH = 0.0
+STOP = (-1, -1)        # 「今年到此为止」动作；没有它，只要付得起就必须花，等待不成为决策
 
 
 class RenewalEnv:
@@ -53,23 +79,39 @@ class RenewalEnv:
         F[:, 15] = self.mask_init.astype(np.float32)
         return F
 
+    def pair_cost(self, u, tg):
+        """立项该 (单元, 目标) 需占用的资金，与奖励里的 Cost 目标同口径。"""
+        u = int(u)
+        return float(CELL_COST * self.ncell[u]
+                     + sum(self.CCM[f, tg] * c for f, c in self.hist0[u].items()))
+
     def pairs(self):
-        """当年所有 (合规单元, 通道允许的目标功能) 组合及其特征。"""
+        """当年所有 (合规单元, 通道允许的目标功能) 组合，末行恒为「到此为止」。
+
+        返回 (F, meta, cost)。cost 供策略在配额内逐次采样时做资金可行性掩码，
+        因此资金约束与制度约束一样是**硬的**——不靠罚项软化。
+        """
         F = self.obs()
         idx = np.where(self.mask_init)[0]
-        rows, meta = [], []
+        rows, meta, cost = [], [], []
         for u in idx:
             for tg in ALLOWED[int(self.ch[u])]:
-                cst = sum(self.CCM[f, tg] * c for f, c in self.hist0[u].items())
+                cst = self.pair_cost(u, tg)
                 x = np.zeros(N_PAIR_FEAT, dtype=np.float32)
                 x[:N_FEAT] = F[u]
                 x[N_FEAT + tg] = 1.0
                 x[N_FEAT + 12] = cst / max(self.ncell[u], 1) / 100.0
                 x[N_FEAT + 13] = self.farcap[u] / 10.0
-                rows.append(x); meta.append((int(u), int(tg)))
-        if not rows:
-            return np.zeros((0, N_PAIR_FEAT), dtype=np.float32), []
-        return np.stack(rows), meta
+                x[N_FEAT + 14] = cst / BUDGET
+                x[N_FEAT + 15] = self.budget / BUDGET
+                rows.append(x); meta.append((int(u), int(tg))); cost.append(cst)
+        # 「到此为止」：把余额留到明年。特征只带时间进度与余额，成本为 0，永远可选。
+        s = np.zeros(N_PAIR_FEAT, dtype=np.float32)
+        s[14] = self.t / self.T
+        s[N_FEAT + 15] = self.budget / BUDGET
+        s[N_FEAT + 16] = 1.0
+        rows.append(s); meta.append(STOP); cost.append(0.0)
+        return np.stack(rows), meta, np.asarray(cost, dtype=np.float64)
 
     def reset(self, seed=None):
         self.LU = self.LU0.copy()
@@ -83,11 +125,17 @@ class RenewalEnv:
                        ((k, int((self.LU0[..., k][m] > 0).sum())) for k in range(12)) if v}
                       for m in self.cells]
         self.mask_init = self.env.mask_initiate()
+        self.budget = BUDGET
+        self.spent_hist, self.budget_hist = [], []
         return self.obs()
 
     def step(self, actions):
-        """actions: [(单元, 目标功能), ...]，至多 QUOTA 个。目标功能在立项时锁定。"""
-        actions = list(actions)
+        """actions: [(单元, 目标功能), ...]，至多 QUOTA 个；STOP 项被忽略。"""
+        actions = [(int(u), int(tg)) for u, tg in actions if int(u) >= 0]
+        spent = sum(self.pair_cost(u, tg) for u, tg in actions)
+        assert spent <= self.budget + 1e-6, f"超预算 {spent:.0f} > {self.budget:.0f}"
+        self.budget_hist.append(self.budget); self.spent_hist.append(spent)
+        self.budget = min(self.budget - spent + BUDGET, CARRY_CAP * BUDGET)
         for u, tg in actions:
             self.plan[int(u)] = int(tg)
         prev = self.env.sigma.copy()
@@ -102,7 +150,8 @@ class RenewalEnv:
             tgt = self.plan.get(int(u))
             if tgt is None:      # 保险：无记录时退回 myopic 规则
                 tgt = pick_target(self.R, self.ch[u], hist, self.ncell[u])
-            floor += self.R.floor_area(self.ch[u], self.ncell[u])
+            # 交付建面按**建成年**的容积率上限计（FAR_GROWTH>0 时推迟立项可换更高上限）
+            floor += self.R.floor_area(self.ch[u], self.ncell[u]) * (1.0 + FAR_GROWTH) ** self.t
             cost += sum(self.R.convert_cost(f, tgt, c) for f, c in hist.items())
             self.LU[m] = 0.0
             self.LU[..., tgt][m] = 1.0

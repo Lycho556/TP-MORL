@@ -18,6 +18,7 @@ import torch, torch.nn as nn
 
 from tpmorl.env.schedule import QUOTA
 from tpmorl.objectives.reward import OBJ_NAMES
+from tpmorl.rl import env_gym            # 需按模块引用，才能在 main 里改 BUDGET
 from tpmorl.rl.env_gym import RenewalEnv, N_PAIR_FEAT
 
 DEV = "cpu"
@@ -35,63 +36,73 @@ class Pointer(nn.Module):
         return self.score(z).squeeze(-1), self.val(z.mean(0)).squeeze(-1)
 
 
-def _step_mask(meta, chosen_units, n):
-    """屏蔽已选单元的所有 (单元,目标) 行——一个单元一年只能立一次项。"""
+def _step_mask(meta, cost, chosen_units, left, n):
+    """双重掩码：已选单元的所有行屏蔽（一单元一年一次），付不起的行屏蔽。
+
+    「到此为止」行成本为 0，故永远可选——这是让「等」成为一个真实动作的地方。
+    """
     m = torch.ones(n, dtype=torch.bool)
     for i, (u, _) in enumerate(meta):
-        if u in chosen_units:
+        if u in chosen_units or cost[i] > left + 1e-6:
             m[i] = False
     return m
 
 
-def sample_action(logits, meta, k, greedy=False):
-    """在 (单元,目标) 对上自回归采样至多 k 个，单元不重复。"""
+def sample_action(logits, meta, cost, budget, k, greedy=False):
+    """在 (单元,目标) 对上自回归采样至多 k 个；选中 STOP 则当年结束。"""
     n = len(meta)
     picks, lp, ent, used = [], torch.zeros(()), torch.zeros(()), set()
+    left = float(budget)
     for _ in range(k):
-        m = _step_mask(meta, used, n)
+        m = _step_mask(meta, cost, used, left, n)
         if not m.any():
             break
         z = logits.masked_fill(~m, -1e9)
         d = torch.distributions.Categorical(logits=z)
         a = torch.argmax(z) if greedy else d.sample()
-        picks.append(int(a)); used.add(meta[int(a)][0])
+        i = int(a)
         lp = lp + d.log_prob(a); ent = ent + d.entropy()
+        if meta[i][0] < 0:                     # STOP：把余额留到明年
+            picks.append(i); break
+        picks.append(i); used.add(meta[i][0]); left -= float(cost[i])
     return picks, lp, ent
 
 
-def logprob_of(logits, meta, picks):
-    """重算一组已选动作的 log-prob 与熵（PPO 多轮复用需要）。"""
+def logprob_of(logits, meta, cost, budget, picks):
+    """重算一组已选动作的 log-prob 与熵（PPO 多轮复用需要）。
+
+    必须逐次复现与采样时相同的掩码序列，包括资金余额的递减——否则重要性比失真。
+    """
     n = len(meta)
     lp, ent, used = torch.zeros(()), torch.zeros(()), set()
+    left = float(budget)
     for a in picks:
-        m = _step_mask(meta, used, n)
+        m = _step_mask(meta, cost, used, left, n)
         z = logits.masked_fill(~m, -1e9)
         d = torch.distributions.Categorical(logits=z)
         lp = lp + d.log_prob(torch.tensor(a)); ent = ent + d.entropy()
-        used.add(meta[a][0])
+        if meta[a][0] < 0:
+            break
+        used.add(meta[a][0]); left -= float(cost[a])
     return lp, ent
 
 
 def run_episode(env, net, greedy=False, seed=None):
     env.reset(seed=seed)
-    tr = dict(lp=[], v=[], r=[], ent=[], vec=[], X=[], meta=[], picks=[])
+    tr = dict(lp=[], v=[], r=[], ent=[], vec=[], X=[], meta=[], picks=[],
+              cost=[], budget=[])
     for t in range(env.T):
-        X, meta = env.pairs()
+        X, meta, cost = env.pairs()
         Xt = torch.as_tensor(X)
-        if len(meta) == 0:
-            _, r, done, info = env.step([])
-            tr["lp"].append(torch.zeros(())); tr["v"].append(0.0); tr["r"].append(r)
-            tr["ent"].append(torch.zeros(())); tr["vec"].append(info["vec"])
-            tr["X"].append(Xt); tr["meta"].append(meta); tr["picks"].append([])
-            continue
+        b = env.budget
         with torch.no_grad():
             logits, v = net(Xt)
-        picks, lp, ent = sample_action(logits, meta, QUOTA, greedy)
+        picks, lp, ent = sample_action(logits, meta, cost, b, QUOTA, greedy)
         _, r, done, info = env.step([meta[i] for i in picks])
         tr["lp"].append(lp.detach()); tr["v"].append(float(v)); tr["r"].append(r)
         tr["ent"].append(ent); tr["vec"].append(info["vec"])
         tr["X"].append(Xt); tr["meta"].append(meta); tr["picks"].append(picks)
+        tr["cost"].append(cost); tr["budget"].append(b)
     return tr
 
 
@@ -117,10 +128,9 @@ def train(env, iters=60, eps_per_iter=4, epochs=4, lr=3e-3, clip=0.2,
             tr = run_episode(env, net, seed=seed * 1000 + it * 10 + e)
             adv, ret = gae(np.array(tr["r"]), np.array(tr["v"]), env.gamma)
             for t in range(env.T):
-                if len(tr["meta"][t]) == 0:
-                    continue
                 buf.append((tr["X"][t], tr["meta"][t], tr["picks"][t],
-                            tr["lp"][t], adv[t], ret[t]))
+                            tr["lp"][t], adv[t], ret[t],
+                            tr["cost"][t], tr["budget"][t]))
             RS.append(sum(tr["r"]))
         A = np.array([b[4] for b in buf], dtype=np.float32)
         A = (A - A.mean()) / (A.std() + 1e-8)
@@ -128,9 +138,9 @@ def train(env, iters=60, eps_per_iter=4, epochs=4, lr=3e-3, clip=0.2,
         for _ in range(epochs):
             pl = vl = el = 0.0
             opt.zero_grad()
-            for i, (X, meta, picks, lp_old, _, ret) in enumerate(buf):
+            for i, (X, meta, picks, lp_old, _, ret, cost, bdg) in enumerate(buf):
                 logits, v = net(X)
-                lp, ent = logprob_of(logits, meta, picks)
+                lp, ent = logprob_of(logits, meta, cost, bdg, picks)
                 ratio = torch.exp(lp - lp_old)
                 a = torch.tensor(A[i])
                 pl = pl + (-torch.min(ratio * a,
@@ -159,11 +169,23 @@ def evaluate(env, net, n_ep=5, record=None):
         V.append(g)
         if record is not None:
             for t, (meta, picks) in enumerate(zip(tr["meta"], tr["picks"])):
-                for i in picks:
+                # 当年一个单元都没立项 = 主动等待（含选 STOP 与付不起两种情形）
+                real = [i for i in picks if meta[i][0] >= 0]
+                if not real:
+                    record.append(dict(ep=e, year=t, unit=-1, channel=0, target=-1,
+                                       n_cells=0, cost=0.0,
+                                       budget_before=env.budget_hist[t],
+                                       spent=env.spent_hist[t],
+                                       stopped=int(any(meta[i][0] < 0 for i in picks))))
+                for i in real:
                     u, tg = meta[i]
                     record.append(dict(ep=e, year=t, unit=u,
                                        channel=int(env.ch[u]), target=tg,
-                                       n_cells=int(env.ncell[u])))
+                                       n_cells=int(env.ncell[u]),
+                                       cost=env.pair_cost(u, tg),
+                                       budget_before=env.budget_hist[t],
+                                       spent=env.spent_hist[t],
+                                       stopped=int(any(meta[j][0] < 0 for j in picks))))
     return np.mean(V, 0)
 
 
@@ -175,15 +197,16 @@ def eval_random(env, n_ep=5, seed=0):
         env.reset(seed=90000 + e)
         g = np.zeros(len(OBJ_NAMES))
         for t in range(env.T):
-            X, meta = env.pairs()
-            act, used = [], set()
+            X, meta, cost = env.pairs()
+            act, used, left = [], set(), env.budget
             order = rng.permutation(len(meta))
             for i in order:
                 if len(act) >= QUOTA:
                     break
-                if meta[i][0] in used:
+                u = meta[i][0]
+                if u < 0 or u in used or cost[i] > left + 1e-6:
                     continue
-                act.append(meta[i]); used.add(meta[i][0])
+                act.append(meta[i]); used.add(u); left -= float(cost[i])
             _, r, done, info = env.step(act)
             g += (env.gamma ** t) * info["vec"] * env.scale
         V.append(g)
@@ -199,8 +222,16 @@ def weight_vector(alpha):
     return np.array([w[k] for k in OBJ_NAMES])
 
 
-def main(ds, out, iters, alphas):
+def main(ds, out, iters, alphas, budget=None, carry=None, growth=None):
     os.makedirs(out, exist_ok=True)
+    if budget is not None:
+        env_gym.BUDGET = float(budget)
+    if carry is not None:
+        env_gym.CARRY_CAP = float(carry)
+    if growth is not None:
+        env_gym.FAR_GROWTH = float(growth)
+    print(f"年度预算 {env_gym.BUDGET:.0f}（结转上限 {env_gym.CARRY_CAP:g}×）  配额 {QUOTA}  "
+          f"容积率年增 {env_gym.FAR_GROWTH:.0%}（未标定情景参数）")
     base = pd.read_csv(os.path.join(ds, "reward_v0", "discounted_return.csv"), index_col=0)
     scale = np.array(base[list(OBJ_NAMES)].abs().max(axis=0).values, dtype=float)
     scale[scale == 0] = 1.0
@@ -232,7 +263,9 @@ def main(ds, out, iters, alphas):
     pd.DataFrame(curves).to_csv(os.path.join(out, "learning_curves.csv"),
                                 index_label="iter", encoding="utf-8-sig")
     json.dump(dict(scale=dict(zip(OBJ_NAMES, scale.tolist())), iters=iters,
-                   alphas=list(alphas), quota=QUOTA),
+                   alphas=list(alphas), quota=QUOTA,
+                   budget=env_gym.BUDGET, carry_cap=env_gym.CARRY_CAP,
+                   far_growth=env_gym.FAR_GROWTH),
               open(os.path.join(out, "train_config.json"), "w"), ensure_ascii=False, indent=1)
     print("\n" + P.round(1).to_string(index=False))
 
@@ -244,4 +277,8 @@ if __name__ == "__main__":
     ap.add_argument("--iters", type=int, default=60)
     ap.add_argument("--alphas", type=float, nargs="+",
                     default=[0.0, 0.25, 0.5, 0.75, 1.0])
-    a = ap.parse_args(); main(a.dataset, a.out, a.iters, a.alphas)
+    ap.add_argument("--budget", type=float, default=None)
+    ap.add_argument("--carry", type=float, default=None)
+    ap.add_argument("--growth", type=float, default=None)
+    a = ap.parse_args()
+    main(a.dataset, a.out, a.iters, a.alphas, a.budget, a.carry, a.growth)
