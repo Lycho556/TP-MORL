@@ -81,9 +81,7 @@ class RenewalEnv:
 
     def pair_cost(self, u, tg):
         """立项该 (单元, 目标) 需占用的资金，与奖励里的 Cost 目标同口径。"""
-        u = int(u)
-        return float(CELL_COST * self.ncell[u]
-                     + sum(self.CCM[f, tg] * c for f, c in self.hist0[u].items()))
+        return float(self.PC[int(u), int(tg)])
 
     def pairs(self):
         """当年所有 (合规单元, 通道允许的目标功能) 组合，末行恒为「到此为止」。
@@ -92,26 +90,25 @@ class RenewalEnv:
         因此资金约束与制度约束一样是**硬的**——不靠罚项软化。
         """
         F = self.obs()
-        idx = np.where(self.mask_init)[0]
-        rows, meta, cost = [], [], []
-        for u in idx:
-            for tg in ALLOWED[int(self.ch[u])]:
-                cst = self.pair_cost(u, tg)
-                x = np.zeros(N_PAIR_FEAT, dtype=np.float32)
-                x[:N_FEAT] = F[u]
-                x[N_FEAT + tg] = 1.0
-                x[N_FEAT + 12] = cst / max(self.ncell[u], 1) / 100.0
-                x[N_FEAT + 13] = self.farcap[u] / 10.0
-                x[N_FEAT + 14] = cst / BUDGET
-                x[N_FEAT + 15] = self.budget / BUDGET
-                rows.append(x); meta.append((int(u), int(tg))); cost.append(cst)
-        # 「到此为止」：把余额留到明年。特征只带时间进度与余额，成本为 0，永远可选。
-        s = np.zeros(N_PAIR_FEAT, dtype=np.float32)
-        s[14] = self.t / self.T
-        s[N_FEAT + 15] = self.budget / BUDGET
-        s[N_FEAT + 16] = 1.0
-        rows.append(s); meta.append(STOP); cost.append(0.0)
-        return np.stack(rows), meta, np.asarray(cost, dtype=np.float64)
+        sel = self.mask_init[self._pu_all]
+        pu, pt = self._pu_all[sel], self._pt_all[sel]
+        cost = self._cost_all[sel]
+        n = pu.size
+        rows = np.zeros((n + 1, N_PAIR_FEAT), dtype=np.float32)
+        rows[:n, :N_FEAT] = F[pu]
+        rows[np.arange(n), N_FEAT + pt] = 1.0
+        rows[:n, N_FEAT + 12] = cost / np.maximum(self.ncell[pu], 1) / 100.0
+        rows[:n, N_FEAT + 13] = self.farcap[pu] / 10.0
+        rows[:n, N_FEAT + 14] = cost / BUDGET
+        rows[:n, N_FEAT + 15] = self.budget / BUDGET
+        # 末行「到此为止」：把余额留到明年。特征只带时间进度与余额，成本为 0，永远可选。
+        rows[n, 14] = self.t / self.T
+        rows[n, N_FEAT + 15] = self.budget / BUDGET
+        rows[n, N_FEAT + 16] = 1.0
+        meta = list(zip(pu.tolist(), pt.tolist())) + [STOP]
+        # units 与 meta 同序，供掩码做向量化的「该单元今年已选」判断
+        units = np.concatenate([pu, np.array([-1], dtype=np.int64)])
+        return rows, meta, np.concatenate([cost, [0.0]]), units
 
     def reset(self, seed=None):
         self.LU = self.LU0.copy()
@@ -124,6 +121,22 @@ class RenewalEnv:
         self.hist0 = [{k: v for k, v in
                        ((k, int((self.LU0[..., k][m] > 0).sum())) for k in range(12)) if v}
                       for m in self.cells]
+        # (单元 × 目标) 成本矩阵：只依赖静态的 ncell/CCM/hist0，一次算好。
+        # 原先每年为 ~1985 个配对逐个调用 pair_cost，是训练的主要开销之一。
+        # 注意：因此在 env 构造之后再改 CELL_COST/CCM 不会生效。
+        self.PC = np.zeros((len(self.hist0), 12), dtype=np.float64)
+        for u, h in enumerate(self.hist0):
+            for f, c in h.items():
+                self.PC[u] += self.CCM[f, :12] * c
+        self.PC += CELL_COST * np.asarray(self.ncell, dtype=np.float64)[:, None]
+        # 全量 (单元, 目标) 配对枚举：只依赖静态的通道归属，一次算好。
+        # 每年的候选集 = 用 mask_init 在这三个数组上做布尔选择，无需重新枚举。
+        ch_all = np.asarray(self.ch, dtype=int)
+        cnt_all = np.array([len(ALLOWED[int(c)]) for c in ch_all], dtype=np.int64)
+        self._pu_all = np.repeat(np.arange(len(ch_all), dtype=np.int64), cnt_all)
+        self._pt_all = np.concatenate(
+            [np.asarray(ALLOWED[int(c)], dtype=np.int64) for c in ch_all])
+        self._cost_all = self.PC[self._pu_all, self._pt_all]
         self.mask_init = self.env.mask_initiate()
         self.budget = BUDGET
         self.spent_hist, self.budget_hist = [], []

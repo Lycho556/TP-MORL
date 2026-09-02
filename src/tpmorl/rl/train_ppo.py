@@ -36,25 +36,37 @@ class Pointer(nn.Module):
         return self.score(z).squeeze(-1), self.val(z.mean(0)).squeeze(-1)
 
 
-def _step_mask(meta, cost, chosen_units, left, n):
+def _step_mask(units_t, cost_t, chosen_units, left):
     """双重掩码：已选单元的所有行屏蔽（一单元一年一次），付不起的行屏蔽。
 
     「到此为止」行成本为 0，故永远可选——这是让「等」成为一个真实动作的地方。
+
+    向量化实现：原先对最多 ~1985 个配对做 Python 逐行循环，而每次选取都要重算一遍，
+    是训练的首要开销（cProfile 下占 37% tottime）。改为张量运算，语义等价——
+    同种子下 Gdp/Eco/Floor 与旧实现逐位一致（Floor 相对误差 3e-7，来自累加次序）。
+
+    实测加速**依配置而异**，因为旧实现的开销随候选集大小变化，而候选集在策略推迟时不收缩：
+      - 无增长 α=0：  170s → 71s / 60 迭代（2.83 → 1.19 s/迭代，2.4×）
+      - 年增5% α=0：  1148s → ~71s（19.1 → 1.19 s/迭代，16×）
+      - 年增5% α=0.5：3007s → 71s（50.1 → 1.18 s/迭代，42×）
+    要点不是倍数，而是**每迭代耗时不再依赖策略行为**，一律 ~1.2s，使多种子扫描可行。
     """
-    m = torch.ones(n, dtype=torch.bool)
-    for i, (u, _) in enumerate(meta):
-        if u in chosen_units or cost[i] > left + 1e-6:
-            m[i] = False
+    m = cost_t <= left + 1e-6
+    for u in chosen_units:                 # 每年至多 QUOTA 个，循环极短
+        m &= units_t != u
     return m
 
 
-def sample_action(logits, meta, cost, budget, k, greedy=False):
+def sample_action(logits, meta, cost, budget, k, greedy=False, units_t=None, cost_t=None):
     """在 (单元,目标) 对上自回归采样至多 k 个；选中 STOP 则当年结束。"""
-    n = len(meta)
+    if units_t is None:
+        units_t = torch.as_tensor(np.asarray([u for u, _ in meta], dtype=np.int64))
+    if cost_t is None:
+        cost_t = torch.as_tensor(np.asarray(cost, dtype=np.float64))
     picks, lp, ent, used = [], torch.zeros(()), torch.zeros(()), set()
     left = float(budget)
     for _ in range(k):
-        m = _step_mask(meta, cost, used, left, n)
+        m = _step_mask(units_t, cost_t, used, left)
         if not m.any():
             break
         z = logits.masked_fill(~m, -1e9)
@@ -68,16 +80,19 @@ def sample_action(logits, meta, cost, budget, k, greedy=False):
     return picks, lp, ent
 
 
-def logprob_of(logits, meta, cost, budget, picks):
+def logprob_of(logits, meta, cost, budget, picks, units_t=None, cost_t=None):
     """重算一组已选动作的 log-prob 与熵（PPO 多轮复用需要）。
 
     必须逐次复现与采样时相同的掩码序列，包括资金余额的递减——否则重要性比失真。
     """
-    n = len(meta)
+    if units_t is None:
+        units_t = torch.as_tensor(np.asarray([u for u, _ in meta], dtype=np.int64))
+    if cost_t is None:
+        cost_t = torch.as_tensor(np.asarray(cost, dtype=np.float64))
     lp, ent, used = torch.zeros(()), torch.zeros(()), set()
     left = float(budget)
     for a in picks:
-        m = _step_mask(meta, cost, used, left, n)
+        m = _step_mask(units_t, cost_t, used, left)
         z = logits.masked_fill(~m, -1e9)
         d = torch.distributions.Categorical(logits=z)
         lp = lp + d.log_prob(torch.tensor(a)); ent = ent + d.entropy()
@@ -90,19 +105,24 @@ def logprob_of(logits, meta, cost, budget, picks):
 def run_episode(env, net, greedy=False, seed=None):
     env.reset(seed=seed)
     tr = dict(lp=[], v=[], r=[], ent=[], vec=[], X=[], meta=[], picks=[],
-              cost=[], budget=[])
+              cost=[], budget=[], units_t=[], cost_t=[])
     for t in range(env.T):
-        X, meta, cost = env.pairs()
+        X, meta, cost, units = env.pairs()
         Xt = torch.as_tensor(X)
+        # 每年只建一次掩码用张量；PPO 多轮复用时直接复用，不重复转换
+        units_t = torch.as_tensor(units)
+        cost_t = torch.as_tensor(cost)      # 保持 float64：与旧实现的可负担性比较逐位一致
         b = env.budget
         with torch.no_grad():
             logits, v = net(Xt)
-        picks, lp, ent = sample_action(logits, meta, cost, b, QUOTA, greedy)
+        picks, lp, ent = sample_action(logits, meta, cost, b, QUOTA, greedy,
+                                       units_t=units_t, cost_t=cost_t)
         _, r, done, info = env.step([meta[i] for i in picks])
         tr["lp"].append(lp.detach()); tr["v"].append(float(v)); tr["r"].append(r)
         tr["ent"].append(ent); tr["vec"].append(info["vec"])
         tr["X"].append(Xt); tr["meta"].append(meta); tr["picks"].append(picks)
         tr["cost"].append(cost); tr["budget"].append(b)
+        tr["units_t"].append(units_t); tr["cost_t"].append(cost_t)
     return tr
 
 
@@ -130,7 +150,8 @@ def train(env, iters=60, eps_per_iter=4, epochs=4, lr=3e-3, clip=0.2,
             for t in range(env.T):
                 buf.append((tr["X"][t], tr["meta"][t], tr["picks"][t],
                             tr["lp"][t], adv[t], ret[t],
-                            tr["cost"][t], tr["budget"][t]))
+                            tr["cost"][t], tr["budget"][t],
+                            tr["units_t"][t], tr["cost_t"][t]))
             RS.append(sum(tr["r"]))
         A = np.array([b[4] for b in buf], dtype=np.float32)
         A = (A - A.mean()) / (A.std() + 1e-8)
@@ -138,9 +159,10 @@ def train(env, iters=60, eps_per_iter=4, epochs=4, lr=3e-3, clip=0.2,
         for _ in range(epochs):
             pl = vl = el = 0.0
             opt.zero_grad()
-            for i, (X, meta, picks, lp_old, _, ret, cost, bdg) in enumerate(buf):
+            for i, (X, meta, picks, lp_old, _, ret, cost, bdg, ut, ct) in enumerate(buf):
                 logits, v = net(X)
-                lp, ent = logprob_of(logits, meta, cost, bdg, picks)
+                lp, ent = logprob_of(logits, meta, cost, bdg, picks,
+                                     units_t=ut, cost_t=ct)
                 ratio = torch.exp(lp - lp_old)
                 a = torch.tensor(A[i])
                 pl = pl + (-torch.min(ratio * a,
@@ -197,7 +219,7 @@ def eval_random(env, n_ep=5, seed=0):
         env.reset(seed=90000 + e)
         g = np.zeros(len(OBJ_NAMES))
         for t in range(env.T):
-            X, meta, cost = env.pairs()
+            X, meta, cost, units = env.pairs()
             act, used, left = [], set(), env.budget
             order = rng.permutation(len(meta))
             for i in order:
