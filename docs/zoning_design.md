@@ -131,7 +131,7 @@ agent 的动作是 `(选中 u, 目标功能 f)`；`f` 的可选集由通道决�
 **奖励**（按年折现，γ≈0.93 对应 7% 社会折现率）
 ```
 r_t = Σ_k w_k · ΔObj_k(p_t → p_{t+1})        七目标增量，pSO 的 objs.py 直接可用
-    − λ_c · ConvertCost(f_old → f_new)         CCM.csv 已有非对称转换成本矩阵（对角 0；农业→生态 95 而反向 20）
+    − λ_c · ConvertCost(f_old → f_new)         CCM.csv 已有非对称转换成本矩阵（对角 0；农业→生态 85 而反向 20）
     − λ_d · Disruption(在建单元数, 邻域叠加)     多期施工干扰，静态模型无法建模
     − λ_e · ExpiryPenalty(进入 S5 的单元)        计划失效损失
 ```
