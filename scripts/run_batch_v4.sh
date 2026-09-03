@@ -31,8 +31,12 @@ RES="${RES:-results_v4}"
 PUSH="${PUSH:-1}"               # PUSH=0 只跑不提交，用于干跑
 ITERS="${ITERS:-400}"
 EPS="${EPS:-8}"
-NPROC="$( (nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 10) )"
+# 注意：GNU nproc 会遵守 OMP_NUM_THREADS（上面刚设成 1），必须临时清空再探测，
+# 否则在多核机器上会误判成 1 核、并行度掉到 2。
+NPROC="$( (OMP_NUM_THREADS= nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 10) )"
+RUNS_PER_GROUP=35                 # 7 权重档 × 5 种子；并行度超过它没有收益
 WORKERS="${WORKERS:-$(( NPROC > 4 ? NPROC - 2 : 2 ))}"
+[ "$WORKERS" -gt "$RUNS_PER_GROUP" ] && WORKERS="$RUNS_PER_GROUP"
 
 # 情景组：编号|目录名|中文名|附加参数
 SCENARIOS=(
