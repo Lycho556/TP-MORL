@@ -53,7 +53,7 @@ import numpy as np
 import pandas as pd
 
 REF_MODES = ("big", "small", "rand", "none")   # 选取规则：买最大/买最小/随机/不动
-REF_SEEDS = (0, 1, 2)
+REF_SEEDS = (0, 1, 2, 3, 4)
 
 
 def _tag(budget, carry, growth):
@@ -119,11 +119,28 @@ def reference_returns(ds, budget, carry, growth, modes=REF_MODES, seeds=REF_SEED
     return pd.DataFrame(rows, index=index, columns=list(OBJ_NAMES))
 
 
+def _estimate(R):
+    """由参考集导出分母：先按策略对种子取均值，再跨策略取绝对值上界。
+
+    为什么不直接对全部 rollout 取 max：max 把**策略差异**与**种子运气**混在
+    一起，且对重尾目标不收敛。实测 `Eco` 的 max 随种子数单调爆涨
+    （3/5/8 种子 → 366.8 / 627.7 / 1239.8，每加种子近乎翻倍），分母取值
+    全凭参考集大小，不可复现。
+
+    先对种子取均值再跨策略取上界，量的正是「策略选择能把该目标推动多少」，
+    而这恰是加权和里分母应有的含义。实测 3→8 种子的漂移收敛到 0.52–1.17 倍，
+    多数目标在 0.7–1.0。
+    """
+    m = R.groupby([i.rsplit("_s", 1)[0] for i in R.index], sort=False).mean()
+    sc = m.abs().max(axis=0).values.astype(float)
+    sc[sc < 1e-9] = 1.0
+    return sc
+
+
 def build_scale(ds, budget, carry, growth, write=True):
     """构建分母并（可选）落盘。返回 (scale, 参考集 DataFrame)。"""
     R = reference_returns(ds, budget, carry, growth)
-    sc = R.abs().max(axis=0).values.astype(float)
-    sc[sc < 1e-9] = 1.0
+    sc = _estimate(R)
     if write:
         p = scale_path(ds, budget, carry, growth)
         os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -142,9 +159,7 @@ def load_scale(ds, budget, carry, growth, rebuild=False):
         sc, _ = build_scale(ds, budget, carry, growth)
         return sc
     R = pd.read_csv(p, index_col=0)[list(OBJ_NAMES)]
-    sc = R.abs().max(axis=0).values.astype(float)
-    sc[sc < 1e-9] = 1.0
-    return sc
+    return _estimate(R)
 
 
 if __name__ == "__main__":

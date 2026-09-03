@@ -27,6 +27,14 @@ FAR_CAP = {1: 6.82,   # P1 产业：工业类中位 6.82 (n=63)
            5: 6.98}   # P5 农转用：无更新单元类比，取全市中位 6.98（超参数）
 CELL_AREA = 1e4       # 100 m x 100 m = 10000 平方米
 
+# 每格拆除补偿基数（情景参数，与 CCM 同量纲）。
+# 必须计入：CCM 对角线为 0，若资金只按 CCM 计，「原类重建」就不花钱却照样
+# 计入交付建面——1985 个配对中有 361 个（18.2%）是纯自转换，策略可以用它们
+# 白拿 Floor。现实里拆迁补偿主要与**拆除面积**成正比，改成什么用途只影响
+# 附加的改造成本。此常量在 v1 曾只加进 env_gym 的预算路径而漏掉了 Cost 目标，
+# 导致预算咬住、Cost 仍报 0；现由 convert_cost 统一实现，两条路径口径一致。
+CELL_COST = 50.0
+
 OBJ_SPATIAL = ("Gdp", "Eco", "Res", "Emp", "Aec", "E2r", "Cpt")
 OBJ_TEMPORAL = ("Floor", "Cost", "Disrupt", "Expire")
 OBJ_NAMES = OBJ_SPATIAL + OBJ_TEMPORAL
@@ -87,8 +95,13 @@ class Reward:
         return FAR_CAP.get(int(channel), FAR_CAP[5]) * n_cells * CELL_AREA
 
     def convert_cost(self, from_idx, to_idx, n_cells):
-        """非对称转换成本，取自 pSO 的 CCM（如 A->E 85 而 E->A 20）。"""
-        return float(self.CCM[from_idx, to_idx]) * n_cells
+        """资金成本 = (拆除补偿基数 + 非对称转换成本) × 格数。
+
+        CCM 取自 pSO（如 A->E 85 而 E->A 20），对角线为 0；CELL_COST 保证
+        「原类重建」也要花钱（见模块顶部 CELL_COST 的说明）。
+        与 env_gym 的 pair_cost/PC 同式，两者按构造相等。
+        """
+        return (CELL_COST + float(self.CCM[from_idx, to_idx])) * n_cells
 
     def disrupt(self, sigma_units, unit_id, res_map, s3_code=3):
         """施工干扰：S3 实施中的单元，对邻域居住承载造成的当期损失。"""

@@ -15,7 +15,7 @@ import os
 import numpy as np, pandas as pd
 
 from tpmorl.env.schedule import RenewalSchedule, QUOTA, S3, S4, TAU_EXT
-from tpmorl.objectives.reward import Reward, FAR_CAP, OBJ_NAMES, SIGN
+from tpmorl.objectives.reward import Reward, FAR_CAP, OBJ_NAMES, SIGN, CELL_COST
 from tpmorl.objectives.run_reward_demo import load, pick_target, ALLOWED
 
 N_FEAT = 16
@@ -31,7 +31,8 @@ CH_ORDER = [1, 2, 3, 5]
 # 却照样计入交付建面——策略可以用零成本动作填满配额，预算永远不咬。
 # 现实里拆迁补偿主要与**拆除面积**成正比，改成什么用途只影响附加的改造成本。
 # 故 资金成本 = CELL_COST × 格数 + Σ CCM[现状,目标] × 格数。
-CELL_COST = 50.0       # 每格拆除补偿基数（情景参数，与 CCM 同量纲）
+# CELL_COST 定义在 objectives/reward.py（顶部已导入），由 convert_cost 与本文件的
+# PC 共用——v1 只把它加进了预算路径而漏掉 Cost 目标，现已统一。
 BUDGET = 900.0
 # 结转上限须 ≥ 最贵单元 / BUDGET，否则大单元永远不可达（实测最贵 2610，900×3=2700）。
 CARRY_CAP = 3.0        # 可用预算上限 = CARRY_CAP × BUDGET，超出部分作废（防止无限攒钱）
