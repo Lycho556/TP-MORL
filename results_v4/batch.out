@@ -14,3 +14,9 @@ To https://github.com/Lycho556/TP-MORL.git
 
 ===== 第 3/6 组：现行法定窗口 2+1 年（条文对照）  (2026-09-04 05:22:19)
       参数：--tau-valid 2 --tau-ext 1   输出：data/processed/gm_dataset_v1/exp_v4/statutory
+To https://github.com/Lycho556/TP-MORL.git
+   9b83330..f9a64b9  HEAD -> main
+[push] 成功
+
+===== 第 4/6 组：冷却期 1 档  (2026-09-04 06:05:13)
+      参数：--cooldown 1   输出：data/processed/gm_dataset_v1/exp_v4/cool1
