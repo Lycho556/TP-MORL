@@ -44,7 +44,9 @@
    `objectives.csv` / `pareto_front.csv` 里的 11 维目标值——那些是
    `evaluate()` 乘回 scale 后的**原始量纲**，与分母无关，可比。
 2. 换分母会使此前所有标量化回报作废。旧结果不可与新结果并列在同一张表里。
-3. 参考集是手工策略，不是可达集的真实上界；它只保证同量级。
+3. 参考集是手工策略，不是可达集的真实上界；它只保证同量级。自 v4 起加入了
+   按目标定向的贪心（见 `REF_MODES` 注释），每个目标至少有一个策略在正方向
+   上推它，因此分母不再出现「只度量破坏幅度」的单侧失真。
 """
 import json
 import os
@@ -52,16 +54,87 @@ import os
 import numpy as np
 import pandas as pd
 
-REF_MODES = ("big", "small", "rand", "none")   # 选取规则：买最大/买最小/随机/不动
+# 选取规则：买最大/买最小/随机/不动 + 五个按目标定向的贪心。
+#
+# 为什么必须有定向贪心（docs/生态目标诊断_v4.md）：只有前四个时，参考集里
+# **没有任何策略让生态变好**（Eco 折扣回报 −19.3 / 0 / −226.5 / 0），而
+# `_estimate` 取 `abs().max()`，于是 Eco 的分母 226.5 恰是「随机」策略**破坏**
+# 生态的幅度——分母度量的是「能破坏多少」而非「能改善多少」。补一个生态定向
+# 贪心即得 Eco=+1554，为旧分母的 6.86 倍，即生态轴被压缩约 7 倍，帕累托前沿
+# 的生态端整体失真。`Cpt` 同病（四策略全为负或 0）。
+#
+# `big` 已近似 Floor 定向、`small` 已近似 Cost 定向，故不重复设。
+# 定向贪心同时是论文的基线族：它们在 α 上互有胜负（生态定向与 big 在 α≈0.6
+# 交叉），RL 要跑赢的是这一族而非单一的 big。
+REF_MODES = ("big", "small", "rand", "none",
+             "eco", "gdp", "res", "emp", "cpt")
 REF_SEEDS = (0, 1, 2, 3, 4)
+
+# 参考集版本，进缓存键。R3 = 仅四个手工策略；R4 = 加入五个定向贪心。
+REF_VER = "R4"
+
+# 定向贪心的排序键：UUM 的行号（5 x 12 = res emp gdp eco liv）。
+_UUM_ROW = dict(res=0, emp=1, gdp=2, eco=3)
+_DIRECTED = tuple(_UUM_ROW) + ("cpt",)
+_GAIN_CACHE = {}
+
+
+def gain_tables(ds):
+    """逐 (单元, 目标功能) 的目标增益表，供定向贪心排序。返回 {mode: (n_unit, 12)}。
+
+    只依赖静态的现状用地与权重矩阵，故一次算好、跨种子与年份复用（候选配对的
+    枚举 `_pu_all/_pt_all` 本身也是静态的，每年只是布尔选择）。
+
+    - UUM 四行（res/emp/gdp/eco）：增益 = 格数 × UUM[行, 目标] − Σ_格 UUM[行, 现状]，
+      即该单元全部格子改成目标功能后该项效用的总变化。
+    - `cpt` 用邻域相容度：把单元掩膜膨胀一圈取**单元外**的类别直方图 nb，
+      增益 = Σ_k (CM[目标, k] − 现状加权 CM[·, k]) × nb_k。这是 Cpt 的代理量
+      而非精确增量（真实 Cpt 走 500 m 池化后的二次型），够用于排序。
+    """
+    if ds in _GAIN_CACHE:
+        return _GAIN_CACHE[ds]
+    from scipy import ndimage
+    from tpmorl.objectives.run_reward_demo import load
+
+    _, cls, _, _, _, uid, U, UUM, CM, _ = load(ds)
+    UUM, CM = np.asarray(UUM, float), np.asarray(CM, float)
+    ids = U["uid"].values
+    n = len(ids)
+    hist = np.zeros((n, 12))            # 现状类别直方图（格数）
+    nb = np.zeros((n, 12))              # 膨胀一圈后、单元外的邻域类别直方图
+    boxes = ndimage.find_objects(uid.astype(np.int32))
+    for r, u in enumerate(ids):
+        sl = boxes[int(u) - 1]
+        if sl is None:
+            continue
+        pad = tuple(slice(max(s.start - 2, 0), min(s.stop + 2, d))
+                    for s, d in zip(sl, uid.shape))
+        m = uid[pad] == u
+        c = cls[pad]
+        hist[r] = np.bincount(c[m].ravel(), minlength=13)[1:13]
+        ring = ndimage.binary_dilation(m, iterations=2) & ~m
+        nb[r] = np.bincount(c[ring].ravel(), minlength=13)[1:13]
+
+    ncell = hist.sum(1)
+    tabs = {}
+    for mode, row in _UUM_ROW.items():
+        w = UUM[row]                                  # (12,)
+        tabs[mode] = ncell[:, None] * w[None, :] - (hist * w[None, :]).sum(1)[:, None]
+    cur_cm = (hist[:, :, None] * CM[None, :, :]).sum(1) / np.maximum(ncell, 1)[:, None]
+    tabs["cpt"] = (nb[:, None, :] * (CM[None, :, :] - cur_cm[:, None, :])).sum(-1)
+    _GAIN_CACHE[ds] = tabs
+    return tabs
 
 
 def _tag(budget, carry, growth):
     # 制度参数一并进键：窗口一改，参考策略集的可达上界随之改变，不能复用。
     # 读的是**调用时**的 schedule 模块常量，故 scenario.apply() 必须先于本函数。
+    # 参考集版本号也进键：改 REF_MODES 会改变分母，而情景参数不变，若不入键则
+    # 旧缓存被静默复用、新旧分母混在同一批结果里。改 REF_MODES/_estimate 时必须
+    # 同步递增 REF_VER。
     from tpmorl.rl.scenario import inst_tag
     return (f"B{float(budget):g}_C{float(carry):g}_G{float(growth):.4g}"
-            f"_{inst_tag()}")
+            f"_{inst_tag()}_{REF_VER}")
 
 
 def scale_path(ds, budget, carry, growth):
@@ -89,6 +162,10 @@ def _rollout(ds, mode, seed):
                 idx = np.argsort(-c)
             elif mode == "small":
                 idx = np.argsort(c)
+            elif mode in _DIRECTED:
+                pu = np.asarray([m[0] for m in meta[:-1]], dtype=np.int64)
+                pt = np.asarray([m[1] for m in meta[:-1]], dtype=np.int64)
+                idx = np.argsort(-gain_tables(ds)[mode][pu, pt])
             else:
                 idx = rng.permutation(len(c))
             left, used = env.budget, set()
