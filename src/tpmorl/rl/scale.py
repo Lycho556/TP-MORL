@@ -57,7 +57,11 @@ REF_SEEDS = (0, 1, 2, 3, 4)
 
 
 def _tag(budget, carry, growth):
-    return f"B{float(budget):g}_C{float(carry):g}_G{float(growth):.4g}"
+    # 制度参数一并进键：窗口一改，参考策略集的可达上界随之改变，不能复用。
+    # 读的是**调用时**的 schedule 模块常量，故 scenario.apply() 必须先于本函数。
+    from tpmorl.rl.scenario import inst_tag
+    return (f"B{float(budget):g}_C{float(carry):g}_G{float(growth):.4g}"
+            f"_{inst_tag()}")
 
 
 def scale_path(ds, budget, carry, growth):

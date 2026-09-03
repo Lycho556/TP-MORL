@@ -244,23 +244,19 @@ def weight_vector(alpha):
     return np.array([w[k] for k in OBJ_NAMES])
 
 
-def main(ds, out, iters, alphas, budget=None, carry=None, growth=None):
+def main(ds, out, iters, alphas, budget=None, carry=None, growth=None,
+         horizon=15, **inst):
     os.makedirs(out, exist_ok=True)
-    if budget is not None:
-        env_gym.BUDGET = float(budget)
-    if carry is not None:
-        env_gym.CARRY_CAP = float(carry)
-    if growth is not None:
-        env_gym.FAR_GROWTH = float(growth)
-    print(f"年度预算 {env_gym.BUDGET:.0f}（结转上限 {env_gym.CARRY_CAP:g}×）  配额 {QUOTA}  "
-          f"容积率年增 {env_gym.FAR_GROWTH:.0%}（未标定情景参数）")
+    from tpmorl.rl import scenario
+    scenario.apply(budget=budget, carry=carry, growth=growth, **inst)
+    print(scenario.describe())
     # 分母取**当前约束情景**下参考策略集的可达上界（见 tpmorl/rl/scale.py 模块文档）。
     # 旧做法用 reward_v0/discounted_return.csv（无约束情景），失真跨度约 24 倍且方向不一致。
     from tpmorl.rl.scale import load_scale
     scale = load_scale(ds, env_gym.BUDGET, env_gym.CARRY_CAP, env_gym.FAR_GROWTH)
 
     rows, curves = [], {}
-    e0 = RenewalEnv(ds, weights=weight_vector(0.5), scale=scale)
+    e0 = RenewalEnv(ds, T=horizon, weights=weight_vector(0.5), scale=scale)
     gr = eval_random(e0)
     rows.append(dict(alpha=-1.0, **{k: gr[i] for i, k in enumerate(OBJ_NAMES)}))
     print(f"随机(同动作空间)  Floor={gr[OBJ_NAMES.index('Floor')]/1e4:8.0f}万㎡  "
@@ -268,7 +264,7 @@ def main(ds, out, iters, alphas, budget=None, carry=None, growth=None):
 
     for a in alphas:
         t0 = time.time()
-        env = RenewalEnv(ds, weights=weight_vector(a), scale=scale)
+        env = RenewalEnv(ds, T=horizon, weights=weight_vector(a), scale=scale)
         net, hist = train(env, iters=iters)
         rec = []
         g = evaluate(env, net, record=rec)
@@ -303,5 +299,8 @@ if __name__ == "__main__":
     ap.add_argument("--budget", type=float, default=None)
     ap.add_argument("--carry", type=float, default=None)
     ap.add_argument("--growth", type=float, default=None)
+    from tpmorl.rl import scenario
+    scenario.add_args(ap)
     a = ap.parse_args()
-    main(a.dataset, a.out, a.iters, a.alphas, a.budget, a.carry, a.growth)
+    main(a.dataset, a.out, a.iters, a.alphas, a.budget, a.carry, a.growth,
+         horizon=a.horizon, **scenario.from_args(a))

@@ -28,17 +28,16 @@ def _load_scale(ds, budget, carry, growth):
 
 def one_run(job):
     """单个 (alpha, seed) 训练+评估。在子进程中执行，torch 压到单线程。"""
-    alpha, seed, ds, iters, eps, budget, carry, growth = job
+    alpha, seed, ds, iters, eps, budget, carry, growth, scen = job
     import torch
     torch.set_num_threads(1)
-    from tpmorl.rl import env_gym, train_ppo as T
+    from tpmorl.rl import train_ppo as T, scenario
     from tpmorl.rl.env_gym import RenewalEnv
 
-    env_gym.BUDGET = float(budget)
-    env_gym.CARRY_CAP = float(carry)
-    env_gym.FAR_GROWTH = float(growth)
+    # spawn 子进程重新 import 模块、拿回默认值，故必须在此再改写一次情景参数。
+    scenario.apply(budget=budget, carry=carry, growth=growth, **scen["inst"])
     sc = _load_scale(ds, budget, carry, growth)
-    env = RenewalEnv(ds, weights=T.weight_vector(alpha), scale=sc)
+    env = RenewalEnv(ds, T=scen["horizon"], weights=T.weight_vector(alpha), scale=sc)
 
     t0 = time.time()
     net, hist = T.train(env, iters=iters, eps_per_iter=eps, seed=seed)
@@ -61,16 +60,14 @@ def one_run(job):
                 curve=[float(x) for x in hist], diag=diag)
 
 
-def random_runs(ds, seeds, budget, carry, growth):
+def random_runs(ds, seeds, budget, carry, growth, scen):
     import torch
     torch.set_num_threads(1)
-    from tpmorl.rl import env_gym, train_ppo as T
+    from tpmorl.rl import train_ppo as T, scenario
     from tpmorl.rl.env_gym import RenewalEnv
-    env_gym.BUDGET = float(budget)
-    env_gym.CARRY_CAP = float(carry)
-    env_gym.FAR_GROWTH = float(growth)
+    scenario.apply(budget=budget, carry=carry, growth=growth, **scen["inst"])
     sc = _load_scale(ds, budget, carry, growth)
-    env = RenewalEnv(ds, weights=T.weight_vector(0.5), scale=sc)
+    env = RenewalEnv(ds, T=scen["horizon"], weights=T.weight_vector(0.5), scale=sc)
     out = []
     for s in seeds:
         g = T.eval_random(env, seed=s)
@@ -78,11 +75,15 @@ def random_runs(ds, seeds, budget, carry, growth):
     return out
 
 
-def main(ds, out, iters, eps, budget, carry, growth, workers):
+def main(ds, out, iters, eps, budget, carry, growth, workers, scen):
     os.makedirs(out, exist_ok=True)
-    jobs = [(a, s, ds, iters, eps, budget, carry, growth) for a in ALPHAS for s in SEEDS]
-    print(f"{len(jobs)} 个运行 × {iters} 迭代 × {eps} 回合  预算 {budget}  增长 {growth}"
-          f"  并行 {workers}", flush=True)
+    jobs = [(a, s, ds, iters, eps, budget, carry, growth, scen)
+            for a in ALPHAS for s in SEEDS]
+    # 主进程也要改写：下面 build_scale 的缓存键含制度参数，须与子进程一致。
+    from tpmorl.rl import scenario
+    scenario.apply(budget=budget, carry=carry, growth=growth, **scen["inst"])
+    print(f"{len(jobs)} 个运行 × {iters} 迭代 × {eps} 回合  并行 {workers}\n"
+          + scenario.describe() + f"\n规划期 T={scen['horizon']}", flush=True)
 
     # 必须在起进程池**之前**把分母落盘：否则 workers 会同时构建并竞争写同一个文件。
     from tpmorl.rl.scale import build_scale, scale_path
@@ -99,10 +100,11 @@ def main(ds, out, iters, eps, budget, carry, growth, workers):
                   f"{r['wall']:.0f}s 立项={r['diag']['n_initiated']:.1f} "
                   f"Floor={r['obj']['Floor']:.3g}", flush=True)
 
-    rnd = random_runs(ds, SEEDS, budget, carry, growth)
+    rnd = random_runs(ds, SEEDS, budget, carry, growth, scen)
     with open(os.path.join(out, "runs.json"), "w") as f:
         json.dump(dict(config=dict(iters=iters, eps=eps, budget=budget, carry=carry,
-                                   growth=growth, alphas=ALPHAS, seeds=SEEDS),
+                                   growth=growth, alphas=ALPHAS, seeds=SEEDS,
+                                   horizon=scen["horizon"], **scen["inst"]),
                        runs=res, random=rnd), f)
 
     rows = []
@@ -127,5 +129,8 @@ if __name__ == "__main__":
     ap.add_argument("--carry", type=float, default=3.0)
     ap.add_argument("--growth", type=float, default=0.0)
     ap.add_argument("--workers", type=int, default=10)
+    from tpmorl.rl import scenario
+    scenario.add_args(ap)
     a = ap.parse_args()
-    main(a.dataset, a.out, a.iters, a.eps, a.budget, a.carry, a.growth, a.workers)
+    main(a.dataset, a.out, a.iters, a.eps, a.budget, a.carry, a.growth, a.workers,
+         dict(horizon=a.horizon, inst=scenario.from_args(a)))

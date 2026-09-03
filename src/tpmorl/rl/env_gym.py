@@ -14,7 +14,7 @@
 import os
 import numpy as np, pandas as pd
 
-from tpmorl.env.schedule import RenewalSchedule, QUOTA, S3, S4, TAU_EXT
+from tpmorl.env.schedule import RenewalSchedule, QUOTA, S1, S3, S4
 from tpmorl.objectives.reward import Reward, FAR_CAP, OBJ_NAMES, SIGN, CELL_COST
 from tpmorl.objectives.run_reward_demo import load, pick_target, ALLOWED
 
@@ -74,7 +74,15 @@ class RenewalEnv:
             F[:, 2 + j] = (self.ch == c)
         for s in range(6):
             F[:, 6 + s] = (self.env.sigma == s)
-        F[:, 12] = self.env.clock / max(TAU_EXT, 1)
+        # 「当前状态内的进度」∈[0,1]：S1 用有效期倒计时 tau/tau_max，其余状态用
+        # clock/该状态上限（S3 的上限是**该单元的** build_years）。
+        # 原先一律除以 TAU_EXT，既漏掉了 S1 的倒计时，也会在 build_years 分档
+        # 取 5 之后给出 >1 的特征值。
+        e = self.env
+        prog = e.clock / e.max_clock()
+        s1 = e.sigma == S1
+        prog[s1] = e.tau[s1] / max(e.tau_max, 1)
+        F[:, 12] = np.clip(prog, 0.0, 1.0)
         F[:, 13] = self.farcap / 10.0
         F[:, 14] = self.t / self.T
         F[:, 15] = self.mask_init.astype(np.float32)
