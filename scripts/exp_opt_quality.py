@@ -20,11 +20,10 @@ ALPHAS = [0.0, 0.15, 0.3, 0.5, 0.7, 0.85, 1.0]
 SEEDS = [0, 1, 2, 3, 4]
 
 
-def _load_scale(ds, OBJ_NAMES):
-    base = pd.read_csv(os.path.join(ds, "reward_v0", "discounted_return.csv"), index_col=0)
-    sc = np.array(base[list(OBJ_NAMES)].abs().max(axis=0).values, float)
-    sc[sc == 0] = 1.0
-    return sc
+def _load_scale(ds, budget, carry, growth):
+    """分母取当前约束情景下参考策略集的可达上界（见 tpmorl/rl/scale.py）。"""
+    from tpmorl.rl.scale import load_scale
+    return load_scale(ds, budget, carry, growth)
 
 
 def one_run(job):
@@ -38,7 +37,7 @@ def one_run(job):
     env_gym.BUDGET = float(budget)
     env_gym.CARRY_CAP = float(carry)
     env_gym.FAR_GROWTH = float(growth)
-    sc = _load_scale(ds, T.OBJ_NAMES)
+    sc = _load_scale(ds, budget, carry, growth)
     env = RenewalEnv(ds, weights=T.weight_vector(alpha), scale=sc)
 
     t0 = time.time()
@@ -70,7 +69,7 @@ def random_runs(ds, seeds, budget, carry, growth):
     env_gym.BUDGET = float(budget)
     env_gym.CARRY_CAP = float(carry)
     env_gym.FAR_GROWTH = float(growth)
-    sc = _load_scale(ds, T.OBJ_NAMES)
+    sc = _load_scale(ds, budget, carry, growth)
     env = RenewalEnv(ds, weights=T.weight_vector(0.5), scale=sc)
     out = []
     for s in seeds:
@@ -84,6 +83,12 @@ def main(ds, out, iters, eps, budget, carry, growth, workers):
     jobs = [(a, s, ds, iters, eps, budget, carry, growth) for a in ALPHAS for s in SEEDS]
     print(f"{len(jobs)} 个运行 × {iters} 迭代 × {eps} 回合  预算 {budget}  增长 {growth}"
           f"  并行 {workers}", flush=True)
+
+    # 必须在起进程池**之前**把分母落盘：否则 workers 会同时构建并竞争写同一个文件。
+    from tpmorl.rl.scale import build_scale, scale_path
+    if not os.path.exists(scale_path(ds, budget, carry, growth)):
+        build_scale(ds, budget, carry, growth)
+    print(f"分母 {scale_path(ds, budget, carry, growth)}", flush=True)
 
     import multiprocessing as mp
     with mp.get_context("spawn").Pool(workers) as pool:

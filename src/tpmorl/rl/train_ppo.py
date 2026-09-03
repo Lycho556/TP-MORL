@@ -254,9 +254,10 @@ def main(ds, out, iters, alphas, budget=None, carry=None, growth=None):
         env_gym.FAR_GROWTH = float(growth)
     print(f"年度预算 {env_gym.BUDGET:.0f}（结转上限 {env_gym.CARRY_CAP:g}×）  配额 {QUOTA}  "
           f"容积率年增 {env_gym.FAR_GROWTH:.0%}（未标定情景参数）")
-    base = pd.read_csv(os.path.join(ds, "reward_v0", "discounted_return.csv"), index_col=0)
-    scale = np.array(base[list(OBJ_NAMES)].abs().max(axis=0).values, dtype=float)
-    scale[scale == 0] = 1.0
+    # 分母取**当前约束情景**下参考策略集的可达上界（见 tpmorl/rl/scale.py 模块文档）。
+    # 旧做法用 reward_v0/discounted_return.csv（无约束情景），失真跨度约 24 倍且方向不一致。
+    from tpmorl.rl.scale import load_scale
+    scale = load_scale(ds, env_gym.BUDGET, env_gym.CARRY_CAP, env_gym.FAR_GROWTH)
 
     rows, curves = [], {}
     e0 = RenewalEnv(ds, weights=weight_vector(0.5), scale=scale)
