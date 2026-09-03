@@ -2,3 +2,9 @@
 
 ===== 第 1/6 组：基线（实测标定制度参数）  (2026-09-04 04:07:24)
       参数：（默认）   输出：data/processed/gm_dataset_v1/exp_v4/base
+To https://github.com/Lycho556/TP-MORL.git
+   fb7780a..fef74f0  HEAD -> main
+[push] 成功
+
+===== 第 2/6 组：冷却期 0 档（核心主张压力测试）  (2026-09-04 04:43:36)
+      参数：--cooldown 0   输出：data/processed/gm_dataset_v1/exp_v4/cool0
