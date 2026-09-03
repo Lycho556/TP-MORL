@@ -8,3 +8,9 @@ To https://github.com/Lycho556/TP-MORL.git
 
 ===== 第 2/6 组：冷却期 0 档（核心主张压力测试）  (2026-09-04 04:43:36)
       参数：--cooldown 0   输出：data/processed/gm_dataset_v1/exp_v4/cool0
+To https://github.com/Lycho556/TP-MORL.git
+   fef74f0..9b83330  HEAD -> main
+[push] 成功
+
+===== 第 3/6 组：现行法定窗口 2+1 年（条文对照）  (2026-09-04 05:22:19)
+      参数：--tau-valid 2 --tau-ext 1   输出：data/processed/gm_dataset_v1/exp_v4/statutory
