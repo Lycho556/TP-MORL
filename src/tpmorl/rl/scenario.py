@@ -16,11 +16,23 @@ INST_FIELDS = ("tau_valid", "tau_ext", "cooldown", "build_years")
 BUDGET_FIELDS = ("budget", "carry", "growth")
 
 
+_HORIZON = None      # 仅供 inst_tag() 入键；T 本身由各脚本传给 RenewalEnv
+
+
 def apply(budget=None, carry=None, growth=None,
-          tau_valid=None, tau_ext=None, cooldown=None, build_years=None):
-    """把情景参数写回模块常量。None 表示沿用模块默认值，不改写。"""
+          tau_valid=None, tau_ext=None, cooldown=None, build_years=None,
+          horizon=None):
+    """把情景参数写回模块常量。None 表示沿用模块默认值，不改写。
+
+    `horizon` 不改写任何常量，只登记进 `inst_tag()`：规划期长度改变可达上界，
+    分母不可跨 T 复用。
+    """
+    global _HORIZON
     from tpmorl.rl import env_gym
     from tpmorl.env import schedule as S
+
+    if horizon is not None:
+        _HORIZON = int(horizon)
 
     if budget is not None:
         env_gym.BUDGET = float(budget)
@@ -47,7 +59,8 @@ def inst_tag():
     from tpmorl.env import schedule as S
     y = "".join(f"{c}-{S.BUILD_YEARS_BY_CHANNEL[c]}"
                 for c in sorted(S.BUILD_YEARS_BY_CHANNEL))
-    return f"V{S.TAU_VALID}E{S.TAU_EXT}D{S.COOLDOWN}Y{y}"
+    t = "" if _HORIZON is None else f"T{_HORIZON}"
+    return f"V{S.TAU_VALID}E{S.TAU_EXT}D{S.COOLDOWN}Y{y}{t}"
 
 
 def describe():

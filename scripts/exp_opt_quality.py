@@ -35,7 +35,8 @@ def one_run(job):
     from tpmorl.rl.env_gym import RenewalEnv
 
     # spawn 子进程重新 import 模块、拿回默认值，故必须在此再改写一次情景参数。
-    scenario.apply(budget=budget, carry=carry, growth=growth, **scen["inst"])
+    scenario.apply(budget=budget, carry=carry, growth=growth,
+                   horizon=scen["horizon"], **scen["inst"])
     sc = _load_scale(ds, budget, carry, growth)
     env = RenewalEnv(ds, T=scen["horizon"], weights=T.weight_vector(alpha), scale=sc)
 
@@ -65,7 +66,8 @@ def random_runs(ds, seeds, budget, carry, growth, scen):
     torch.set_num_threads(1)
     from tpmorl.rl import train_ppo as T, scenario
     from tpmorl.rl.env_gym import RenewalEnv
-    scenario.apply(budget=budget, carry=carry, growth=growth, **scen["inst"])
+    scenario.apply(budget=budget, carry=carry, growth=growth,
+                   horizon=scen["horizon"], **scen["inst"])
     sc = _load_scale(ds, budget, carry, growth)
     env = RenewalEnv(ds, T=scen["horizon"], weights=T.weight_vector(0.5), scale=sc)
     out = []
@@ -81,7 +83,8 @@ def main(ds, out, iters, eps, budget, carry, growth, workers, scen):
             for a in ALPHAS for s in SEEDS]
     # 主进程也要改写：下面 build_scale 的缓存键含制度参数，须与子进程一致。
     from tpmorl.rl import scenario
-    scenario.apply(budget=budget, carry=carry, growth=growth, **scen["inst"])
+    scenario.apply(budget=budget, carry=carry, growth=growth,
+                   horizon=scen["horizon"], **scen["inst"])
     print(f"{len(jobs)} 个运行 × {iters} 迭代 × {eps} 回合  并行 {workers}\n"
           + scenario.describe() + f"\n规划期 T={scen['horizon']}", flush=True)
 

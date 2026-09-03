@@ -248,7 +248,8 @@ def main(ds, out, iters, alphas, budget=None, carry=None, growth=None,
          horizon=15, **inst):
     os.makedirs(out, exist_ok=True)
     from tpmorl.rl import scenario
-    scenario.apply(budget=budget, carry=carry, growth=growth, **inst)
+    scenario.apply(budget=budget, carry=carry, growth=growth,
+                   horizon=horizon, **inst)
     print(scenario.describe())
     # 分母取**当前约束情景**下参考策略集的可达上界（见 tpmorl/rl/scale.py 模块文档）。
     # 旧做法用 reward_v0/discounted_return.csv（无约束情景），失真跨度约 24 倍且方向不一致。

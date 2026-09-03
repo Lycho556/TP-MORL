@@ -251,13 +251,19 @@ if __name__ == "__main__":
     ap.add_argument("--budget", type=float, default=900.0)
     ap.add_argument("--carry", type=float, default=3.0)
     ap.add_argument("--growth", type=float, default=0.0)
+    from tpmorl.rl import scenario
+    scenario.add_args(ap)
     a = ap.parse_args()
+    # 必须先改写情景常量：_tag() 与参考策略集都读**调用时**的模块常量。
+    scenario.apply(budget=a.budget, carry=a.carry, growth=a.growth,
+                   horizon=a.horizon, **scenario.from_args(a))
 
     sc, R = build_scale(a.dataset, a.budget, a.carry, a.growth)
-    old = pd.read_csv(os.path.join(a.dataset, "reward_v0", "discounted_return.csv"),
-                      index_col=0)[list(R.columns)]
-    so = old.abs().max(axis=0).values.astype(float); so[so == 0] = 1.0
-    print(f"情景 {_tag(a.budget, a.carry, a.growth)}  参考策略 {len(R)} 次\n")
-    print(pd.DataFrame({"旧分母": so, "新分母(约束情景)": sc, "旧/新": so / sc},
-                       index=R.columns).round(3).to_string())
+    print(f"情景 {_tag(a.budget, a.carry, a.growth)}  参考策略 {len(R)} 次")
+    print(scenario.describe() + f"\n规划期 T={a.horizon}\n")
+    M = R.groupby([i.rsplit("_s", 1)[0] for i in R.index], sort=False).mean()
+    print("各参考策略的折扣回报（种子均值）：")
+    print(M.round(1).to_string())
+    print("\n分母（每目标取跨策略的绝对值上界）：")
+    print(pd.Series(sc, index=R.columns).round(2).to_string())
     print(f"\n已写出 {scale_path(a.dataset, a.budget, a.carry, a.growth)}")
