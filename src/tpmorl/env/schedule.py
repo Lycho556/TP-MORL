@@ -206,7 +206,12 @@ class RenewalSchedule:
             self.sigma[initiate], self.tau[initiate] = S1, 0
             ev["initiated"] = len(initiate)
 
-        self.clock[np.isin(self.sigma, (S2, S3, S5))] += 1
+        # 本步**新**进入冷却期的单元不参与自增：否则其 clock 在下一步已是 1，
+        # 使 cooldown=0 与 =1 完全等价（生效值退化为 max(cooldown,1)），
+        # 冷却期 0 档压力测试将测不到"无冷却期"。详见 docs/批次v4_查验_v5.md。
+        tick = np.isin(self.sigma, (S2, S3, S5))
+        tick[exp] = False
+        self.clock[tick] += 1
         self.t += 1
         return self.state(), ev
 

@@ -71,7 +71,7 @@ REF_MODES = ("big", "small", "rand", "none",
 REF_SEEDS = (0, 1, 2, 3, 4)
 
 # 参考集版本，进缓存键。R3 = 仅四个手工策略；R4 = 加入五个定向贪心。
-REF_VER = "R4"
+REF_VER = "R5"     # R5: 并列打破改确定性 lexsort 次键（跨机可复现）
 
 # 定向贪心的排序键：UUM 的行号（5 x 12 = res emp gdp eco liv）。
 _UUM_ROW = dict(res=0, emp=1, gdp=2, eco=3)
@@ -158,14 +158,18 @@ def _rollout(ds, mode, seed):
         if mode != "none":
             _, meta, cost, _ = env.pairs()
             c = cost[:-1]                       # 末位是 STOP
+            # 候选成本高度并列（1985 个候选仅 164 种取值，97% 处于并列组，最大组 92
+            # 个），np.argsort 默认非稳定排序的并列顺序由库实现决定，换机器/换版本会
+            # 变，实测同一份输入可给出三族完全不同的分母。故一律用 lexsort 加
+            # (单元, 目标) 确定性次键，使参考集跨机可复现。详见 docs/批次v4_查验_v5.md。
+            pu = np.asarray([m[0] for m in meta[:-1]], dtype=np.int64)
+            pt = np.asarray([m[1] for m in meta[:-1]], dtype=np.int64)
             if mode == "big":
-                idx = np.argsort(-c)
+                idx = np.lexsort((pt, pu, -c))
             elif mode == "small":
-                idx = np.argsort(c)
+                idx = np.lexsort((pt, pu, c))
             elif mode in _DIRECTED:
-                pu = np.asarray([m[0] for m in meta[:-1]], dtype=np.int64)
-                pt = np.asarray([m[1] for m in meta[:-1]], dtype=np.int64)
-                idx = np.argsort(-gain_tables(ds)[mode][pu, pt])
+                idx = np.lexsort((pt, pu, -gain_tables(ds)[mode][pu, pt]))
             else:
                 idx = rng.permutation(len(c))
             left, used = env.budget, set()
