@@ -26,3 +26,9 @@ To https://github.com/Lycho556/TP-MORL.git
 
 ===== 第 5/6 组：冷却期 3 档  (2026-09-04 06:51:10)
       参数：--cooldown 3   输出：data/processed/gm_dataset_v1/exp_v4/cool3
+To https://github.com/Lycho556/TP-MORL.git
+   d698740..186c5bb  HEAD -> main
+[push] 成功
+
+===== 第 6/6 组：建设年限 3 年（访谈前旧值，敏感性）  (2026-09-04 07:32:21)
+      参数：--build-years 3   输出：data/processed/gm_dataset_v1/exp_v4/build3
