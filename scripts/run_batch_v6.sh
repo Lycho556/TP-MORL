@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TP-MORL 批次 v5 —— 服务器完整实验驱动脚本
+# TP-MORL 批次 v6 —— 服务器完整实验驱动脚本
 #
 # 用法（在仓库根目录）：
 #     bash scripts/run_batch_v4.sh                 # 全部 6 组，按序
@@ -14,8 +14,8 @@
 #   * 每组独立目录、独立日志；**每组跑完立刻 commit + push**，
 #     所以中途断掉也不丢已完成的组。
 #   * 单组失败不终止整批：记为 FAIL，继续下一组。
-#   * 状态写在 results_v5/STATUS.md，每组结束刷新一次。
-#   * 全部 6 组成功后打 git tag `batch-v5-complete` 作为完成标注。
+#   * 状态写在 results_v6/STATUS.md，每组结束刷新一次。
+#   * 全部 6 组成功后打 git tag `batch-v6-complete` 作为完成标注。
 set -u
 set -o pipefail
 
@@ -26,8 +26,8 @@ export PYTHONPATH=src
 export OMP_NUM_THREADS=1          # 必须：否则 torch 线程与进程池争核，实测慢数倍
 
 DS="data/processed/gm_dataset_v1"
-BASE="${BASE:-$DS/exp_v5}"      # 干跑时可指向 /tmp
-RES="${RES:-results_v5}"
+BASE="${BASE:-$DS/exp_v6}"      # 干跑时可指向 /tmp
+RES="${RES:-results_v6}"
 PUSH="${PUSH:-1}"               # PUSH=0 只跑不提交，用于干跑
 ITERS="${ITERS:-400}"
 EPS="${EPS:-8}"
@@ -40,12 +40,12 @@ WORKERS="${WORKERS:-$(( NPROC > 4 ? NPROC - 2 : 2 ))}"
 
 # 情景组：编号|目录名|中文名|附加参数
 SCENARIOS=(
-  "1|base|基线（实测标定制度参数）|"
-  "2|cool0|冷却期 0 档（核心主张压力测试）|--cooldown 0"
+  "1|base|失效即退出本规划期（吸收态，实务主设定）|"
+  "2|relax2|宽松对照：失效后 2 年可重报（旧自设值）|--cooldown 2"
   "3|statutory|现行法定窗口 2+1 年（条文对照）|--tau-valid 2 --tau-ext 1"
-  "4|cool1|冷却期 1 档|--cooldown 1"
-  "5|cool3|冷却期 3 档|--cooldown 3"
-  "6|build3|建设年限 3 年（访谈前旧值，敏感性）|--build-years 3"
+  "4|relax5|宽松对照：失效后 5 年可重报|--cooldown 5"
+  "5|relax0|最宽松极端参照：失效后即可重报|--cooldown 0"
+  "6|build3|综合整治档：建设年限 3 年（敏感性）|--build-years 3"
 )
 
 WANT=("$@")
@@ -61,7 +61,7 @@ want_group () {           # 无参数 = 全跑
 
 write_status () {
   {
-    echo "# 批次 v5 运行状态"
+    echo "# 批次 v6 运行状态"
     echo
     echo "- 主机并行度：\`WORKERS=$WORKERS\`（探测到 $NPROC 核）"
     echo "- 每组规模：7 权重档 × 5 种子 = 35 次运行，\`--iters $ITERS --eps $EPS\`"
@@ -75,7 +75,7 @@ write_status () {
     if [ -f "$RES/.alldone" ]; then
       echo "## 全部实验已完成"
       echo
-      echo "6 组全部成功，已打标签 \`batch-v5-complete\`。"
+      echo "6 组全部成功，已打标签 \`batch-v6-complete\`。"
       echo "解读前先照 \`docs/rerun_v2.md\` 的验收判据核对基线组。"
     else
       echo "> 尚未全部完成。已完成的组其结果即可用，情景之间的**标量化回报不可比**"
@@ -101,7 +101,7 @@ push_now () {             # $1 = commit message
 : > "$RES/.rows"
 rm -f "$RES/.alldone"
 FAILED=0; RAN=0
-echo "批次 v5 开始  $(date '+%F %T')  WORKERS=$WORKERS  ITERS=$ITERS"
+echo "批次 v6 开始  $(date '+%F %T')  WORKERS=$WORKERS  ITERS=$ITERS"
 
 for spec in "${SCENARIOS[@]}"; do
   IFS='|' read -r NUM DIR NAME ARGS <<< "$spec"
@@ -137,18 +137,18 @@ for spec in "${SCENARIOS[@]}"; do
   fi
   printf '| %s | %s | %s | %s | %s |\n' "$NUM" "$NAME" "$ST" "$hm" "$NF" >> "$RES/.rows"
   write_status
-  push_now "批次 v5 第 $NUM/6 组：$NAME（$ST，耗时 $hm）"
+  push_now "批次 v6 第 $NUM/6 组：$NAME（$ST，耗时 $hm）"
 done
 
 echo; echo "===== 批次结束  $(date '+%F %T')  成功 $RAN  失败 $FAILED"
 if [ $FAILED -eq 0 ] && [ $RAN -eq 6 ]; then
   touch "$RES/.alldone"; write_status
-  push_now "批次 v5 全部实验完成（6/6 组）"
+  push_now "批次 v6 全部实验完成（6/6 组）"
   [ "$PUSH" = "1" ] || { echo "[tag] PUSH=0，跳过标签"; exit 0; }
-  git tag -f batch-v5-complete -m "批次 v5：6 组情景实验全部完成"
-  git push -f origin batch-v5-complete || echo "[tag] push 失败，请手工推标签"
-  echo "已标注完成：tag batch-v5-complete"
+  git tag -f batch-v6-complete -m "批次 v6：6 组情景实验全部完成"
+  git push -f origin batch-v6-complete || echo "[tag] push 失败，请手工推标签"
+  echo "已标注完成：tag batch-v6-complete"
 else
-  write_status; push_now "批次 v5 部分完成（成功 $RAN / 失败 $FAILED）"
+  write_status; push_now "批次 v6 部分完成（成功 $RAN / 失败 $FAILED）"
   echo "未全部完成，**未**打完成标签。"
 fi

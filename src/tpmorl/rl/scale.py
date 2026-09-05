@@ -71,7 +71,7 @@ REF_MODES = ("big", "small", "rand", "none",
 REF_SEEDS = (0, 1, 2, 3, 4)
 
 # 参考集版本，进缓存键。R3 = 仅四个手工策略；R4 = 加入五个定向贪心。
-REF_VER = "R5"     # R5: 并列打破改确定性 lexsort 次键（跨机可复现）
+REF_VER = "R6"     # R5 确定性 lexsort 次键；R6 失效改规划期内吸收态
 
 # 定向贪心的排序键：UUM 的行号（5 x 12 = res emp gdp eco liv）。
 _UUM_ROW = dict(res=0, emp=1, gdp=2, eco=3)

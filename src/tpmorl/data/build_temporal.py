@@ -45,7 +45,9 @@ def main(ds, T, seed):
 
     calib = dict(
         hazard=list(HAZARD), tau_valid=TAU_VALID, tau_ext=TAU_EXT, quota=QUOTA,
-        build_years=BUILD_YEARS, cooldown=COOLDOWN, T=T, n_units=int(len(U)),
+        build_years=BUILD_YEARS,
+        cooldown=("absorb" if COOLDOWN == float("inf") else int(COOLDOWN)),
+        T=T, n_units=int(len(U)),
         actionable_channels=list(ACTIONABLE_CHANNELS),
         calibration_source=dict(
             hazard="109 对计划公告→单元规划批准配对的逐年条件批准率（实测）",
@@ -53,7 +55,7 @@ def main(ds, T, seed):
             tau_ext="τ 上限 5 年覆盖 70.6% 实际案例（实测）",
             quota="光明区 2011-2018 计划公告均值 3.1、上限 6（实测）",
             build_years="无实测数据，超参数",
-            cooldown="无实测数据，超参数"))
+            cooldown="无条文依据；依 2026-09 规划局实务答复设为规划期内吸收态"))
     json.dump(calib, open(os.path.join(out, "calib.json"), "w"), ensure_ascii=False, indent=1)
 
     print(f"单元 {len(U)} 个 | 可更新通道内 {int(env.eligible.sum())} 个 | T={T}")

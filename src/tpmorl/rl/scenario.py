@@ -46,12 +46,39 @@ def apply(budget=None, carry=None, growth=None,
     if tau_ext is not None:
         S.TAU_EXT = int(tau_ext)
     if cooldown is not None:
-        S.COOLDOWN = int(cooldown)
+        S.COOLDOWN = parse_cooldown(cooldown)
     if build_years is not None:
         # 全体通道同值；分档差异化待数据／动作空间到位后再逐通道设
         S.BUILD_YEARS = int(build_years)
         S.BUILD_YEARS_BY_CHANNEL = {c: int(build_years)
                                     for c in S.BUILD_YEARS_BY_CHANNEL}
+
+
+_ABSORB_WORDS = ("absorb", "inf", "t", "吸收态", "永久")
+
+
+def parse_cooldown(v):
+    """把冷却期规格解析成数值。
+
+    接受整数年数，或 absorb/inf/T（不分大小写）表示"本规划期内不再申请"的吸收态。
+    吸收态是依 2026-09 规划局实务答复的主设定，见 schedule.py 模块文档。
+    """
+    from tpmorl.env import schedule as S
+    if isinstance(v, str) and v.strip().lower() in _ABSORB_WORDS:
+        return S.COOLDOWN_ABSORB
+    v = float(v)
+    return S.COOLDOWN_ABSORB if v == float("inf") else int(v)
+
+
+def cooldown_tag(v=None):
+    """冷却期的文件名短标识。吸收态记 `DA`，数值档记 `D{年数}`。"""
+    from tpmorl.env import schedule as S
+    v = S.COOLDOWN if v is None else v
+    return "DA" if not _np_isfinite(v) else f"D{int(v)}"
+
+
+def _np_isfinite(v):
+    return v == v and v not in (float("inf"), float("-inf"))
 
 
 def inst_tag():
@@ -60,7 +87,7 @@ def inst_tag():
     y = "".join(f"{c}-{S.BUILD_YEARS_BY_CHANNEL[c]}"
                 for c in sorted(S.BUILD_YEARS_BY_CHANNEL))
     t = "" if _HORIZON is None else f"T{_HORIZON}"
-    return f"V{S.TAU_VALID}E{S.TAU_EXT}D{S.COOLDOWN}Y{y}{t}"
+    return f"V{S.TAU_VALID}E{S.TAU_EXT}{cooldown_tag()}Y{y}{t}"
 
 
 def describe():
@@ -68,8 +95,10 @@ def describe():
     from tpmorl.env import schedule as S
     return (f"年度预算 {env_gym.BUDGET:.0f}（结转上限 {env_gym.CARRY_CAP:g}×）  "
             f"配额 {S.QUOTA}  容积率年增 {env_gym.FAR_GROWTH:.0%}\n"
-            f"有效期 {S.TAU_VALID}+{S.TAU_EXT} 年  冷却 {S.COOLDOWN} 年"
-            f"（无条文依据）  建设年限 {S.BUILD_YEARS_BY_CHANNEL}")
+            f"有效期 {S.TAU_VALID}+{S.TAU_EXT} 年  "
+            f"失效后 {'本规划期内不再申请（吸收态）' if not _np_isfinite(S.COOLDOWN) else f'冷却 {int(S.COOLDOWN)} 年'}"
+            f"（无条文依据，依 2026-09 规划局实务答复）  "
+            f"建设年限 {S.BUILD_YEARS_BY_CHANNEL}")
 
 
 def add_args(ap):
@@ -78,9 +107,10 @@ def add_args(ap):
                     help="计划有效期（年）。实测标定 3；现行法定窗口对照用 2")
     ap.add_argument("--tau-ext", type=int, default=None,
                     help="延期上限（年）。实测标定 2；现行法定窗口对照用 1")
-    ap.add_argument("--cooldown", type=int, default=None,
-                    help="失效后冷却期（年）。无条文依据，须扫 0/1/2/3；"
-                         "0 档是对「等待有风险」这一核心主张的压力测试")
+    ap.add_argument("--cooldown", type=str, default=None,
+                    help="失效后冷却期。默认 absorb=本规划期内不再申请（吸收态，"
+                         "依 2026-09 规划局实务答复的主设定）；也可给年数作宽松"
+                         "对照，敏感性方向 {2, 5, 吸收态}，0 档仅为最宽松极端参照")
     ap.add_argument("--build-years", type=int, default=None,
                     help="建设年限（年），全通道同值。默认按通道表取 5")
     ap.add_argument("--horizon", type=int, default=15,

@@ -32,8 +32,10 @@ def trace(y0, T, tau_valid, tau_ext, build_years, cooldown, hazard, rng):
             return t if t <= T else None
         tau += 1
         t += 1
-        if tau >= tau_max:                         # 失效 → 冷却 → 重报
-            t += cooldown
+        if tau >= tau_max:                         # 失效
+            if not np.isfinite(cooldown):          # 吸收态：本规划期内不再申请
+                return None
+            t += cooldown                          # 宽松对照：冷却后可重报
             tau = 0
     return None
 
@@ -42,9 +44,10 @@ def main(a):
     hazard = np.asarray(S.HAZARD, float)
     tv = S.TAU_VALID if a.tau_valid is None else a.tau_valid
     te = S.TAU_EXT if a.tau_ext is None else a.tau_ext
-    cd = S.COOLDOWN if a.cooldown is None else a.cooldown
+    from tpmorl.rl.scenario import parse_cooldown, cooldown_tag
+    cd = S.COOLDOWN if a.cooldown is None else parse_cooldown(a.cooldown)
     by = S.BUILD_YEARS_BY_CHANNEL[1] if a.build_years is None else a.build_years
-    print(f"T={a.horizon}  有效期 {tv}+{te}  建设 {by} 年  冷却 {cd} 年  "
+    print(f"T={a.horizon}  有效期 {tv}+{te}  建设 {by} 年  失效后 {cooldown_tag(cd)}  "
           f"链条下界 = 1(获批) + 1(开工) + {by}(施工) = {2 + by} 年")
     rng = np.random.default_rng(0)
     rows = []
@@ -73,6 +76,7 @@ if __name__ == "__main__":
     ap.add_argument("--reps", type=int, default=4000)
     ap.add_argument("--tau-valid", type=int, default=None)
     ap.add_argument("--tau-ext", type=int, default=None)
-    ap.add_argument("--cooldown", type=int, default=None)
+    ap.add_argument("--cooldown", type=str, default=None,
+                    help="年数，或 absorb=本规划期内不再申请（默认）")
     ap.add_argument("--build-years", type=int, default=None)
     main(ap.parse_args())
