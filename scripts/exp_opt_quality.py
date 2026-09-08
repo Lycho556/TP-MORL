@@ -28,7 +28,7 @@ def _load_scale(ds, budget, carry, growth):
 
 def one_run(job):
     """单个 (alpha, seed) 训练+评估。在子进程中执行，torch 压到单线程。"""
-    alpha, seed, ds, iters, eps, budget, carry, growth, scen = job
+    alpha, seed, ds, iters, eps, budget, carry, growth, scen, out = job
     import torch
     torch.set_num_threads(1)
     from tpmorl.rl import train_ppo as T, scenario
@@ -56,6 +56,15 @@ def one_run(job):
         idle_years=float((R.groupby(["ep", "year"]).unit.max() < 0).sum()) / n_ep,
         spend_ratio=float(real.cost.sum()) / n_ep / (budget * env.T),
     )
+    # 逐年记录与策略权重落盘。v6 批次只存了汇总诊断，导致三件事查不了：
+    # 规划期后段（不可交付区）策略有没有乱动、反事实评估（把无增长情景训出的策略
+    # 放到增长情景里评估）、以及任何事后复查。文件很小（每次几百行 + 几十 KB 权重）。
+    rd = os.path.join(out, "runs")
+    os.makedirs(rd, exist_ok=True)
+    key = f"a{alpha:g}_s{seed}"
+    R.to_csv(os.path.join(rd, f"rec_{key}.csv"), index=False, encoding="utf-8-sig")
+    torch.save(net.state_dict(), os.path.join(rd, f"net_{key}.pt"))
+
     return dict(alpha=alpha, seed=seed, wall=wall,
                 obj=dict(zip(T.OBJ_NAMES, [float(x) for x in g])),
                 curve=[float(x) for x in hist], diag=diag)
@@ -79,7 +88,7 @@ def random_runs(ds, seeds, budget, carry, growth, scen):
 
 def main(ds, out, iters, eps, budget, carry, growth, workers, scen):
     os.makedirs(out, exist_ok=True)
-    jobs = [(a, s, ds, iters, eps, budget, carry, growth, scen)
+    jobs = [(a, s, ds, iters, eps, budget, carry, growth, scen, out)
             for a in ALPHAS for s in SEEDS]
     # 主进程也要改写：下面 build_scale 的缓存键含制度参数，须与子进程一致。
     from tpmorl.rl import scenario

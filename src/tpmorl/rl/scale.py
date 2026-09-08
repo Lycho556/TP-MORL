@@ -71,7 +71,8 @@ REF_MODES = ("big", "small", "rand", "none",
 REF_SEEDS = (0, 1, 2, 3, 4)
 
 # 参考集版本，进缓存键。R3 = 仅四个手工策略；R4 = 加入五个定向贪心。
-REF_VER = "R6"     # R5 确定性 lexsort 次键；R6 失效改规划期内吸收态
+REF_VER = "R7"     # R5 确定性 lexsort 次键；R6 失效改规划期内吸收态；
+                   # R7 分母并入学习策略（见 _estimate 的 extra 参数）
 
 # 定向贪心的排序键：UUM 的行号（5 x 12 = res emp gdp eco liv）。
 _UUM_ROW = dict(res=0, emp=1, gdp=2, eco=3)
@@ -141,6 +142,24 @@ def scale_path(ds, budget, carry, growth):
     return os.path.join(ds, "scale_v2", f"ref_{_tag(budget, carry, growth)}.csv")
 
 
+def learned_path(ds, budget, carry, growth):
+    """学习策略回报表的路径（不动点迭代的上一轮产物，可缺失）。
+
+    缺失时分母退化为仅人工参考集，即第 0 轮——与 R6 及之前的行为一致。
+    由 `scripts/make_learned_scale.py` 从某个批次的 `objectives.csv` 生成。
+    """
+    return os.path.join(ds, "scale_v2",
+                        f"ref_{_tag(budget, carry, growth)}_learned.csv")
+
+
+def load_learned(ds, budget, carry, growth):
+    from tpmorl.objectives.reward import OBJ_NAMES
+    p = learned_path(ds, budget, carry, growth)
+    if not os.path.exists(p):
+        return None
+    return pd.read_csv(p, index_col=0)[list(OBJ_NAMES)]
+
+
 def _rollout(ds, mode, seed):
     """单个手工策略跑一回合，返回 11 维折扣回报（原始量纲）。
 
@@ -204,8 +223,19 @@ def reference_returns(ds, budget, carry, growth, modes=REF_MODES, seeds=REF_SEED
     return pd.DataFrame(rows, index=index, columns=list(OBJ_NAMES))
 
 
-def _estimate(R):
+def _estimate(R, extra=None):
     """由参考集导出分母：先按策略对种子取均值，再跨策略取绝对值上界。
+
+    `extra`（可选）是**学习策略**的回报表，格式与参考集相同（索引 `<策略名>_s<种子>`），
+    并入后一同参与"跨策略取上界"。为什么需要它：9 个人工参考策略并未包住全部目标的
+    可达范围——批次 v6 实测 `Aec` 的学习策略种子均值达分母的 1.192 倍、`Eco` 达 1.041 倍
+    （单次运行最高 2.079 / 1.215）。归一化后大于 1 意味着该目标在加权和里被系统性高估，
+    实测后果是 `Aec` 每单位努力的得分是 `Floor` 的两倍多，策略放弃 `Floor` 去追 `Aec`
+    是理性的——这正是自评 v1 §4.1"交付建面输给随机基线"的成因。
+
+    注意这引入一次不动点迭代：分母进奖励、奖励定策略、策略又反过来定分母。
+    本项目只迭代**一轮**（第 0 轮 = 仅人工参考集，第 1 轮 = 并入第 0 轮训出的策略），
+    重跑后须复查第 2 轮是否仍越界；未收敛到不动点这一点必须在论文方法节写明。
 
     为什么不直接对全部 rollout 取 max：max 把**策略差异**与**种子运气**混在
     一起，且对重尾目标不收敛。实测 `Eco` 的 max 随种子数单调爆涨
@@ -216,6 +246,8 @@ def _estimate(R):
     而这恰是加权和里分母应有的含义。实测 3→8 种子的漂移收敛到 0.52–1.17 倍，
     多数目标在 0.7–1.0。
     """
+    if extra is not None and len(extra):
+        R = pd.concat([R, extra[R.columns]], axis=0)
     m = R.groupby([i.rsplit("_s", 1)[0] for i in R.index], sort=False).mean()
     sc = m.abs().max(axis=0).values.astype(float)
     sc[sc < 1e-9] = 1.0
@@ -225,7 +257,7 @@ def _estimate(R):
 def build_scale(ds, budget, carry, growth, write=True):
     """构建分母并（可选）落盘。返回 (scale, 参考集 DataFrame)。"""
     R = reference_returns(ds, budget, carry, growth)
-    sc = _estimate(R)
+    sc = _estimate(R, load_learned(ds, budget, carry, growth))
     if write:
         p = scale_path(ds, budget, carry, growth)
         os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -244,7 +276,7 @@ def load_scale(ds, budget, carry, growth, rebuild=False):
         sc, _ = build_scale(ds, budget, carry, growth)
         return sc
     R = pd.read_csv(p, index_col=0)[list(OBJ_NAMES)]
-    return _estimate(R)
+    return _estimate(R, load_learned(ds, budget, carry, growth))
 
 
 if __name__ == "__main__":
@@ -268,6 +300,18 @@ if __name__ == "__main__":
     M = R.groupby([i.rsplit("_s", 1)[0] for i in R.index], sort=False).mean()
     print("各参考策略的折扣回报（种子均值）：")
     print(M.round(1).to_string())
+    Lr = load_learned(a.dataset, a.budget, a.carry, a.growth)
+    if Lr is None:
+        print("\n未并入学习策略（第 0 轮：分母仅由人工参考集决定）")
+    else:
+        ML = Lr.groupby([i.rsplit("_s", 1)[0] for i in Lr.index], sort=False).mean()
+        print(f"\n已并入学习策略 {len(Lr)} 次 / {len(ML)} 个权重档（第 1 轮）。"
+              "\n仅由人工参考集决定的分母 vs 并入后：")
+        sc0 = _estimate(R)
+        cmp = pd.DataFrame({"第0轮": sc0, "第1轮": sc,
+                            "倍数": sc / sc0}, index=R.columns)
+        print(cmp[cmp.倍数 > 1.0001].round(4).to_string())
+
     print("\n分母（每目标取跨策略的绝对值上界）：")
     print(pd.Series(sc, index=R.columns).round(2).to_string())
     print(f"\n已写出 {scale_path(a.dataset, a.budget, a.carry, a.growth)}")
