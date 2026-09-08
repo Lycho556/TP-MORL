@@ -1,0 +1,5 @@
+批次 v6 开始  2026-09-08 14:59:53  WORKERS=10  ITERS=400
+
+===== 第 1/6 组：失效即退出本规划期（吸收态，实务主设定）  (2026-09-08 14:59:53)
+      参数：（默认）   输出：data/processed/gm_dataset_v1/exp_v6/base
+scripts/run_batch_v6.sh: line 140: NAME�: unbound variable

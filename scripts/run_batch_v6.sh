@@ -132,12 +132,12 @@ for spec in "${SCENARIOS[@]}"; do
     ST="完成"; RAN=$((RAN+1))
     NF="$(ls "$OUT" | tr '\n' ' ')"
   else
-    ST="**失败**（退出码 $rc，见 \`$LOG\`）"; FAILED=$((FAILED+1)); NF="—"
-    echo "!!! 第 $NUM 组失败，退出码 $rc；继续下一组"
+    ST="**失败**（退出码 ${rc}，见 \`$LOG\`）"; FAILED=$((FAILED+1)); NF="—"
+    echo "!!! 第 $NUM 组失败，退出码 ${rc}；继续下一组"
   fi
   printf '| %s | %s | %s | %s | %s |\n' "$NUM" "$NAME" "$ST" "$hm" "$NF" >> "$RES/.rows"
   write_status
-  push_now "批次 v6 第 $NUM/6 组：$NAME（$ST，耗时 $hm）"
+  push_now "批次 v6 第 $NUM/6 组：${NAME}（${ST}，耗时 ${hm}）"
 done
 
 echo; echo "===== 批次结束  $(date '+%F %T')  成功 $RAN  失败 $FAILED"
@@ -149,6 +149,6 @@ if [ $FAILED -eq 0 ] && [ $RAN -eq 6 ]; then
   git push -f origin batch-v6-complete || echo "[tag] push 失败，请手工推标签"
   echo "已标注完成：tag batch-v6-complete"
 else
-  write_status; push_now "批次 v6 部分完成（成功 $RAN / 失败 $FAILED）"
+  write_status; push_now "批次 v6 部分完成（成功 $RAN / 失败 ${FAILED}）"
   echo "未全部完成，**未**打完成标签。"
 fi
