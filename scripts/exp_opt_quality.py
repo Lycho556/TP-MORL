@@ -20,10 +20,18 @@ ALPHAS = [0.0, 0.15, 0.3, 0.5, 0.7, 0.85, 1.0]
 SEEDS = [0, 1, 2, 3, 4]
 
 
-def _load_scale(ds, budget, carry, growth):
-    """分母取当前约束情景下参考策略集的可达上界（见 tpmorl/rl/scale.py）。"""
+def _load_scale(ds, budget, carry, growth, scen=None):
+    """分母取参考策略集的可达上界（见 tpmorl/rl/scale.py）。
+
+    `--scale-growth` 可让分母取自**另一个**增长率下的参考集。这是为反事实实验
+    （自评 v2 路线 C）准备的：G>0 时参考策略本身建面更高，分母随之变大，Floor
+    在标量化奖励里的相对权重就变小。若不锁定分母，G=0 与 G>0 两组策略同时受
+    「增长」与「Floor 被降权」两个影响，拆不出纯粹的择时效应。锁定后两组只差
+    动力学一项。默认为 None，即沿用本组自己的增长率，与既往批次一致。
+    """
     from tpmorl.rl.scale import load_scale
-    return load_scale(ds, budget, carry, growth)
+    g = growth if not scen else scen.get("scale_growth", None)
+    return load_scale(ds, budget, carry, growth if g is None else g)
 
 
 def one_run(job):
@@ -37,7 +45,7 @@ def one_run(job):
     # spawn 子进程重新 import 模块、拿回默认值，故必须在此再改写一次情景参数。
     scenario.apply(budget=budget, carry=carry, growth=growth,
                    horizon=scen["horizon"], **scen["inst"])
-    sc = _load_scale(ds, budget, carry, growth)
+    sc = _load_scale(ds, budget, carry, growth, scen)
     env = RenewalEnv(ds, T=scen["horizon"], weights=T.weight_vector(alpha), scale=sc)
 
     t0 = time.time()
@@ -77,7 +85,7 @@ def random_runs(ds, seeds, budget, carry, growth, scen):
     from tpmorl.rl.env_gym import RenewalEnv
     scenario.apply(budget=budget, carry=carry, growth=growth,
                    horizon=scen["horizon"], **scen["inst"])
-    sc = _load_scale(ds, budget, carry, growth)
+    sc = _load_scale(ds, budget, carry, growth, scen)
     env = RenewalEnv(ds, T=scen["horizon"], weights=T.weight_vector(0.5), scale=sc)
     out = []
     for s in seeds:
@@ -99,9 +107,12 @@ def main(ds, out, iters, eps, budget, carry, growth, workers, scen):
 
     # 必须在起进程池**之前**把分母落盘：否则 workers 会同时构建并竞争写同一个文件。
     from tpmorl.rl.scale import build_scale, scale_path
-    if not os.path.exists(scale_path(ds, budget, carry, growth)):
-        build_scale(ds, budget, carry, growth)
-    print(f"分母 {scale_path(ds, budget, carry, growth)}", flush=True)
+    sg = scen.get("scale_growth", None)
+    sg = growth if sg is None else sg
+    if not os.path.exists(scale_path(ds, budget, carry, sg)):
+        build_scale(ds, budget, carry, sg)
+    print(f"分母 {scale_path(ds, budget, carry, sg)}"
+          + ("" if sg == growth else f"（锁定：动力学 G={growth}，分母取 G={sg}）"), flush=True)
 
     import multiprocessing as mp
     with mp.get_context("spawn").Pool(workers) as pool:
@@ -141,8 +152,11 @@ if __name__ == "__main__":
     ap.add_argument("--carry", type=float, default=3.0)
     ap.add_argument("--growth", type=float, default=0.0)
     ap.add_argument("--workers", type=int, default=10)
+    ap.add_argument("--scale-growth", type=float, default=None,
+                    help="分母取自该增长率下的参考集（默认同 --growth）")
     from tpmorl.rl import scenario
     scenario.add_args(ap)
     a = ap.parse_args()
     main(a.dataset, a.out, a.iters, a.eps, a.budget, a.carry, a.growth, a.workers,
-         dict(horizon=a.horizon, inst=scenario.from_args(a)))
+         dict(horizon=a.horizon, inst=scenario.from_args(a),
+              scale_growth=a.scale_growth))
