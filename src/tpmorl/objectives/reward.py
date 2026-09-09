@@ -91,7 +91,13 @@ class Reward:
 
     # ---- 时序目标：本方案新增 ----
     def floor_area(self, channel, n_cells):
-        """获批时交付的计容积率建筑面积（平方米）。通道决定容积率上限。"""
+        """计容积率建筑面积（平方米）。通道决定容积率上限。
+
+        **计入时点是"建成"（S4），不是"获批"**（原文档串写为"获批时"，2026-09-09 更正）。
+        调用方 env_gym 只对当年转入 S4 的单元累加本函数，`Cost` 同理。
+        后果：立项 → hazard 获批（中位 3 年）→ 次年开工 → 建设 5 年，
+        故立项年 > T-6 的单元在规划期内必然不产生 Floor，也不产生 Cost。
+        """
         return FAR_CAP.get(int(channel), FAR_CAP[5]) * n_cells * CELL_AREA
 
     def convert_cost(self, from_idx, to_idx, n_cells):
