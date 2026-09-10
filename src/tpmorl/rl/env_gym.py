@@ -50,11 +50,17 @@ FAR_GROWTH = 0.0
 STOP = (-1, -1)        # 「今年到此为止」动作；没有它，只要付得起就必须花，等待不成为决策
 
 
+GAMMA = 0.95      # 年度折现率。情景参数，由 scenario.apply() 改写。
+                  # 对照：财政部《建设项目经济评价方法与参数》社会折现率 8% → 0.926
+
+
 class RenewalEnv:
-    def __init__(self, ds, T=15, weights=None, scale=None, seed=0, gamma=0.95):
+    def __init__(self, ds, T=15, weights=None, scale=None, seed=0, gamma=None):
         (self.LU0, self.cls, self.road, self.water, self.inside,
          self.uid, self.U, self.UUM, self.CM, self.CCM) = load(ds)
-        self.T, self.seed, self.gamma = T, seed, gamma
+        self.T, self.seed = T, seed
+        # gamma=None 表示取模块常量：子进程 import 后由 scenario.apply() 改写才生效
+        self.gamma = GAMMA if gamma is None else float(gamma)
         self.n = len(self.U)
         self.ch = self.U["ch_code"].values
         # 单元格掩码只算一次：717 个单元各一张 171x161 布尔图，每回合重算会主导耗时

@@ -12,7 +12,7 @@
 第 5 条的 tau_valid=2, tau_ext=1 法定窗口对照），可达上界随之改变；若缓存键里
 不含制度参数，对照情景会静默复用基线情景的分母，两组结果不可比。
 """
-INST_FIELDS = ("tau_valid", "tau_ext", "cooldown", "build_years")
+INST_FIELDS = ("tau_valid", "tau_ext", "cooldown", "build_years", "gamma")
 BUDGET_FIELDS = ("budget", "carry", "growth")
 
 
@@ -21,7 +21,7 @@ _HORIZON = None      # 仅供 inst_tag() 入键；T 本身由各脚本传给 Ren
 
 def apply(budget=None, carry=None, growth=None,
           tau_valid=None, tau_ext=None, cooldown=None, build_years=None,
-          horizon=None):
+          horizon=None, gamma=None):
     """把情景参数写回模块常量。None 表示沿用模块默认值，不改写。
 
     `horizon` 不改写任何常量，只登记进 `inst_tag()`：规划期长度改变可达上界，
@@ -40,6 +40,9 @@ def apply(budget=None, carry=None, growth=None,
         env_gym.CARRY_CAP = float(carry)
     if growth is not None:
         env_gym.FAR_GROWTH = float(growth)
+    if gamma is not None:
+        # 折现率改变可达上界（分母是折现回报的上界），故必须进 inst_tag()
+        env_gym.GAMMA = float(gamma)
 
     if tau_valid is not None:
         S.TAU_VALID = int(tau_valid)
@@ -87,7 +90,10 @@ def inst_tag():
     y = "".join(f"{c}-{S.BUILD_YEARS_BY_CHANNEL[c]}"
                 for c in sorted(S.BUILD_YEARS_BY_CHANNEL))
     t = "" if _HORIZON is None else f"T{_HORIZON}"
-    return f"V{S.TAU_VALID}E{S.TAU_EXT}{cooldown_tag()}Y{y}{t}"
+    # γ 只在非默认值时入键：默认档保持与既有 _R7 分母缓存的键一致，不作废历史结果
+    from tpmorl.rl import env_gym
+    g = "" if env_gym.GAMMA == 0.95 else f"G{env_gym.GAMMA:g}".replace(".", "")
+    return f"V{S.TAU_VALID}E{S.TAU_EXT}{cooldown_tag()}Y{y}{t}{g}"
 
 
 def describe():
@@ -98,7 +104,7 @@ def describe():
             f"有效期 {S.TAU_VALID}+{S.TAU_EXT} 年  "
             f"失效后 {'本规划期内不再申请（吸收态）' if not _np_isfinite(S.COOLDOWN) else f'冷却 {int(S.COOLDOWN)} 年'}"
             f"（无条文依据，依 2026-09 规划局实务答复）  "
-            f"建设年限 {S.BUILD_YEARS_BY_CHANNEL}")
+            f"建设年限 {S.BUILD_YEARS_BY_CHANNEL}  折现率 {env_gym.GAMMA:g}")
 
 
 def add_args(ap):
@@ -113,6 +119,9 @@ def add_args(ap):
                          "对照，敏感性方向 {2, 5, 吸收态}，0 档仅为最宽松极端参照")
     ap.add_argument("--build-years", type=int, default=None,
                     help="建设年限（年），全通道同值。默认按通道表取 5")
+    ap.add_argument("--gamma", type=float, default=None,
+                    help="年度折现率，默认 0.95。敏感性方向 {0.90, 0.95, 0.926}；"
+                         "0.926 对应财政部社会折现率 8%%")
     ap.add_argument("--horizon", type=int, default=15,
                     help="规划期长度 T。建设年限延长后可能需要放宽，见第 3 条诊断")
 
@@ -120,4 +129,5 @@ def add_args(ap):
 def from_args(a):
     """从 argparse 结果取出 apply() 用的关键字字典。"""
     return dict(tau_valid=a.tau_valid, tau_ext=a.tau_ext,
-                cooldown=a.cooldown, build_years=a.build_years)
+                cooldown=a.cooldown, build_years=a.build_years,
+                gamma=getattr(a, "gamma", None))
