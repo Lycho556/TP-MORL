@@ -28,8 +28,15 @@ def _load_scale(ds, budget, carry, growth, scen=None):
     在标量化奖励里的相对权重就变小。若不锁定分母，G=0 与 G>0 两组策略同时受
     「增长」与「Floor 被降权」两个影响，拆不出纯粹的择时效应。锁定后两组只差
     动力学一项。默认为 None，即沿用本组自己的增长率，与既往批次一致。
+    `--fixed-scale` 优先于上面两者：分母改为**情景集合上的包络**，同一套分母用于
+    集合内所有增长率。这才是 P0-1 要的口径——`--scale-growth` 的锁定只是把分母钉在
+    某一个情景上，在高增长情景下 Floor 归一化值会冲到 2 以上（v7 实测档均 3.230），
+    包络口径把它压回 1 附近，且两臂合并为一臂。见 scale.load_fixed_scale。
     """
-    from tpmorl.rl.scale import load_scale
+    from tpmorl.rl.scale import load_scale, load_fixed_scale
+    fx = None if not scen else scen.get("fixed_scale", None)
+    if fx:
+        return load_fixed_scale(ds, budget, carry, tuple(fx))
     g = growth if not scen else scen.get("scale_growth", None)
     return load_scale(ds, budget, carry, growth if g is None else g)
 
@@ -152,6 +159,8 @@ if __name__ == "__main__":
     ap.add_argument("--carry", type=float, default=3.0)
     ap.add_argument("--growth", type=float, default=0.0)
     ap.add_argument("--workers", type=int, default=10)
+    ap.add_argument("--fixed-scale", type=str, default=None,
+                    help="情景无关固定分母，逗号分隔的增长率集合，如 0,0.1")
     ap.add_argument("--scale-growth", type=float, default=None,
                     help="分母取自该增长率下的参考集（默认同 --growth）")
     from tpmorl.rl import scenario
@@ -159,4 +168,6 @@ if __name__ == "__main__":
     a = ap.parse_args()
     main(a.dataset, a.out, a.iters, a.eps, a.budget, a.carry, a.growth, a.workers,
          dict(horizon=a.horizon, inst=scenario.from_args(a),
-              scale_growth=a.scale_growth))
+              scale_growth=a.scale_growth,
+              fixed_scale=([float(x) for x in a.fixed_scale.split(",")]
+                           if a.fixed_scale else None)))

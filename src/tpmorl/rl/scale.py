@@ -138,6 +138,63 @@ def _tag(budget, carry, growth):
             f"_{inst_tag()}_{REF_VER}")
 
 
+FIXED_GROWTHS = (0.0, 0.10)     # 跨情景固定分母默认覆盖的增长率集合
+FIXED_VER = "FX1"               # 包络口径版本；改动 FIXED_GROWTHS 或包络方式时递增
+
+
+def fixed_tag(budget, carry, growths):
+    """跨情景固定分母的缓存键：增长率**集合**入键，单个增长率不入键。
+
+    与 `_tag` 的区别正是本函数存在的理由：`_tag` 把 growth 写进键，于是每个增长率
+    各有一套分母，跨增长率的标量化回报不可比（实测 Floor 分母 G=0 与 G=0.1 相差
+    3.23 倍，与待测效应同量级）。本函数改为对情景集合取包络，同一套分母用于集合内
+    所有情景，比较时只有动力学变、权重与分母都不变。
+
+    代价须写进论文方法节：分母依赖于**被比较的情景集合**，集合一变（如新增
+    G=0.15）分母随之变，此前所有标量化回报作废。
+    """
+    from tpmorl.rl.scenario import inst_tag
+    gs = "-".join(f"{float(g):.4g}" for g in sorted(growths))
+    return (f"B{float(budget):g}_C{float(carry):g}_GSET{gs}"
+            f"_{inst_tag()}_{REF_VER}{FIXED_VER}")
+
+
+def fixed_scale_path(ds, budget, carry, growths=FIXED_GROWTHS):
+    return os.path.join(ds, "scale_v2", f"fixed_{fixed_tag(budget, carry, growths)}.json")
+
+
+def load_fixed_scale(ds, budget, carry, growths=FIXED_GROWTHS, rebuild=False):
+    """情景无关的固定分母：逐目标取情景集合上的包络。
+
+        d_i = max_{s in growths} max_{pi in 参考集 ∪ 学习策略} |E_种子[R_i(pi, s)]|
+
+    仍沿用 `_estimate` 的"先按策略对种子取均值、再跨策略取上界"口径——不改成对单次
+    运行取 max，理由见 `_estimate` 文档（max 随种子数单调爆涨、不可复现）。因此
+    **单次运行**的归一化值仍可能大于 1（种子运气），而**权重档均值**不会；后者才是
+    "该目标在加权和里被系统性高估"的判据。
+
+    副作用须写明：包络取自增长最高的情景，故在低增长情景下 Floor 只能达到分母的
+    约 0.30。这不是缺陷而是本口径的含义——无增长的世界里本就拿不到那么多建面。
+    """
+    p = fixed_scale_path(ds, budget, carry, growths)
+    if not rebuild and os.path.exists(p):
+        with open(p, encoding="utf-8") as f:
+            from tpmorl.objectives.reward import OBJ_NAMES
+            d = json.load(f)["scale"]
+        return np.array([d[n] for n in OBJ_NAMES], float)
+    sc = None
+    for g in growths:
+        v = load_scale(ds, budget, carry, g)
+        sc = v if sc is None else np.maximum(sc, v)
+    from tpmorl.objectives.reward import OBJ_NAMES
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(dict(scale=dict(zip(OBJ_NAMES, sc.tolist())),
+                       growths=list(growths), ref_ver=REF_VER + FIXED_VER),
+                  f, ensure_ascii=False, indent=1)
+    return sc
+
+
 def scale_path(ds, budget, carry, growth):
     return os.path.join(ds, "scale_v2", f"ref_{_tag(budget, carry, growth)}.csv")
 
