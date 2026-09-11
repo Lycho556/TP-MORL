@@ -1,0 +1,15 @@
+臂,alpha,目标,档均归一值
+base_fx,-1.0,Cost,1.028
+base_fx,0.0,Cpt,1.006
+base_fx,0.15,Eco,1.003
+base_fx,0.5,Gdp,1.077
+base_fx,0.5,Res,1.143
+base_fx,0.5,Emp,1.081
+base_fx,0.5,Aec,1.275
+g010_fx,-1.0,Cost,1.028
+g010_fx,0.0,Cpt,1.006
+g010_fx,0.15,Eco,1.023
+g010_fx,0.5,Gdp,1.002
+g010_fx,0.5,Res,1.015
+g010_fx,0.5,Emp,1.003
+g010_fx,0.5,Aec,1.034
