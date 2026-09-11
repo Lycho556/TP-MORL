@@ -1,0 +1,318 @@
+批次 v11 开始  2026-09-11 13:15:48  WORKERS=35  ITERS=400  固定分母=0,0.1
+
+===== 第 1/9 组：主结果：容积率不增长（g=0）  (2026-09-11 13:15:48)
+      参数：--growth 0   输出：data/processed/gm_dataset_v1/exp_v11/base
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 1 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 2 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 3 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+[push] 三次均失败——结果已 commit 在本地，请手工 push
+[tag] 已标注 v11-g1-base
+
+===== 第 2/9 组：增长反事实：容积率年增 10%（g=0.1）  (2026-09-11 13:49:37)
+      参数：--growth 0.1   输出：data/processed/gm_dataset_v1/exp_v11/g010
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 1 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 2 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 3 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+[push] 三次均失败——结果已 commit 在本地，请手工 push
+[tag] 已标注 v11-g2-g010
+
+===== 第 3/9 组：现行法定窗口 2+1 年（条文对照）  (2026-09-11 14:24:25)
+      参数：--growth 0 --tau-valid 2 --tau-ext 1   输出：data/processed/gm_dataset_v1/exp_v11/statutory
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 1 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 2 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 3 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+[push] 三次均失败——结果已 commit 在本地，请手工 push
+[tag] 已标注 v11-g3-statutory
+
+===== 第 4/9 组：宽松对照：失效后 2 年可重报  (2026-09-11 15:00:04)
+      参数：--growth 0 --cooldown 2   输出：data/processed/gm_dataset_v1/exp_v11/relax2
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 1 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 2 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 3 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+[push] 三次均失败——结果已 commit 在本地，请手工 push
+[tag] 已标注 v11-g4-relax2
+
+===== 第 5/9 组：宽松对照：失效后 5 年可重报  (2026-09-11 15:34:41)
+      参数：--growth 0 --cooldown 5   输出：data/processed/gm_dataset_v1/exp_v11/relax5
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 1 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 2 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 3 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+[push] 三次均失败——结果已 commit 在本地，请手工 push
+[tag] 已标注 v11-g5-relax5
+
+===== 第 6/9 组：建设年限 3 年（综合整治档敏感性）  (2026-09-11 16:09:11)
+      参数：--growth 0 --build-years 3   输出：data/processed/gm_dataset_v1/exp_v11/build3
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 1 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 2 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 3 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+[push] 三次均失败——结果已 commit 在本地，请手工 push
+[tag] 已标注 v11-g6-build3
+
+===== 第 7/9 组：折现率 0.90（更短视）  (2026-09-11 16:43:48)
+      参数：--growth 0 --gamma 0.90   输出：data/processed/gm_dataset_v1/exp_v11/gamma090
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 1 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 2 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 3 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+[push] 三次均失败——结果已 commit 在本地，请手工 push
+[tag] 已标注 v11-g7-gamma090
+
+===== 第 8/9 组：折现率 0.926（财政部社会折现率 8%）  (2026-09-11 17:19:36)
+      参数：--growth 0 --gamma 0.926   输出：data/processed/gm_dataset_v1/exp_v11/gamma0926
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 1 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 2 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 3 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+[push] 三次均失败——结果已 commit 在本地，请手工 push
+[tag] 已标注 v11-g8-gamma0926
+
+===== 第 9/9 组：规划期延长至 20 年（检验零梯度盲区假说）  (2026-09-11 17:54:18)
+      参数：--growth 0 --horizon 20   输出：data/processed/gm_dataset_v1/exp_v11/horizon20
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 1 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 2 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 3 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+[push] 三次均失败——结果已 commit 在本地，请手工 push
+[tag] 已标注 v11-g9-horizon20
+
+===== 批次结束  2026-09-11 18:38:37  成功 9  失败 0
