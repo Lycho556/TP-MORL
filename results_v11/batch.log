@@ -177,3 +177,38 @@ error: 请提交或贮藏它们。
 
 ===== 第 6/9 组：建设年限 3 年（综合整治档敏感性）  (2026-09-11 16:09:11)
       参数：--growth 0 --build-years 3   输出：data/processed/gm_dataset_v1/exp_v11/build3
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 1 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 2 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+To https://github.com/Lycho556/TP-MORL.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: 无法推送一些引用到 'https://github.com/Lycho556/TP-MORL.git'
+提示：更新被拒绝，因为远程仓库包含您本地尚不存在的提交。这通常是因为另外
+提示：一个仓库已向该引用进行了推送。再次推送前，您可能需要先整合远程变更
+提示：（如 'git pull ...'）。
+提示：详见 'git push --help' 中的 'Note about fast-forwards' 小节。
+[push] 第 3 次失败，30s 后重试
+error: 不能变基式拉取：您有未暂存的变更。
+error: 请提交或贮藏它们。
+[push] 三次均失败——结果已 commit 在本地，请手工 push
+[tag] 已标注 v11-g6-build3
+
+===== 第 7/9 组：折现率 0.90（更短视）  (2026-09-11 16:43:48)
+      参数：--growth 0 --gamma 0.90   输出：data/processed/gm_dataset_v1/exp_v11/gamma090
