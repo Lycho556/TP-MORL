@@ -102,7 +102,7 @@ IND_REGISTRY = [
     _I("人才素质水平", "Human capital level", "Livability", "-✗✓", "bg"),
     _I("居民富裕程度", "Income level", "Livability", "-✗✓", "bg"),
 
-    # ---------------- 美丽 AESTHETICS（9 项 → 可优化 5）
+    # ---------------- 美丽 AESTHETICS（9 项 → 可优化 6）
     _I("生态空间保护水平", "Protected Area to City Territory Ratio",
        "Aesthetics", "✓✓✓", "L0", obj="Aes_Eco",
        formula="现有 Eco 目标（生态效用 × (1-水体距离衰减)）直接对应",
@@ -201,6 +201,30 @@ IND_REGISTRY = [
 ]
 
 assert len(IND_REGISTRY) == 50, f"UIS 应有 50 项指标，登记表里是 {len(IND_REGISTRY)}"
+
+
+def _check_section_comments():
+    """分维注释里的计数必须与登记表实算一致。
+
+    这一条是为了防一个具体的错误：注释是手写的，登记表会改，两者一旦对不上，
+    文档和汇报里的百分比就会跟着错。把它变成 import 时的断言，改错了立刻报。
+    """
+    import re
+    src = open(__file__, encoding="utf-8").read()
+    # 注释形如：# ---------------- 美丽 AESTHETICS（9 项 → 可优化 6）
+    # 取英文维名作键（中文名在前，\w 会把它吃掉，所以必须显式匹配 [A-Z]+）
+    pat = re.compile(r"# -{4,} \S+ ([A-Z]+)（(\d+) 项 → 可优化 (\d+)")
+    found = {m.group(1).capitalize(): (int(m.group(2)), int(m.group(3)))
+             for m in pat.finditer(src)}
+    assert len(found) == len(DIMS), (
+        f"只解析到 {len(found)} 条分维注释（应为 {len(DIMS)} 条）："
+        f"{sorted(found)}——注释格式被改动了，断言会失效")
+    for r in coverage():
+        assert r["dim"] in found, f"缺少 {r['dim']} 的分维注释"
+        assert found[r["dim"]] == (r["n_ind"], r["n_opt"]), (
+            f"{r['dim']} 注释写的是 {found[r['dim']]}，"
+            f"登记表实算是 ({r['n_ind']}, {r['n_opt']})")
+    return found
 
 
 # -------------------------------------------------- 现有 11 目标 → 六维映射
@@ -305,6 +329,7 @@ def registry_table():
 
 if __name__ == "__main__":
     import pandas as pd
+    _check_section_comments()
     print("== 各维覆盖 ==")
     print(pd.DataFrame(coverage()).to_string(index=False))
     print(f"\n可优化指标合计："
