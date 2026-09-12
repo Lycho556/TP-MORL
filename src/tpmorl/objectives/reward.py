@@ -57,8 +57,17 @@ def _pool(x, r=POOL_R):
 class Reward:
     """在逐年演化的用地上求 11 维奖励向量。"""
 
-    def __init__(self, UUM, CM, CCM, road, water, inside, gamma=0.95):
+    def __init__(self, UUM, CM, CCM, road, water, inside, base_lu, gamma=0.95):
+        """`base_lu` 是**基期**用地 (H, W, 12)，用于 `Aec` 的分母，见 `spatial()`。
+
+        刻意设为必填位置参数、不给默认值：给了默认值就会出现"没传就悄悄退回旧口径"
+        的两套行为，而这正是本项目已经栽过两次的缺陷类型（FAR_GROWTH 泄漏、
+        scenario.apply 的 None 继承）。宁可让旧调用点直接报错。
+        """
         self.UUM = np.asarray(UUM, float)      # 5 x 12: res emp gdp eco liv
+        # 基期居住承载的池化场，Aec 的固定分母。一次算好，不随 LU 演化。
+        self.base_res_pool = _pool((np.asarray(base_lu, float)
+                                    * np.asarray(UUM, float)[0]).sum(-1))
         self.CM = np.asarray(CM, float)        # 12 x 12 兼容性
         self.CCM = np.asarray(CCM, float)      # 12 x 12 非对称转换成本
         self.road = np.asarray(road, float)
@@ -68,7 +77,26 @@ class Reward:
 
     # ---- 空间目标：复用 pSO ----
     def spatial(self, LU):
-        """LU: (H, W, 12) one-hot 或概率。返回 7 个空间目标（已统一为越大越好）。"""
+        """LU: (H, W, 12) one-hot 或概率。返回 7 个空间目标（已统一为越大越好）。
+
+        **Aec 口径变更（2026-09-12）：分母由当期居住承载改为基期居住承载。**
+
+        原式 `Σ livP / (resP + 1)` 中 resP 随 LU 逐年演化，于是"拆掉居住"能同时
+        抬高 Aec 和压低 Res。两者在标量化奖励里都是正向目标，策略只要拆居住就能
+        在 Aec 上白拿分——这不是规划含义上的改善，是定义本身的机械耦合。
+        v12 七组实测组内 corr(Aec, Res) = −0.57 ~ −0.69，耦合确实显现在结果里。
+
+        改为基期分母后，Aec 读作"按**基期**居住人口加权的生活服务可达性"：
+        服务供给增加才涨，拆居住不再有任何贡献。分母是常数场，故 Aec 对 LU 单调
+        非减，语义干净。
+
+        未一并修改、留作待定的两项（改动会进一步影响可比性，需单独决策）：
+        1. 分子仍为 `eco + liv`，与目标 `Eco` 重复计入生态效用一次；若要拆干净，
+           分子应只取 `liv`。
+        2. `+1` 是无量纲正则项，量级与 resP 的单位绑定，非居住区的权重因此偏大。
+
+        **本改动使 Aec 与 v12 及之前所有批次不可比**，Livability 维度需重跑。
+        """
         p = LU.sum((0, 1)); p = p / max(p.sum(), 1e-9)
         w = eta(p)
         res = (LU * self.UUM[0]).sum(-1)
@@ -78,6 +106,7 @@ class Reward:
         liv = (LU * self.UUM[4] * w).sum(-1) * (1 - self.road)
 
         resP, empP, livP = _pool(res), _pool(emp), _pool(eco + liv)
+        # Aec 的分母用**基期**居住承载，不用当期。2026-09-12 更正，理由见下方 Aec 一行。
         PM = np.stack([_pool(LU[..., k]) for k in range(LU.shape[-1])], -1)
 
         return dict(
@@ -85,7 +114,7 @@ class Reward:
             Eco=float(eco.sum()),
             Res=float(res.sum()),
             Emp=float(emp.sum()),
-            Aec=float((livP / (resP + 1)).sum()),
+            Aec=float((livP / (self.base_res_pool + 1)).sum()),
             E2r=float(np.abs(empP - resP).sum()),          # SIGN=-1
             Cpt=float((PM.reshape(-1, 12) @ self.CM * PM.reshape(-1, 12)).sum()))
 

@@ -126,13 +126,31 @@ def main(ds, out, iters, eps, budget, carry, growth, workers, scen):
           + scenario.describe() + f"\n规划期 T={scen['horizon']}", flush=True)
 
     # 必须在起进程池**之前**把分母落盘：否则 workers 会同时构建并竞争写同一个文件。
-    from tpmorl.rl.scale import build_scale, scale_path
-    sg = scen.get("scale_growth", None)
-    sg = growth if sg is None else sg
-    if not os.path.exists(scale_path(ds, budget, carry, sg)):
-        build_scale(ds, budget, carry, sg)
-    print(f"分母 {scale_path(ds, budget, carry, sg)}"
-          + ("" if sg == growth else f"（锁定：动力学 G={growth}，分母取 G={sg}）"), flush=True)
+    # 2026-09-12 修正：原先这里无条件预建 `ref_`（逐增长率分母），但启用 --fixed-scale
+    # 时 workers 实际读的是 `fixed_`，该文件仍留给 workers 自己建。v11/v12 的并行度为
+    # 35（每个 run 一个进程），35 个进程同时未命中、同时经 reference_returns 建分母，
+    # 于是**整组**被泄漏的 FAR_GROWTH=0.1 污染——这正是六个 v11 组与三个 v12 组
+    # 整组 35/35 一致污染的原因。现在改为预建**实际会被读的那个**文件。
+    from tpmorl.rl.scale import (build_scale, scale_path,
+                                 load_fixed_scale, fixed_scale_path)
+    fx = scen.get("fixed_scale", None)
+    if fx:
+        p = fixed_scale_path(ds, budget, carry, tuple(fx))
+        if not os.path.exists(p):
+            load_fixed_scale(ds, budget, carry, tuple(fx))
+        used = p + f"（情景集合包络 G∈{tuple(fx)}）"
+    else:
+        sg = scen.get("scale_growth", None)
+        sg = growth if sg is None else sg
+        if not os.path.exists(scale_path(ds, budget, carry, sg)):
+            build_scale(ds, budget, carry, sg)
+        used = scale_path(ds, budget, carry, sg) + (
+            "" if sg == growth else f"（锁定：动力学 G={growth}，分母取 G={sg}）")
+    # 打印的必须是 workers 真正读的那个文件。旧版无论是否 --fixed-scale 都打印
+    # `ref_` 路径，日志因此掩盖了上述污染，事后追查时误导了一轮。
+    print(f"分母 {used}", flush=True)
+    assert os.path.exists(fixed_scale_path(ds, budget, carry, tuple(fx)) if fx
+                          else scale_path(ds, budget, carry, sg)), "分母预建未落盘"
 
     import multiprocessing as mp
     with mp.get_context("spawn").Pool(workers) as pool:

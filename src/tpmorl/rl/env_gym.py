@@ -128,8 +128,10 @@ class RenewalEnv:
     def reset(self, seed=None):
         self.LU = self.LU0.copy()
         self.res_map = (self.LU * self.UUM[0]).sum(-1)
+        # base_lu 传 LU0（基期用地），不是 self.LU：Aec 的分母必须是常数场，
+        # 否则"拆居住"会机械抬高 Aec。见 Reward.spatial 的口径变更说明。
         self.R = Reward(self.UUM, self.CM, self.CCM, self.road, self.water,
-                        self.inside, gamma=self.gamma)
+                        self.inside, self.LU0, gamma=self.gamma)
         self.env = RenewalSchedule(self.ch, seed=self.seed if seed is None else seed)
         self.t = 0
         self.plan = {}          # 单元 -> 立项时选定的目标功能

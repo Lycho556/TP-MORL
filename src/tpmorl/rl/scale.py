@@ -71,13 +71,35 @@ REF_MODES = ("big", "small", "rand", "none",
 REF_SEEDS = (0, 1, 2, 3, 4)
 
 # 参考集版本，进缓存键。R3 = 仅四个手工策略；R4 = 加入五个定向贪心。
-REF_VER = "R7"     # R5 确定性 lexsort 次键；R6 失效改规划期内吸收态；
-                   # R7 分母并入学习策略（见 _estimate 的 extra 参数）
+REF_VER = "R8"     # R5 确定性 lexsort 次键；R6 失效改规划期内吸收态；
+                   # R7 分母并入学习策略（见 _estimate 的 extra 参数）；
+                   # R8 Aec 改用基期居住承载作分母（见 Reward.spatial 口径变更）。
+                   # **凡改动目标定义本身也必须递增本版本号**，不只是改参考策略集：
+                   # 分母是"参考策略在该目标上的可达上界"，目标一改上界就变，旧缓存
+                   # 再被读到就会把新旧两套口径混进同一批结果，且无任何报错。
 
 # 定向贪心的排序键：UUM 的行号（5 x 12 = res emp gdp eco liv）。
 _UUM_ROW = dict(res=0, emp=1, gdp=2, eco=3)
 _DIRECTED = tuple(_UUM_ROW) + ("cpt",)
 _GAIN_CACHE = {}
+
+
+def _atomic(path, write_fn):
+    """先写同目录临时文件再 `os.replace`，保证读者永远看到完整文件。
+
+    为什么需要：批次的并行度等于 run 数（v11/v12 均为 35），35 个进程可能同时未命中
+    同一个分母缓存并各自写盘。非原子写下，一个进程读到的可能是另一个进程写了一半的
+    JSON/CSV。`os.replace` 在同一文件系统上是原子的，最坏情况只是重复计算后互相覆盖，
+    内容一致。临时文件带 pid 后缀，避免多进程争抢同一个临时名。
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = f"{path}.tmp{os.getpid()}"
+    try:
+        write_fn(tmp)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
 
 
 def gain_tables(ds):
@@ -187,11 +209,14 @@ def load_fixed_scale(ds, budget, carry, growths=FIXED_GROWTHS, rebuild=False):
         v = load_scale(ds, budget, carry, g)
         sc = v if sc is None else np.maximum(sc, v)
     from tpmorl.objectives.reward import OBJ_NAMES
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    with open(p, "w", encoding="utf-8") as f:
-        json.dump(dict(scale=dict(zip(OBJ_NAMES, sc.tolist())),
-                       growths=list(growths), ref_ver=REF_VER + FIXED_VER),
-                  f, ensure_ascii=False, indent=1)
+    blob = dict(scale=dict(zip(OBJ_NAMES, sc.tolist())),
+                growths=list(growths), ref_ver=REF_VER + FIXED_VER)
+
+    def _w(t):
+        with open(t, "w", encoding="utf-8") as f:
+            json.dump(blob, f, ensure_ascii=False, indent=1)
+
+    _atomic(p, _w)
     return sc
 
 
@@ -329,10 +354,16 @@ def build_scale(ds, budget, carry, growth, write=True):
     sc = _estimate(R, load_learned(ds, budget, carry, growth))
     if write:
         p = scale_path(ds, budget, carry, growth)
-        os.makedirs(os.path.dirname(p), exist_ok=True)
-        R.to_csv(p, encoding="utf-8-sig")
-        json.dump(dict(zip(R.columns, sc.tolist())),
-                  open(p.replace(".csv", ".json"), "w"), ensure_ascii=False, indent=1)
+        _atomic(p, lambda t: R.to_csv(t, encoding="utf-8-sig"))
+        d = dict(zip(R.columns, sc.tolist()))
+
+        def _wj(t):
+            # 必须用 with 关闭：句柄未关闭时缓冲区可能尚未落盘，os.replace 会把
+            # 空文件或半截文件搬到正式路径上。
+            with open(t, "w", encoding="utf-8") as f:
+                json.dump(d, f, ensure_ascii=False, indent=1)
+
+        _atomic(p.replace(".csv", ".json"), _wj)
     return sc, R
 
 

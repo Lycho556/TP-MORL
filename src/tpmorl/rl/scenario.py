@@ -18,6 +18,46 @@ BUDGET_FIELDS = ("budget", "carry", "growth")
 
 _HORIZON = None      # 仅供 inst_tag() 入键；T 本身由各脚本传给 RenewalEnv
 
+_DEFAULTS = None     # 首次 reset()/apply() 时抓拍的模块出厂值
+
+
+def _snapshot():
+    """抓拍受 apply() 改写的全部模块常量的当前值。"""
+    from tpmorl.rl import env_gym
+    from tpmorl.env import schedule as S
+    return dict(BUDGET=env_gym.BUDGET, CARRY_CAP=env_gym.CARRY_CAP,
+                FAR_GROWTH=env_gym.FAR_GROWTH, GAMMA=env_gym.GAMMA,
+                TAU_VALID=S.TAU_VALID, TAU_EXT=S.TAU_EXT,
+                COOLDOWN=S.COOLDOWN, BUILD_YEARS=S.BUILD_YEARS,
+                BUILD_YEARS_BY_CHANNEL=dict(S.BUILD_YEARS_BY_CHANNEL))
+
+
+def reset():
+    """把全部情景常量恢复到出厂值。
+
+    **在同一进程内连续处理多个情景时必须先调用本函数。** `apply()` 对 None 参数
+    不改写、只沿用当前值，这意味着"上一个情景设过、这一个情景没设"的参数会静默
+    继承下来——例如先跑 `cooldown=5` 的组、再跑 `cooldown=None` 的组，后者实际
+    仍在 5 年冷却下运行，而它的 runs.json 会记成 None。
+
+    这与 2026-09-12 定位的 `FAR_GROWTH` 泄漏是同一类缺陷（见 scale.reference_returns
+    的说明）：**沉默的状态继承**。多进程池若复用 worker（Pool 默认行为），同样会踩到，
+    故审计类脚本除调用本函数外还应设 `maxtasksperchild=1`。
+    """
+    global _DEFAULTS, _HORIZON
+    from tpmorl.rl import env_gym
+    from tpmorl.env import schedule as S
+    if _DEFAULTS is None:            # 进程内首次调用即出厂值，无需恢复
+        _DEFAULTS = _snapshot()
+        return
+    d = _DEFAULTS
+    env_gym.BUDGET, env_gym.CARRY_CAP = d["BUDGET"], d["CARRY_CAP"]
+    env_gym.FAR_GROWTH, env_gym.GAMMA = d["FAR_GROWTH"], d["GAMMA"]
+    S.TAU_VALID, S.TAU_EXT = d["TAU_VALID"], d["TAU_EXT"]
+    S.COOLDOWN, S.BUILD_YEARS = d["COOLDOWN"], d["BUILD_YEARS"]
+    S.BUILD_YEARS_BY_CHANNEL = dict(d["BUILD_YEARS_BY_CHANNEL"])
+    _HORIZON = None
+
 
 def apply(budget=None, carry=None, growth=None,
           tau_valid=None, tau_ext=None, cooldown=None, build_years=None,
@@ -27,9 +67,12 @@ def apply(budget=None, carry=None, growth=None,
     `horizon` 不改写任何常量，只登记进 `inst_tag()`：规划期长度改变可达上界，
     分母不可跨 T 复用。
     """
-    global _HORIZON
+    global _HORIZON, _DEFAULTS
     from tpmorl.rl import env_gym
     from tpmorl.env import schedule as S
+
+    if _DEFAULTS is None:        # 先于任何改写抓拍出厂值，供 reset() 恢复
+        _DEFAULTS = _snapshot()
 
     if horizon is not None:
         _HORIZON = int(horizon)

@@ -57,7 +57,7 @@ def pick_target(R, ch, cur_hist, n_cells):
 
 def rollout(ds, T, policy, seed=0):
     LU, cls, road, water, inside, uid, U, UUM, CM, CCM = load(ds)
-    R = Reward(UUM, CM, CCM, road, water, inside)
+    R = Reward(UUM, CM, CCM, road, water, inside, LU)   # LU 此处即基期用地
     env = RenewalSchedule(U["ch_code"].values, seed=seed)
     n = len(U)
     cells = {i: unit_cells(uid, U["uid"].iloc[i]) for i in range(n)}
