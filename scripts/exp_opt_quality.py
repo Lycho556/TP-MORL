@@ -53,6 +53,15 @@ def one_run(job):
     scenario.apply(budget=budget, carry=carry, growth=growth,
                    horizon=scen["horizon"], **scen["inst"])
     sc = _load_scale(ds, budget, carry, growth, scen)
+    # 守卫：_load_scale 在缓存未命中时会经 reference_returns 改写情景全局。2026-09-12
+    # 之前它不还原，导致 FAR_GROWTH 被遗留成 0.1——批次 v12 有三组因此在与自己记录的
+    # 配置不同的动力学下训练。还原已在 scale.reference_returns 修好，这里再断言一次：
+    # 泄漏必须**响**，不能像上次那样静默跑完 4 小时才在验收时被发现。
+    from tpmorl.rl import env_gym as _EG
+    assert abs(_EG.FAR_GROWTH - float(growth)) < 1e-12, (
+        f"建分母后 FAR_GROWTH 被改写：期望 {growth}，实际 {_EG.FAR_GROWTH}")
+    assert abs(_EG.BUDGET - float(budget)) < 1e-9 and abs(_EG.CARRY_CAP - float(carry)) < 1e-9, (
+        f"建分母后预算/结转被改写：期望 {budget}/{carry}，实际 {_EG.BUDGET}/{_EG.CARRY_CAP}")
     env = RenewalEnv(ds, T=scen["horizon"], weights=T.weight_vector(alpha), scale=sc)
 
     t0 = time.time()
@@ -70,6 +79,10 @@ def one_run(job):
         stop_rate=float(R.groupby(["ep", "year"]).stopped.max().mean()),
         idle_years=float((R.groupby(["ep", "year"]).unit.max() < 0).sum()) / n_ep,
         spend_ratio=float(real.cost.sum()) / n_ep / (budget * env.T),
+        # 落盘**实际生效**的动力学，而非命令行意图。v12 的三组污染之所以难查，
+        # 正是因为 runs.json 只记了意图值 growth=0，与实际运行的 0.1 不符。
+        far_growth_eff=float(_EG.FAR_GROWTH),
+        budget_eff=float(_EG.BUDGET), carry_eff=float(_EG.CARRY_CAP),
     )
     # 逐年记录与策略权重落盘。v6 批次只存了汇总诊断，导致三件事查不了：
     # 规划期后段（不可交付区）策略有没有乱动、反事实评估（把无增长情景训出的策略

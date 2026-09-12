@@ -264,20 +264,32 @@ def _rollout(ds, mode, seed):
 
 
 def reference_returns(ds, budget, carry, growth, modes=REF_MODES, seeds=REF_SEEDS):
-    """在给定约束情景下跑参考策略集，返回 DataFrame（行=策略×种子）。"""
+    """在给定约束情景下跑参考策略集，返回 DataFrame（行=策略×种子）。
+
+    **本函数不得向调用方泄漏情景全局**（2026-09-12 修复）。原先直接写
+    `env_gym.BUDGET/CARRY_CAP/FAR_GROWTH` 且不还原，而 `load_fixed_scale` 在缓存
+    未命中时会 `for g in (0.0, 0.1)` 循环调用本函数建分母——循环结束后全局被遗留
+    在 `FAR_GROWTH=0.1`。缓存命中时提前返回、不触碰全局，于是**同一份脚本、同一个
+    `--growth 0` 参数，会因分母文件在不在缓存里而跑出两套动力学**。
+    批次 v12 有三组（B900_C6、B600_C3、B1500_C3）因此以 10% 容积率年增运行，
+    交付建面被放大约 3.0 倍；已用落盘权重逐位复现确认。
+    """
     from tpmorl.rl import env_gym
     from tpmorl.objectives.reward import OBJ_NAMES
 
+    saved = (env_gym.BUDGET, env_gym.CARRY_CAP, env_gym.FAR_GROWTH)
     env_gym.BUDGET = float(budget)
     env_gym.CARRY_CAP = float(carry)
     env_gym.FAR_GROWTH = float(growth)
-
-    rows, index = [], []
-    for mode in modes:
-        for s in seeds:
-            rows.append(_rollout(ds, mode, s))
-            index.append(f"{mode}_s{s}")
-    return pd.DataFrame(rows, index=index, columns=list(OBJ_NAMES))
+    try:
+        rows, index = [], []
+        for mode in modes:
+            for s in seeds:
+                rows.append(_rollout(ds, mode, s))
+                index.append(f"{mode}_s{s}")
+        return pd.DataFrame(rows, index=index, columns=list(OBJ_NAMES))
+    finally:
+        env_gym.BUDGET, env_gym.CARRY_CAP, env_gym.FAR_GROWTH = saved
 
 
 def _estimate(R, extra=None):
