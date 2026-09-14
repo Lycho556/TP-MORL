@@ -81,7 +81,9 @@ def apply(budget=None, carry=None, growth=None,
     if horizon is not None:
         _HORIZON = int(horizon)
     if horizon_eval is not None:
-        _HORIZON_EVAL = int(horizon_eval)
+        # "auto" 先存标记，函数末尾待制度参数写完后再解析成整数
+        _HORIZON_EVAL = ("auto" if str(horizon_eval).strip().lower() == "auto"
+                         else int(horizon_eval))
 
     if budget is not None:
         env_gym.BUDGET = float(budget)
@@ -104,6 +106,13 @@ def apply(budget=None, carry=None, growth=None,
         S.BUILD_YEARS = int(build_years)
         S.BUILD_YEARS_BY_CHANNEL = {c: int(build_years)
                                     for c in S.BUILD_YEARS_BY_CHANNEL}
+
+    # "auto" 必须在**最后**解析：auto_horizon_eval() 读 TAU_VALID/TAU_EXT/
+    # BUILD_YEARS，而这几个常量到上面几行才写入。放在函数开头会算出旧制度下的值。
+    if _HORIZON_EVAL == "auto":
+        if _HORIZON is None:
+            raise ValueError("horizon_eval='auto' 需要同时给出 horizon")
+        _HORIZON_EVAL = auto_horizon_eval(_HORIZON)
 
 
 _ABSORB_WORDS = ("absorb", "inf", "t", "吸收态", "永久")
@@ -160,6 +169,30 @@ def describe():
             f"建设年限 {S.BUILD_YEARS_BY_CHANNEL}  折现率 {env_gym.GAMMA:g}")
 
 
+def auto_horizon_eval(T):
+    """返回使管道必然排空的最短评价期。
+
+    最坏路径（见 schedule.py 的转移）：第 `T-1` 年立项 → S1 至多
+    `TAU_VALID+TAU_EXT` 年 → 获批入 S2 → 次年开工（1 年）→ S3 建设
+    `BUILD_YEARS` 年 → S4。故
+
+        T_eval = T + TAU_VALID + TAU_EXT + max(BUILD_YEARS) + 1
+
+    **必须按组计算，不能全批写死一个常数**：T=15/τ=3+2/建设 5 得 26，
+    但 `--horizon 20` 组需要 31，`--build-years 3` 组只需 24。写死 26 会把
+    前者的管道截断在期内，那正是本次要修的错误的翻版。
+    调用前必须已 `apply()` 好制度参数——本函数读的是**当时**的模块常量。
+    """
+    from tpmorl.env import schedule as S
+    return int(T + S.TAU_VALID + S.TAU_EXT
+               + max(S.BUILD_YEARS_BY_CHANNEL.values()) + 1)
+
+
+def horizon_eval():
+    """已登记的评价期（`apply()` 解析后的整数）；未启用则为 None。"""
+    return _HORIZON_EVAL
+
+
 def add_args(ap):
     """给 argparse 加上情景参数。默认 None = 用模块默认值。"""
     ap.add_argument("--tau-valid", type=int, default=None,
@@ -177,10 +210,12 @@ def add_args(ap):
                          "0.926 对应财政部社会折现率 8%%")
     ap.add_argument("--horizon", type=int, default=15,
                     help="规划期长度 T。建设年限延长后可能需要放宽，见第 3 条诊断")
-    ap.add_argument("--horizon-eval", type=int, default=None,
+    ap.add_argument("--horizon-eval", default=None,
                     help="评价期 T_eval：第 T 年起不再立项、不再进钱，仅推进状态机"
-                         "并结算建成年释放的目标，直到管道排空。默认 None=闭区间口径"
-                         "（等于 T）。主设定建议 26=15+3+2+5+1，依据见 "
+                         "并结算建成年释放的目标，直到管道排空。默认 None=闭区间"
+                         "口径（等于 T，即旧结果）。推荐 auto——按本组的 T/有效期/"
+                         "建设年限自动取最短排空期（T=15 主组得 26，horizon20 组得 "
+                         "31）；也可给整数强制指定。依据见 "
                          "docs/跨期结转_口径修正_v1.md")
 
 

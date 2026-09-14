@@ -63,7 +63,7 @@ def one_run(job):
         f"建分母后 FAR_GROWTH 被改写：期望 {growth}，实际 {_EG.FAR_GROWTH}")
     assert abs(_EG.BUDGET - float(budget)) < 1e-9 and abs(_EG.CARRY_CAP - float(carry)) < 1e-9, (
         f"建分母后预算/结转被改写：期望 {budget}/{carry}，实际 {_EG.BUDGET}/{_EG.CARRY_CAP}")
-    env = RenewalEnv(ds, T=scen["horizon"], T_eval=scen.get("horizon_eval"),
+    env = RenewalEnv(ds, T=scen["horizon"], T_eval=scenario.horizon_eval(),
                      weights=T.weight_vector(alpha), scale=sc)
 
     t0 = time.time()
@@ -85,6 +85,9 @@ def one_run(job):
         # 正是因为 runs.json 只记了意图值 growth=0，与实际运行的 0.1 不符。
         far_growth_eff=float(_EG.FAR_GROWTH),
         budget_eff=float(_EG.BUDGET), carry_eff=float(_EG.CARRY_CAP),
+        # 同理记生效的时间口径：t_eval_eff == t_dec_eff 即闭区间，> 即立项与记分分离。
+        # 光看 runs.json 的 horizon_eval 意图值分不出"auto 解析成了几"。
+        t_dec_eff=int(env.T), t_eval_eff=int(env.T_eval),
     )
     # 逐年记录与策略权重落盘。v6 批次只存了汇总诊断，导致三件事查不了：
     # 规划期后段（不可交付区）策略有没有乱动、反事实评估（把无增长情景训出的策略
@@ -109,7 +112,7 @@ def random_runs(ds, seeds, budget, carry, growth, scen):
                    horizon=scen["horizon"], horizon_eval=scen.get("horizon_eval"),
                    **scen["inst"])
     sc = _load_scale(ds, budget, carry, growth, scen)
-    env = RenewalEnv(ds, T=scen["horizon"], T_eval=scen.get("horizon_eval"),
+    env = RenewalEnv(ds, T=scen["horizon"], T_eval=scenario.horizon_eval(),
                      weights=T.weight_vector(0.5), scale=sc)
     out = []
     for s in seeds:
@@ -130,7 +133,10 @@ def main(ds, out, iters, eps, budget, carry, growth, workers, scen):
     print(f"{len(jobs)} 个运行 × {iters} 迭代 × {eps} 回合  并行 {workers}\n"
           + scenario.describe()
           + f"\n决策期 T={scen['horizon']}"
-          + f"  评价期 T_eval={scen.get('horizon_eval') or scen['horizon']}", flush=True)
+          + f"  评价期 T_eval={scenario.horizon_eval() or scen['horizon']}"
+          + ("（闭区间口径）" if not scenario.horizon_eval()
+             or scenario.horizon_eval() == scen["horizon"] else "（立项与记分分离）"),
+          flush=True)
 
     # 必须在起进程池**之前**把分母落盘：否则 workers 会同时构建并竞争写同一个文件。
     # 2026-09-12 修正：原先这里无条件预建 `ref_`（逐增长率分母），但启用 --fixed-scale

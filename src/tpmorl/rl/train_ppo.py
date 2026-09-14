@@ -141,6 +141,15 @@ def run_episode(env, net, greedy=False, seed=None):
             break
     if tail and tr["r"]:
         tr["r"][-1] += tail
+    if env.T_eval > env.T:
+        # 不依赖 auto_horizon_eval() 的推导正确：直接查管道是否真排空。
+        # S1/S2/S3 还有存量就说明 T_eval 取短了，晚立项仍被截断——当场失败，
+        # 而不是跑完 10 小时才在结果里发现。
+        from tpmorl.rl.scenario import auto_horizon_eval
+        open_ = int(((env.env.sigma >= 1) & (env.env.sigma <= 3)).sum())
+        assert open_ == 0, (
+            f"评价期 T_eval={env.T_eval} 结束时仍有 {open_} 个单元在管道中"
+            f"（S1/S2/S3），晚立项仍被截断。应取 {auto_horizon_eval(env.T)}")
     return tr
 
 
@@ -276,10 +285,15 @@ def main(ds, out, iters, alphas, budget=None, carry=None, growth=None,
     # 分母取**当前约束情景**下参考策略集的可达上界（见 tpmorl/rl/scale.py 模块文档）。
     # 旧做法用 reward_v0/discounted_return.csv（无约束情景），失真跨度约 24 倍且方向不一致。
     from tpmorl.rl.scale import load_scale
+    from tpmorl.rl import scenario as _scen
     scale = load_scale(ds, env_gym.BUDGET, env_gym.CARRY_CAP, env_gym.FAR_GROWTH)
+    # 这条 CLI 路径不经 exp_opt_quality，也要跟随 scenario 登记的评价期，
+    # 否则同一份代码从两个入口跑出两种口径。未登记时返回 None = 闭区间。
+    _te = _scen.horizon_eval()
 
     rows, curves = [], {}
-    e0 = RenewalEnv(ds, T=horizon, weights=weight_vector(0.5), scale=scale)
+    e0 = RenewalEnv(ds, T=horizon, T_eval=_te,
+                    weights=weight_vector(0.5), scale=scale)
     gr = eval_random(e0)
     rows.append(dict(alpha=-1.0, **{k: gr[i] for i, k in enumerate(OBJ_NAMES)}))
     print(f"随机(同动作空间)  Floor={gr[OBJ_NAMES.index('Floor')]/1e4:8.0f}万㎡  "
@@ -287,7 +301,8 @@ def main(ds, out, iters, alphas, budget=None, carry=None, growth=None,
 
     for a in alphas:
         t0 = time.time()
-        env = RenewalEnv(ds, T=horizon, weights=weight_vector(a), scale=scale)
+        env = RenewalEnv(ds, T=horizon, T_eval=_te,
+                         weights=weight_vector(a), scale=scale)
         net, hist = train(env, iters=iters)
         rec = []
         g = evaluate(env, net, record=rec)

@@ -71,7 +71,12 @@ REF_MODES = ("big", "small", "rand", "none",
 REF_SEEDS = (0, 1, 2, 3, 4)
 
 # 参考集版本，进缓存键。R3 = 仅四个手工策略；R4 = 加入五个定向贪心。
-REF_VER = "R8"     # R5 确定性 lexsort 次键；R6 失效改规划期内吸收态；
+REF_VER = "R9"     # R9 _rollout 改用 scenario 登记的 T/T_eval（此前一律 T=15，
+                   #    使 horizon20 组的分母是 15 年的上界而实跑 20 年）。
+                   #    必须递增：`T20` 这个键下已存在 R8 的**错误**缓存文件，
+                   #    不递增就会被静默复用。T=15 闭区间各组的分母值不受影响，
+                   #    重建后应逐位相同——可据此自查本次修复无副作用。
+                   # R5 确定性 lexsort 次键；R6 失效改规划期内吸收态；
                    # R7 分母并入学习策略（见 _estimate 的 extra 参数）；
                    # R8 Aec 改用基期居住承载作分母（见 Reward.spatial 口径变更）。
                    # **凡改动目标定义本身也必须递增本版本号**，不只是改参考策略集：
@@ -246,17 +251,31 @@ def _rollout(ds, mode, seed):
     """单个手工策略跑一回合，返回 11 维折扣回报（原始量纲）。
 
     目标向量与权重无关（权重只进标量化奖励），故参考集无需按 alpha 重算。
+
+    **T / T_eval 必须与实跑一致（2026-09-14 修复）。** 原先这里建 env 时既不传
+    `T` 也不传 `T_eval`，一律用模块默认 T=15：
+      - `--horizon 20` 组的分母因此是在 15 年下算出的上界，而该组实跑 20 年。
+        缓存键里有 `T20`、内容却是 T=15 的值，于是该组全部目标的归一化值被
+        系统性抬高。v11 与 v13 的 horizon20 组都受此影响。
+      - 启用尾部评价（T_eval>T）后同理：分母在闭区间下算、实跑把晚立项的交付
+        也计入，分母偏小会再抬高一次。
+    分母的定义是"参考策略在**该情景**下的可达上界"，情景包含时间口径，故必须
+    从 scenario 读**当时登记**的 T/T_eval。
     """
     from tpmorl.rl.env_gym import RenewalEnv, QUOTA
     from tpmorl.rl.train_ppo import weight_vector
+    from tpmorl.rl import scenario
 
-    env = RenewalEnv(ds, weights=weight_vector(0.5), seed=seed)
+    T = scenario._HORIZON if scenario._HORIZON is not None else 15
+    env = RenewalEnv(ds, T=T, T_eval=scenario.horizon_eval(),
+                     weights=weight_vector(0.5), seed=seed)
     env.reset(seed=seed)
     rng = np.random.default_rng(seed)
     g = np.zeros(len(env.scale))
-    for t in range(env.T):
+    # 与 train_ppo.run_episode / eval_random 同口径：尾部只推进、不立项
+    for t in range(env.T_eval):
         acts = []
-        if mode != "none":
+        if mode != "none" and t < env.T:
             _, meta, cost, _ = env.pairs()
             c = cost[:-1]                       # 末位是 STOP
             # 候选成本高度并列（1985 个候选仅 164 种取值，97% 处于并列组，最大组 92
@@ -392,11 +411,13 @@ if __name__ == "__main__":
     a = ap.parse_args()
     # 必须先改写情景常量：_tag() 与参考策略集都读**调用时**的模块常量。
     scenario.apply(budget=a.budget, carry=a.carry, growth=a.growth,
-                   horizon=a.horizon, **scenario.from_args(a))
+                   horizon=a.horizon, horizon_eval=a.horizon_eval,
+                   **scenario.from_args(a))
 
     sc, R = build_scale(a.dataset, a.budget, a.carry, a.growth)
     print(f"情景 {_tag(a.budget, a.carry, a.growth)}  参考策略 {len(R)} 次")
-    print(scenario.describe() + f"\n规划期 T={a.horizon}\n")
+    print(scenario.describe() + f"\n决策期 T={a.horizon}"
+          + f"  评价期 T_eval={scenario.horizon_eval() or a.horizon}\n")
     M = R.groupby([i.rsplit("_s", 1)[0] for i in R.index], sort=False).mean()
     print("各参考策略的折扣回报（种子均值）：")
     print(M.round(1).to_string())

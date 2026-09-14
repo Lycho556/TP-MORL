@@ -45,11 +45,14 @@ def one_eval(job):
     import tpmorl.rl.env_gym as EG
 
     scenario.apply(budget=scen["budget"], carry=scen["carry"], growth=eval_g,
-                   horizon=scen["horizon"], **scen["inst"])
+                   horizon=scen["horizon"],
+                   # 反事实评估必须沿用训练时的时间口径，否则比的是两件事
+                   horizon_eval=scen.get("horizon_eval"), **scen["inst"])
     # 分母按**评估情景**取：evaluate 内部乘回 scale 还原原始量纲，故跨情景比较
     # 用的是原始量纲，与分母选择无关。这里取评估情景的分母只为让 env 自洽。
     sc = load_scale(ds, EG.BUDGET, EG.CARRY_CAP, eval_g)
-    env = RenewalEnv(ds, T=scen["horizon"], weights=T.weight_vector(alpha), scale=sc)
+    env = RenewalEnv(ds, T=scen["horizon"], T_eval=scenario.horizon_eval(),
+                     weights=T.weight_vector(alpha), scale=sc)
 
     net = T.Pointer()
     net.load_state_dict(torch.load(path, map_location="cpu"))

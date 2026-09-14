@@ -84,10 +84,15 @@ def _audit_one_group(args):
             # build_years 多为 None（表示"用默认值"）。若不先 reset()，上一组显式
             # 设过的制度参数会静默继承进本组，审计结果即被自己污染。
             scenario.reset()
+            # horizon_eval 必须从 runs.json 的 config 读回：v14 起各组可能跑在
+            # 尾部评价口径下，审计若用闭区间复现，目标值必然与落盘值不符——
+            # 那会被误读成"动力学污染"，正是本工具要排除的东西。
             scenario.apply(budget=budget, carry=carry, growth=g, horizon=horizon,
+                           horizon_eval=cfg.get("horizon_eval"),
                            gamma=cfg.get("gamma"), **inst)
             sc = load_fixed_scale(ds, budget, carry)
-            env = RenewalEnv(ds, T=horizon, weights=T.weight_vector(alpha), scale=sc)
+            env = RenewalEnv(ds, T=horizon, T_eval=scenario.horizon_eval(),
+                             weights=T.weight_vector(alpha), scale=sc)
             # apply 之后再兜一次底：load_fixed_scale 命中缓存时不碰全局，未命中时
             # （修复前）会改写。修复后两条路径都不改，这里断言该不变量成立。
             assert abs(EG.FAR_GROWTH - g) < 1e-12, (
