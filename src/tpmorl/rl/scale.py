@@ -262,7 +262,7 @@ def _rollout(ds, mode, seed):
     分母的定义是"参考策略在**该情景**下的可达上界"，情景包含时间口径，故必须
     从 scenario 读**当时登记**的 T/T_eval。
     """
-    from tpmorl.rl.env_gym import RenewalEnv, QUOTA
+    from tpmorl.rl.env_gym import RenewalEnv
     from tpmorl.rl.train_ppo import weight_vector
     from tpmorl.rl import scenario
 
@@ -298,7 +298,7 @@ def _rollout(ds, mode, seed):
                 if u in used or c[i] > left + 1e-6:
                     continue
                 acts.append((u, tg)); used.add(u); left -= c[i]
-                if len(acts) >= QUOTA:
+                if len(acts) >= env.quota:   # 取实例值：模块常量是导入时快照
                     break
         _, _, done, info = env.step(acts)
         g += (env.gamma ** t) * info["vec"] * env.scale

@@ -153,7 +153,11 @@ class RenewalSchedule:
         self.t = 0
         self.sigma = np.full(self.n, S0, "int8")
         self.tau = np.zeros(self.n, "int8")        # S1 内已用年数
-        self.clock = np.zeros(self.n, "int8")      # S2/S3/S5 内计时
+        # int16 而非 int8：完工判据是 clock >= build_years，而 build_years 是 int16。
+        # 位宽不一致时大建设年限会让 clock 在 int8 内环绕，判据恒假 → 单元永不完工
+        # 且不报错。实测 --build-years 130 时推 599 年仍停在 S3（闭式应 132 年完工）。
+        # 位宽对齐后配合 apply() 里的上界校验，这条路径被堵死。
+        self.clock = np.zeros(self.n, "int16")     # S2/S3/S5 内计时
         self._exp_leave = self._expected_leave_s1()
         return self.state()
 

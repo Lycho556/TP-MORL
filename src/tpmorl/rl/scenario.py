@@ -29,6 +29,7 @@ def _snapshot():
     return dict(BUDGET=env_gym.BUDGET, CARRY_CAP=env_gym.CARRY_CAP,
                 FAR_GROWTH=env_gym.FAR_GROWTH, GAMMA=env_gym.GAMMA,
                 BUDGET_MODE=env_gym.BUDGET_MODE, STAGE_INIT=env_gym.STAGE_INIT,
+                OBS_LIFECYCLE=env_gym.OBS_LIFECYCLE,
                 TAU_VALID=S.TAU_VALID, TAU_EXT=S.TAU_EXT,
                 COOLDOWN=S.COOLDOWN, BUILD_YEARS=S.BUILD_YEARS,
                 QUOTA=S.QUOTA, HAZARD=tuple(S.HAZARD),
@@ -60,6 +61,7 @@ def reset():
     S.COOLDOWN, S.BUILD_YEARS = d["COOLDOWN"], d["BUILD_YEARS"]
     S.BUILD_YEARS_BY_CHANNEL = dict(d["BUILD_YEARS_BY_CHANNEL"])
     env_gym.BUDGET_MODE, env_gym.STAGE_INIT = d["BUDGET_MODE"], d["STAGE_INIT"]
+    env_gym.OBS_LIFECYCLE = d["OBS_LIFECYCLE"]
     S.QUOTA, S.HAZARD = d["QUOTA"], tuple(d["HAZARD"])
     _HORIZON = _HORIZON_EVAL = None
 
@@ -68,7 +70,7 @@ def apply(budget=None, carry=None, growth=None,
           tau_valid=None, tau_ext=None, cooldown=None, build_years=None,
           horizon=None, gamma=None, horizon_eval=None,
           quota=None, tau_approval=None, build_years_by_channel=None,
-          budget_mode=None, stage_init=None):
+          budget_mode=None, stage_init=None, obs_lifecycle=None):
     """把情景参数写回模块常量。None 表示沿用模块默认值，不改写。
 
     `horizon` 不改写任何常量，只登记进 `inst_tag()`：规划期长度改变可达上界，
@@ -109,6 +111,7 @@ def apply(budget=None, carry=None, growth=None,
         S.COOLDOWN = parse_cooldown(cooldown)
     if build_years is not None:
         # 全体通道同值；逐通道分档改用 build_years_by_channel 显式给出
+        _chk_build_years(int(build_years))
         S.BUILD_YEARS = int(build_years)
         S.BUILD_YEARS_BY_CHANNEL = {c: int(build_years)
                                     for c in S.BUILD_YEARS_BY_CHANNEL}
@@ -122,11 +125,17 @@ def apply(budget=None, carry=None, growth=None,
         if unknown:
             raise ValueError(f"未知通道 {sorted(unknown)}；"
                              f"可更新通道为 {sorted(S.BUILD_YEARS_BY_CHANNEL)}")
+        for c, b in d.items():
+            _chk_build_years(int(b), f"通道 {c} 的")
         S.BUILD_YEARS_BY_CHANNEL = {c: int(d.get(c, S.BUILD_YEARS_BY_CHANNEL[c]))
                                     for c in S.BUILD_YEARS_BY_CHANNEL}
     if quota is not None:
         # 配额改变可达上界（一年最多能立几个项），分母不可跨配额复用 → 入 inst_tag()
-        S.QUOTA = int(quota)
+        q = int(quota)
+        if q < 1:
+            raise ValueError(f"quota 必须 >= 1，收到 {quota}；配额 0 意味着永不立项，"
+                             "整批结果退化为空策略，不是有意义的敏感性档")
+        S.QUOTA = q
     if tau_approval is not None:
         # 把逐年条件批准率整体替换为**常数风险率** 1/τ_A（几何分布，均值 τ_A 年）。
         # 默认档 HAZARD 是由累计获批数逐年反解的实测向量，本参数是它的敏感性对照，
@@ -145,6 +154,10 @@ def apply(budget=None, carry=None, growth=None,
         if not 0.0 <= si <= 1.0:
             raise ValueError(f"stage_init 须在 [0,1]，收到 {si}")
         env_gym.STAGE_INIT = si
+    if obs_lifecycle is not None:
+        # 消融开关。刻意**不**进 inst_tag：参考策略不读观测，两组分母按构造相同，
+        # 共用缓存才能让标量化回报直接相减（见 env_gym.OBS_LIFECYCLE 的说明）。
+        env_gym.OBS_LIFECYCLE = bool(obs_lifecycle)
 
     # "auto" 必须在**最后**解析：auto_horizon_eval() 读 TAU_VALID/TAU_EXT/
     # BUILD_YEARS，而这几个常量到上面几行才写入。放在函数开头会算出旧制度下的值。
@@ -152,6 +165,22 @@ def apply(budget=None, carry=None, growth=None,
         if _HORIZON is None:
             raise ValueError("horizon_eval='auto' 需要同时给出 horizon")
         _HORIZON_EVAL = auto_horizon_eval(_HORIZON)
+
+
+BUILD_YEARS_MAX = 100   # 见 _chk_build_years
+
+
+def _chk_build_years(b: int, what: str = ""):
+    """建设年限的取值校验。
+
+    下界：b >= 1。b = 0 时开工与完工同年，闭式与状态机虽仍自洽，但"零年建成"
+    不是可报告的情景；b < 0 会给出与状态相符性相反的剩余建设年（实测）。
+    上界：状态机的 clock 为 int16，理论上界远大于此，但建设年限超过规划期加评价期
+    已无规划含义（一个都不会完工），继续放大只会得到全空的指标表。故取 100 年
+    作硬上界，把"手误多打一位"挡在批次开跑之前，而不是跑完才发现指标全空。
+    """
+    if not (1 <= b <= BUILD_YEARS_MAX):
+        raise ValueError(f"{what}build_years 必须在 [1, {BUILD_YEARS_MAX}]，收到 {b}")
 
 
 def parse_build_years_by_channel(v):
@@ -252,6 +281,9 @@ def describe():
             + (f"（立项付 {env_gym.STAGE_INIT:.0%}，余额实施期内按年等额；"
                f"Cost 按支付年计入）" if env_gym.BUDGET_MODE == "staged"
                else "（立项当年全额；Cost 按完工年计入）")
+            + ("" if env_gym.OBS_LIFECYCLE else
+               "\n**消融：生命周期观测特征（16..21 共 6 维）已置零**"
+               "（位宽不变；不入分母缓存键，与主组共用分母）")
             + f"\n分母缓存键 {inst_tag()}")
 
 
@@ -312,6 +344,13 @@ def add_args(ap):
                          "两者按构造相等")
     ap.add_argument("--stage-init", type=float, default=None,
                     help="staged 口径下立项当年支付的比例，默认 0.2")
+    ap.add_argument("--no-obs-lifecycle", action="store_true",
+                    help="消融：把生命周期观测特征（剩余有效年/剩余建设年/期望交付"
+                         "年数/slack/期内可交付标志/在建管道占比，共 6 维）**置零**。"
+                         "位宽与网络形状不变，只切断这一段信息，用于把效果归因到"
+                         "该信息本身。**不进分母缓存键**——参考策略不读观测，本组与"
+                         "主组分母按构造相同、共用缓存，故两组的标量化回报可直接相减"
+                         "（这是批次内单因子消融，比跨批次对比可辩护得多）")
     ap.add_argument("--gamma", type=float, default=None,
                     help="年度折现率，默认 0.95。敏感性方向 {0.90, 0.95, 0.926}；"
                          "0.926 对应财政部社会折现率 8%%")
@@ -335,4 +374,9 @@ def from_args(a):
                 quota=getattr(a, "quota", None),
                 tau_approval=getattr(a, "tau_approval", None),
                 budget_mode=getattr(a, "budget_mode", None),
-                stage_init=getattr(a, "stage_init", None))
+                stage_init=getattr(a, "stage_init", None),
+                # 未加 --no-obs-lifecycle 时传 None（不改写），而不是传 True：
+                # apply() 对 None 一律不改写，出厂值由 reset() 保证为 True。
+                # 传 True 会让"未指定"与"显式开启"在日志里无法区分。
+                obs_lifecycle=(False if getattr(a, "no_obs_lifecycle", False)
+                               else None))

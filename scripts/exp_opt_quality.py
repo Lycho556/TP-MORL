@@ -50,6 +50,11 @@ def one_run(job):
     from tpmorl.rl.env_gym import RenewalEnv
 
     # spawn 子进程重新 import 模块、拿回默认值，故必须在此再改写一次情景参数。
+    # apply 前先 reset()：当前"一组一个 python 进程"的约定使这一步看似多余，但那
+    # 是**环境约定**而非代码保证——一旦改成一个进程跑多组（或 fork 复用），上一组
+    # 的情景参数就会静默继承到下一组。本项目已经踩过这一类坑，故把保护写回代码，
+    # 代价为零。
+    scenario.reset()
     scenario.apply(budget=budget, carry=carry, growth=growth,
                    horizon=scen["horizon"], horizon_eval=scen.get("horizon_eval"),
                    **scen["inst"])
@@ -59,6 +64,8 @@ def one_run(job):
     # 配置不同的动力学下训练。还原已在 scale.reference_returns 修好，这里再断言一次：
     # 泄漏必须**响**，不能像上次那样静默跑完 4 小时才在验收时被发现。
     from tpmorl.rl import env_gym as _EG
+    from tpmorl.rl import scenario as _SC
+    from tpmorl.env import schedule as _S
     assert abs(_EG.FAR_GROWTH - float(growth)) < 1e-12, (
         f"建分母后 FAR_GROWTH 被改写：期望 {growth}，实际 {_EG.FAR_GROWTH}")
     assert abs(_EG.BUDGET - float(budget)) < 1e-9 and abs(_EG.CARRY_CAP - float(carry)) < 1e-9, (
@@ -88,6 +95,20 @@ def one_run(job):
         # 同理记生效的时间口径：t_eval_eff == t_dec_eff 即闭区间，> 即立项与记分分离。
         # 光看 runs.json 的 horizon_eval 意图值分不出"auto 解析成了几"。
         t_dec_eff=int(env.T), t_eval_eff=int(env.T_eval),
+        # v15 新增的情景维度同样只记**生效值**。这一批扫的恰是这几个参数，
+        # 若只记意图值，"参数漏传"与"参数生效了但没效果"在事后无法区分。
+        # obs_lifecycle_eff 尤其要记：它刻意不进分母缓存键，键上看不出消融组，
+        # 只有这一个字段能证明消融确实生效（否则消融组会与主组逐位相同而无人察觉）。
+        obs_lifecycle_eff=bool(_EG.OBS_LIFECYCLE),
+        budget_mode_eff=str(_EG.BUDGET_MODE),
+        stage_init_eff=float(_EG.STAGE_INIT),
+        quota_eff=int(_S.QUOTA),
+        tau_valid_eff=int(_S.TAU_VALID), tau_ext_eff=int(_S.TAU_EXT),
+        hazard_eff=",".join(f"{float(x):.4g}" for x in _S.HAZARD),
+        build_years_eff=",".join(f"{k}:{v}" for k, v in
+                                 sorted(_S.BUILD_YEARS_BY_CHANNEL.items())),
+        gamma_eff=float(_EG.GAMMA),
+        inst_tag_eff=str(_SC.inst_tag()),
     )
     # 逐年记录与策略权重落盘。v6 批次只存了汇总诊断，导致三件事查不了：
     # 规划期后段（不可交付区）策略有没有乱动、反事实评估（把无增长情景训出的策略
@@ -108,6 +129,11 @@ def random_runs(ds, seeds, budget, carry, growth, scen):
     torch.set_num_threads(1)
     from tpmorl.rl import train_ppo as T, scenario
     from tpmorl.rl.env_gym import RenewalEnv
+    # 必须先 reset：apply 对 None 参数不重置、只沿用当前值。random_runs 跑在**主
+    # 进程**且在所有 worker 之后，是同一进程内的第二次 apply——上一次 apply 显式
+    # 设过的制度参数会静默继承进随机基线，于是基线与策略跑在不同情景下，而分母
+    # 与日志都看不出来。不要依赖"一组一进程"的隐式约定。
+    scenario.reset()
     scenario.apply(budget=budget, carry=carry, growth=growth,
                    horizon=scen["horizon"], horizon_eval=scen.get("horizon_eval"),
                    **scen["inst"])
@@ -173,6 +199,13 @@ def main(ds, out, iters, eps, budget, carry, growth, workers, scen):
             print(f"[{i}/{len(jobs)}] a={r['alpha']} s={r['seed']} "
                   f"{r['wall']:.0f}s 立项={r['diag']['n_initiated']:.1f} "
                   f"Floor={r['obj']['Floor']:.3g}", flush=True)
+
+    # 按 (权重档, 种子) 排定，再落盘。`imap_unordered` 的回收顺序取决于各任务
+    # 的实际耗时，同一份代码两次跑出来的 objectives.csv / curves.csv 行序与列序
+    # 会不同——实测四次 dry run 的文件摘要互不相同，而按此键排序后**逐位相等**
+    # （含 NaN 位置）。数值本来是确定性的，乱的只是顺序；排定之后产物可按字节
+    # 复现，下游任何按位置对齐的处理也不会错位。
+    res.sort(key=lambda r: (float(r["alpha"]), int(r["seed"])))
 
     rnd = random_runs(ds, SEEDS, budget, carry, growth, scen)
     with open(os.path.join(out, "runs.json"), "w") as f:

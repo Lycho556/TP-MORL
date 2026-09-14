@@ -20,7 +20,7 @@ import argparse, json, os, time
 import numpy as np, pandas as pd
 import torch, torch.nn as nn
 
-from tpmorl.env.schedule import QUOTA
+from tpmorl.env import schedule as _SCH   # 按模块引用：情景会改写其常量
 from tpmorl.objectives.reward import OBJ_NAMES
 from tpmorl.rl import env_gym            # 需按模块引用，才能在 main 里改 BUDGET
 from tpmorl.rl.env_gym import RenewalEnv, N_PAIR_FEAT
@@ -119,7 +119,7 @@ def run_episode(env, net, greedy=False, seed=None):
         b = env.budget
         with torch.no_grad():
             logits, v = net(Xt)
-        picks, lp, ent = sample_action(logits, meta, cost, b, QUOTA, greedy,
+        picks, lp, ent = sample_action(logits, meta, cost, b, env.quota, greedy,
                                        units_t=units_t, cost_t=cost_t)
         _, r, done, info = env.step([meta[i] for i in picks])
         tr["lp"].append(lp.detach()); tr["v"].append(float(v)); tr["r"].append(r)
@@ -147,9 +147,12 @@ def run_episode(env, net, greedy=False, seed=None):
         # 而不是跑完 10 小时才在结果里发现。
         from tpmorl.rl.scenario import auto_horizon_eval
         open_ = int(((env.env.sigma >= 1) & (env.env.sigma <= 3)).sum())
-        assert open_ == 0, (
-            f"评价期 T_eval={env.T_eval} 结束时仍有 {open_} 个单元在管道中"
-            f"（S1/S2/S3），晚立项仍被截断。应取 {auto_horizon_eval(env.T)}")
+        # 显式 raise 而非裸 assert：这一条是防"评价期取短"的唯一保险，若在
+        # python -O 下失效，晚立项会被静默截断而结果看不出异常。
+        if open_ != 0:
+            raise AssertionError(
+                f"评价期 T_eval={env.T_eval} 结束时仍有 {open_} 个单元在管道中"
+                f"（S1/S2/S3），晚立项仍被截断。应取 {auto_horizon_eval(env.T)}")
     return tr
 
 
@@ -224,6 +227,7 @@ def evaluate(env, net, n_ep=5, record=None):
                     record.append(dict(ep=e, year=t, unit=-1, channel=0, target=-1,
                                        n_cells=0, cost=0.0,
                                        budget_before=env.budget_hist[t],
+                                       released=env.released_hist[t],
                                        spent=env.spent_hist[t],
                                        stopped=int(any(meta[i][0] < 0 for i in picks))))
                 for i in real:
@@ -233,6 +237,7 @@ def evaluate(env, net, n_ep=5, record=None):
                                        n_cells=int(env.ncell[u]),
                                        cost=env.pair_cost(u, tg),
                                        budget_before=env.budget_hist[t],
+                                       released=env.released_hist[t],
                                        spent=env.spent_hist[t],
                                        stopped=int(any(meta[j][0] < 0 for j in picks))))
     return np.mean(V, 0)
@@ -252,7 +257,7 @@ def eval_random(env, n_ep=5, seed=0):
                 used, left = set(), env.budget
                 order = rng.permutation(len(meta))
                 for i in order:
-                    if len(act) >= QUOTA:
+                    if len(act) >= env.quota:
                         break
                     u = meta[i][0]
                     if u < 0 or u in used or cost[i] > left + 1e-6:
@@ -320,7 +325,7 @@ def main(ds, out, iters, alphas, budget=None, carry=None, growth=None,
     pd.DataFrame(curves).to_csv(os.path.join(out, "learning_curves.csv"),
                                 index_label="iter", encoding="utf-8-sig")
     json.dump(dict(scale=dict(zip(OBJ_NAMES, scale.tolist())), iters=iters,
-                   alphas=list(alphas), quota=QUOTA,
+                   alphas=list(alphas), quota=int(_SCH.QUOTA),
                    budget=env_gym.BUDGET, carry_cap=env_gym.CARRY_CAP,
                    far_growth=env_gym.FAR_GROWTH),
               open(os.path.join(out, "train_config.json"), "w"), ensure_ascii=False, indent=1)

@@ -6,7 +6,14 @@
 import argparse, json, os
 import numpy as np, pandas as pd
 
-from tpmorl.env.schedule import RenewalSchedule, QUOTA, S1, S2, S3, S4, S5
+# 不要 from-import QUOTA：它是情景参数，scenario.apply() 会改写模块属性，而
+# from-import 拿的是**导入时的快照**。本模块被 env_gym / scale / baselines 间接
+# 导入，因此确实活在调过 apply 的进程里（实测同进程内快照 3、活值 6）；目前唯一
+# 使用点 rollout() 不在那些调用链上，所以尚未出错——但那是"使用点没被调到"，
+# 不是"值没被改到"。rollout 是个现成的贪心 rollout，很容易被复用，届时就是静默
+# 按出厂配额跑。改为在使用点读模块属性，使其不可能与生效值脱钩。
+from tpmorl.env import schedule as _SCH
+from tpmorl.env.schedule import RenewalSchedule, S1, S2, S3, S4, S5
 from tpmorl.objectives.reward import (Reward, FAR_CAP, CLASSES, OBJ_NAMES,
                                       OBJ_SPATIAL, OBJ_TEMPORAL, SIGN, CELL_AREA)
 
@@ -75,7 +82,7 @@ def rollout(ds, T, policy, seed=0):
     for t in range(T):
         mi, ma = env.mask_initiate(), env.mask_advance()
         prev_sigma = env.sigma.copy()
-        init = [u for u in order if mi[u]][:QUOTA]
+        init = [u for u in order if mi[u]][:_SCH.QUOTA]
         _, ev = env.step(initiate=init, advance=np.where(ma)[0])
 
         # S3 -> S4 完成的单元，落实用地变更并计入交付面积与转换成本

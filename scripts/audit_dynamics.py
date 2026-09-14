@@ -29,7 +29,7 @@ horizon20/relax2/relax5 共 105 个 run 因此判为"未匹配"。
     python3 scripts/audit_dynamics.py --exp data/processed/gm_dataset_v1/exp_v11 \
         --out results_v11/v11_growth_audit.csv
 """
-import argparse
+import argparse, inspect
 import json
 import multiprocessing as mp
 import os
@@ -61,7 +61,17 @@ def _audit_one_group(args):
     with open(os.path.join(gdir, "runs.json")) as f:
         blob = json.load(f)
     cfg = blob["config"]
-    inst = {k: cfg.get(k) for k in ("tau_valid", "tau_ext", "cooldown", "build_years")}
+    # 制度参数键集**从 apply 的签名反解**，不手列。理由是这条缺陷的历史：
+    # 手列时先漏了 tau_approval / build_years_by_channel（tauA1/3/5、buildmix
+    # 被拿出厂 hazard 与出厂建设年限去复现），补完又漏了 obs_lifecycle（消融组
+    # 25 个 run 全判"未匹配"）。而这份工具的职责恰恰是判定"落盘值能否复现"——
+    # 漏键会把自己的错读成动力学污染，是最难发现的一类。签名反解让"以后 apply
+    # 新增了参数而这里忘记同步"在结构上不可能发生。
+    # 下面这几个不属于制度参数，由本函数显式传入，故从键集中剔除。
+    _EXPLICIT = {"budget", "carry", "growth", "horizon", "horizon_eval", "gamma"}
+    _INST_KEYS = tuple(k for k in inspect.signature(scenario.apply).parameters
+                       if k not in _EXPLICIT)
+    inst = {k: cfg.get(k) for k in _INST_KEYS}
     horizon = int(cfg["horizon"])
     budget, carry = float(cfg["budget"]), float(cfg["carry"])
     obj_names = list(T.OBJ_NAMES)

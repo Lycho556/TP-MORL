@@ -14,7 +14,12 @@
 import os
 import numpy as np, pandas as pd
 
-from tpmorl.env.schedule import RenewalSchedule, QUOTA, S1, S2, S3, S4, S5
+# 刻意**不**从 schedule 按值导入 QUOTA 之类会被情景改写的常量：`from X import C`
+# 在导入时取值，而情景参数改写的是 schedule 模块里的那一份，于是本模块会一直用
+# 旧值。实测后果：`--quota 2` 时参考策略仍按 3 个立项，被状态机的配额断言打断；
+# `--quota 6` 更坏——不报错，但放宽的配额根本用不上，静默按 3 跑。
+# 会被情景改写的量一律**按模块属性或实例属性**在使用时取。
+from tpmorl.env.schedule import RenewalSchedule, S1, S2, S3, S4, S5
 from tpmorl.objectives.reward import Reward, FAR_CAP, OBJ_NAMES, SIGN, CELL_COST
 from tpmorl.objectives.run_reward_demo import load, pick_target, ALLOWED
 
@@ -24,6 +29,21 @@ from tpmorl.objectives.run_reward_demo import load, pick_target, ALLOWED
 N_FEAT = 22
 N_PAIR_FEAT = N_FEAT + 12 + 2 + 3 + 1  # +本对成本/预算, +当前可用预算/年度额度, +是否为「到此为止」, +已承诺占用/年度额度
 CH_ORDER = [1, 2, 3, 5]
+
+# 生命周期特征消融开关。False 时把 16..21 这六维**置零**而不是删掉：
+#   位宽、网络形状、参数量、初始化、优化器状态全部不变，两组之间只差
+#   \"策略能否看到剩余时间与 slack\" 这一件事，构成单因子消融。
+# 删掉会同时改变输入维度与参数量，差异就不再可归因。
+# 三处刻意的设计约束：
+#   1) **不入分母缓存键**（scenario.inst_tag 不含它）。参考策略是手写规则、
+#      不读观测，消融组与主组的可达上界按构造完全相同；共用同一套分母，
+#      两组的标量化回报才可直接相减。若误入键，消融组会另建一套数值上
+#      相同但路径不同的分母，白跑一遍还会让人误以为不可比。
+#   2) 仍由 scenario 登记并在 reset() 复原——它是模块级常量，不复原就会
+#      发生本项目记过的那类静默继承（上一组设过、这一组没设）。
+#   3) 承诺预算特征（pairs 的 N_FEAT+17）**不**随之置零：那是资金口径改动
+#      带来的信息，属于另一个因子，混进来这组消融就不是单因子的了。
+OBS_LIFECYCLE = True
 
 # ---------------------------------------------------------------- 年度资金约束
 # 计量口径与奖励里的 Cost 目标完全相同（CCM[from,to] × 格数），不引入新的标定量。
@@ -100,6 +120,12 @@ class RenewalEnv:
         self.weights = np.ones(len(OBJ_NAMES)) if weights is None else np.asarray(weights, float)
         self.scale = np.ones(len(OBJ_NAMES)) if scale is None else np.asarray(scale, float)
 
+    @property
+    def quota(self):
+        """年度立项配额。取自**执行配额的那个状态机实例**，而不是模块常量快照，
+        这样调用方的取值不可能与真正做校验的对象脱钩。"""
+        return self.env.quota
+
     def obs(self):
         F = np.zeros((self.n, N_FEAT), dtype=np.float32)
         F[:, 0] = self.press
@@ -143,6 +169,11 @@ class RenewalEnv:
         # 全局状态：在建管道占比（S1/S2/S3）。这一项**随年份变化**，与配额、α 不同
         # （后两者在单次运行内恒定，逐 α 独立训练时作为特征不提供任何信息，故不加）。
         F[:, 21] = float(np.isin(e.sigma, (S1, S2, S3)).sum()) / max(self.n, 1)
+        # 消融：整段置零（位宽不变，见模块头 OBS_LIFECYCLE 的说明）。
+        # 写在计算之后而不是用分支跳过，是为了让两条路径的浮点运算次数一致，
+        # 也避免将来有人往 16..21 里加东西却忘了加进消融范围。
+        if not OBS_LIFECYCLE:
+            F[:, 16:22] = 0.0
         return F
 
     def pair_cost(self, u, tg):
@@ -216,6 +247,10 @@ class RenewalEnv:
         self._owe_left = {}             # 单元 -> 剩余未付额
         self.spent_hist, self.budget_hist = [], []
         self.disb_hist, self.committed_hist = [], []
+        # 逐年**释放**额：有效期届满被撤的单元，其剩余未付承诺回到可承诺额度。
+        # 必须落盘：资金分解的闭合式里它是独立一项（承诺−释放+作废+期末余额
+        # = B·(T+1)），upfront 下恒为 0，staged 下不记就无法闭合。
+        self.released_hist = []
         return self.obs()
 
     def step(self, actions):
@@ -227,7 +262,8 @@ class RenewalEnv:
                 f"第 {self.t} 年已超出决策期 T={self.T}，不得立项（收到 {len(actions)} 个动作）")
         # spent = 本年新增**承诺**额（两种口径下都是全额，掩码据此硬约束）
         spent = sum(self.pair_cost(u, tg) for u, tg in actions)
-        assert spent <= self.budget + 1e-6, f"超预算 {spent:.0f} > {self.budget:.0f}"
+        if spent > self.budget + 1e-6:   # 显式 raise：裸 assert 在 python -O 下整体失效
+            raise AssertionError(f"超预算 {spent:.0f} > {self.budget:.0f}")
         self.budget_hist.append(self.budget); self.spent_hist.append(spent)
         self.committed_hist.append(self.committed)
         for u, tg in actions:
@@ -260,12 +296,14 @@ class RenewalEnv:
                 released += self._owe_left.pop(int(u), 0.0)
                 self._owe_year.pop(int(u), None)
             self.committed += spent - disb - released
-            assert self.committed > -1e-6, f"承诺额为负 {self.committed:.3f}"
-            assert abs(self.committed - sum(self._owe_left.values())) < 1e-3, \
-                "承诺额与逐单元未付额台账不一致"
+            if self.committed <= -1e-6:
+                raise AssertionError(f"承诺额为负 {self.committed:.3f}")
+            if abs(self.committed - sum(self._owe_left.values())) >= 1e-3:
+                raise AssertionError("承诺额与逐单元未付额台账不一致")
+
         else:
             disb, released = spent, 0.0
-        self.disb_hist.append(disb)
+        self.disb_hist.append(disb); self.released_hist.append(released)
         # 年度预算只在决策期内到账；尾部余额冻结（既不进钱也无处可花）
         if not tail:
             self.budget = min(self.budget - spent + released + BUDGET,
