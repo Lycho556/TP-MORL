@@ -154,7 +154,81 @@ class RenewalSchedule:
         self.sigma = np.full(self.n, S0, "int8")
         self.tau = np.zeros(self.n, "int8")        # S1 内已用年数
         self.clock = np.zeros(self.n, "int8")      # S2/S3/S5 内计时
+        self._exp_leave = self._expected_leave_s1()
         return self.state()
+
+    # ---- 剩余时间查询（供观测用；不改变任何转移） ----
+    def _expected_leave_s1(self):
+        """E[从 tau=v 起，还需几步才离开 S1]（获批或失效，两者都算离开）。
+
+        按 step() 的真实顺序推导：观测发生在 self.clock 自增之后、即某一年的年初，
+        此时该单元的 tau=v 意味着它在**本年**还有一次获批机会（advance 分支），
+        若未获批则 tau→v+1，且 v+1>=tau_max 时当年即失效。故
+
+            E[v] = 1 + (1 - h[v]) * (E[v+1] if v+1 < tau_max else 0)
+            E[tau_max-1] = 1
+
+        返回长度 tau_max 的数组。tau_max 很小（默认 5），每回合算一次即可。
+        这是**期望**值而非乐观值：用乐观值（假设次年必获批）会让 slack 特征
+        系统性高估可交付性，策略据此在窗外立项，正是本项目要诊断的行为。
+        """
+        m = int(max(self.tau_max, 1))
+        E = np.zeros(m + 1, float)
+        for v in range(m - 1, -1, -1):
+            h = float(self.hazard[min(v, len(self.hazard) - 1)])
+            E[v] = 1.0 + (1.0 - h) * E[v + 1]
+        return E[:m]
+
+    def remaining_valid(self):
+        """S1 单元的剩余有效年数（还剩几次获批机会）；非 S1 记 0。
+
+        tau 自 0 计，失效判据是 tau>=tau_max，故剩余机会数 = tau_max - tau。
+        """
+        out = np.zeros(self.n, float)
+        s1 = self.sigma == S1
+        out[s1] = np.maximum(self.tau_max - self.tau[s1], 0)
+        return out
+
+    def remaining_build(self):
+        """S2/S3 单元到完工（进入 S4）还需几步；其余状态记 0。
+
+        S3：完工判据在步首检查 clock>=build_years，clock 于步末自增，故观测到
+            clock=c 时还需 build_years-c+1 步。
+        S2：开工判据 clock>=1，同理还需 1-c+1 步进入 S3，再加 build_years 步。
+        （批准当步 clock 置 0 后被步末 tick 自增，因此 S2 被观测到时 c 恒为 1，
+        此式给出 1+build_years，与逐步模拟一致；写成通式以免 tick 规则变动后失配。）
+        """
+        out = np.zeros(self.n, float)
+        b = self.build_years.astype(float)
+        s3 = self.sigma == S3
+        out[s3] = np.maximum(b[s3] - self.clock[s3] + 1, 1)
+        s2 = self.sigma == S2
+        out[s2] = np.maximum(1 - self.clock[s2] + 1, 1) + b[s2]
+        return out
+
+    def expected_years_to_delivery(self, if_initiated_now=False):
+        """各单元到完工还需的**期望**年数。
+
+        S1 用 E[离开 S1] + 开工 1 年 + 建设年限（把"失效"也计为离开，故该值是
+        "管道占用时长"的期望，不是"条件于成功"的期望——后者会低估）。
+        S2/S3 走确定性的 remaining_build()。S4 记 0。
+        S0/S5 记 inf，除非 if_initiated_now=True：此时对**可立项**的 S0 单元
+        按"本年立项"给出 E[0]+1+build_years，供候选集的 slack 特征使用。
+        """
+        out = np.full(self.n, np.inf)
+        b = self.build_years.astype(float)
+        out[self.sigma == S4] = 0.0
+        rb = self.remaining_build()
+        s23 = np.isin(self.sigma, (S2, S3))
+        out[s23] = rb[s23]
+        s1 = self.sigma == S1
+        if s1.any():
+            idx = np.minimum(self.tau[s1], len(self._exp_leave) - 1)
+            out[s1] = self._exp_leave[idx] + 1.0 + b[s1]
+        if if_initiated_now:
+            cand = self.mask_initiate()
+            out[cand] = self._exp_leave[0] + 1.0 + b[cand]
+        return out
 
     # ---- 动作掩码：MDP 里"法规约束"的落地形式 ----
     def mask_initiate(self):

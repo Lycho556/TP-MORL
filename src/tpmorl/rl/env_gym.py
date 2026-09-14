@@ -14,12 +14,15 @@
 import os
 import numpy as np, pandas as pd
 
-from tpmorl.env.schedule import RenewalSchedule, QUOTA, S1, S3, S4
+from tpmorl.env.schedule import RenewalSchedule, QUOTA, S1, S2, S3, S4, S5
 from tpmorl.objectives.reward import Reward, FAR_CAP, OBJ_NAMES, SIGN, CELL_COST
 from tpmorl.objectives.run_reward_demo import load, pick_target, ALLOWED
 
-N_FEAT = 16
-N_PAIR_FEAT = N_FEAT + 12 + 2 + 3     # +本对成本/预算, +当前可用预算/年度额度, +是否为「到此为止」
+# v15：16 -> 22。新增 16..21 = 剩余有效年 / 剩余建设年 / 期望交付年数 / slack /
+# 期内可交付标志 / 在建管道占比。**改变网络输入维度**，v14 及更早的权重不可载入，
+# 两批结果亦不可混在一张图里比较（见 docs/建议条目审计与改动清单_v15.md 第三节）。
+N_FEAT = 22
+N_PAIR_FEAT = N_FEAT + 12 + 2 + 3 + 1  # +本对成本/预算, +当前可用预算/年度额度, +是否为「到此为止」, +已承诺占用/年度额度
 CH_ORDER = [1, 2, 3, 5]
 
 # ---------------------------------------------------------------- 年度资金约束
@@ -36,6 +39,20 @@ CH_ORDER = [1, 2, 3, 5]
 BUDGET = 900.0
 # 结转上限须 ≥ 最贵单元 / BUDGET，否则大单元永远不可达（实测最贵 2610，900×3=2700）。
 CARRY_CAP = 3.0        # 可用预算上限 = CARRY_CAP × BUDGET，超出部分作废（防止无限攒钱）
+
+# 资金口径（v15 新增）。"upfront" = 立项当年全额支付，与 v14 及更早**逐位等价**；
+# "staged" = 立项当年付前期款 STAGE_INIT，余额在该单元实施期（S3）内按年等额支付。
+#
+# 两种口径下「可用预算 self.budget」的语义都统一为**已拨付未承诺**（可承诺额度），
+# 而非"账上现金"。这样做的关键理由：立项即锁定全额，后续年份的进度款不可能付不出，
+# 因此不需要在掩码里做跨年现金流可行性检验——`cost <= budget` 这一条硬掩码即足以
+# 保证不出现"开工后断供"。已承诺未支付额另记于 self.committed。
+#
+# Cost 目标的计入时点随口径走，二者**按构造一致**：upfront 记在完工年（旧行为），
+# staged 记在实际支付年。绝不允许预算按分期走而 Cost 仍按完工年记——那正是
+# docs/跨期结转_口径修正_v1.md 记录过的那类口径错位。
+BUDGET_MODE = "upfront"
+STAGE_INIT = 0.2       # staged 口径下立项当年支付的比例（前期/拆迁启动费）
 
 # ---------------------------------------------------------------- 非平稳性
 # 实测结论：单靠资金约束**不能**让「等待」成为最优决策。原因是机会集平稳——
@@ -106,6 +123,26 @@ class RenewalEnv:
         # 否则会喂给策略网络训练时从未见过的 >1 取值。
         F[:, 14] = min(self.t / self.T, 1.0)
         F[:, 15] = self.mask_init.astype(np.float32)
+
+        # ---- 生命周期剩余时间与可交付性（v15 新增，见 docs/建议条目审计与改动清单_v15.md）----
+        # F[:,12] 给的是「当前状态内已用比例」，是**已用**量；策略要判断"现在立项还赶得上吗"
+        # 需要的是**剩余**量，且必须是**逐单元**的——F[:,14] 的 t/T 是全局的，无法区分
+        # 建设年限不同的单元。这是本次真正新增的信息。
+        F[:, 16] = e.remaining_valid() / max(e.tau_max, 1)
+        maxb = max(float(e.build_years.max()), 1.0)
+        F[:, 17] = e.remaining_build() / (1.0 + maxb)
+        # 期望交付所需年数：S0 候选单元按「本年立项」估（E[离开S1]+开工1年+建设年限），
+        # 非候选的 S0/S5 为 inf（本年不可立项），归一化后钳到 1.0 表示"够不着"。
+        ey = e.expected_years_to_delivery(if_initiated_now=True)
+        F[:, 18] = np.clip(ey / (2.0 * self.T), 0.0, 1.0)
+        # slack = 决策期还剩的年数 − 期望交付所需年数。>0 表示期内可交付。
+        # 除以 T 归一并钳到 [-1,1]；inf 自然落到 -1。
+        slack = (self.T - 1 - self.t) - ey
+        F[:, 19] = np.clip(slack / self.T, -1.0, 1.0)
+        F[:, 20] = (slack >= 0).astype(np.float32)
+        # 全局状态：在建管道占比（S1/S2/S3）。这一项**随年份变化**，与配额、α 不同
+        # （后两者在单次运行内恒定，逐 α 独立训练时作为特征不提供任何信息，故不加）。
+        F[:, 21] = float(np.isin(e.sigma, (S1, S2, S3)).sum()) / max(self.n, 1)
         return F
 
     def pair_cost(self, u, tg):
@@ -130,10 +167,14 @@ class RenewalEnv:
         rows[:n, N_FEAT + 13] = self.farcap[pu] / 10.0
         rows[:n, N_FEAT + 14] = cost / BUDGET
         rows[:n, N_FEAT + 15] = self.budget / BUDGET
+        rows[:n, N_FEAT + 17] = self.committed / BUDGET
         # 末行「到此为止」：把余额留到明年。特征只带时间进度与余额，成本为 0，永远可选。
-        rows[n, 14] = self.t / self.T
+        # t/T 必须与 obs() 的 F[:,14] 同样钳到 1：尾部年份 t>=T 时不钳会给出 >1，
+        # 与其余各行的量纲不一致（旧实现漏钳，v15 修正）。
+        rows[n, 14] = min(self.t / self.T, 1.0)
         rows[n, N_FEAT + 15] = self.budget / BUDGET
         rows[n, N_FEAT + 16] = 1.0
+        rows[n, N_FEAT + 17] = self.committed / BUDGET
         meta = list(zip(pu.tolist(), pt.tolist())) + [STOP]
         # units 与 meta 同序，供掩码做向量化的「该单元今年已选」判断
         units = np.concatenate([pu, np.array([-1], dtype=np.int64)])
@@ -169,8 +210,12 @@ class RenewalEnv:
             [np.asarray(ALLOWED[int(c)], dtype=np.int64) for c in ch_all])
         self._cost_all = self.PC[self._pu_all, self._pt_all]
         self.mask_init = self.env.mask_initiate()
-        self.budget = BUDGET
+        self.budget = BUDGET            # 已拨付未承诺（可承诺额度）
+        self.committed = 0.0            # 已承诺未支付
+        self._owe_year = {}             # 单元 -> 实施期内每年应付额
+        self._owe_left = {}             # 单元 -> 剩余未付额
         self.spent_hist, self.budget_hist = [], []
+        self.disb_hist, self.committed_hist = [], []
         return self.obs()
 
     def step(self, actions):
@@ -180,17 +225,51 @@ class RenewalEnv:
         if tail and actions:
             raise AssertionError(
                 f"第 {self.t} 年已超出决策期 T={self.T}，不得立项（收到 {len(actions)} 个动作）")
+        # spent = 本年新增**承诺**额（两种口径下都是全额，掩码据此硬约束）
         spent = sum(self.pair_cost(u, tg) for u, tg in actions)
         assert spent <= self.budget + 1e-6, f"超预算 {spent:.0f} > {self.budget:.0f}"
         self.budget_hist.append(self.budget); self.spent_hist.append(spent)
-        # 年度预算只在决策期内到账；尾部余额冻结（既不进钱也无处可花）
-        if not tail:
-            self.budget = min(self.budget - spent + BUDGET, CARRY_CAP * BUDGET)
+        self.committed_hist.append(self.committed)
         for u, tg in actions:
             self.plan[int(u)] = int(tg)
         prev = self.env.sigma.copy()
         ma = self.env.mask_advance()
         _, ev = self.env.step(initiate=[u for u, _ in actions], advance=np.where(ma)[0])
+
+        # ---- 支付与承诺的分离（v15）----
+        if BUDGET_MODE == "staged":
+            disb = 0.0
+            for u, tg in actions:                      # 立项当年的前期款
+                c = self.pair_cost(u, tg)
+                init = STAGE_INIT * c
+                disb += init
+                by = max(int(self.env.build_years[int(u)]), 1)
+                self._owe_left[int(u)] = c - init
+                self._owe_year[int(u)] = (c - init) / by
+            # 实施中单元的当期进度款：以 env.step 之后处于 S3 为准，与 Disrupt
+            # 的"S3 才产生施工干扰"同一判据，两个口径不会错位一年。
+            for u in np.where(self.env.sigma == S3)[0]:
+                left = self._owe_left.get(int(u), 0.0)
+                if left > 1e-9:
+                    pay = min(self._owe_year[int(u)], left)
+                    self._owe_left[int(u)] = left - pay
+                    disb += pay
+            # 有效期届满被撤（S1->S5）：剩余承诺释放回可承诺额度，已付前期款沉没
+            released = 0.0
+            for u in np.where((prev == S1) & (self.env.sigma == S5))[0]:
+                released += self._owe_left.pop(int(u), 0.0)
+                self._owe_year.pop(int(u), None)
+            self.committed += spent - disb - released
+            assert self.committed > -1e-6, f"承诺额为负 {self.committed:.3f}"
+            assert abs(self.committed - sum(self._owe_left.values())) < 1e-3, \
+                "承诺额与逐单元未付额台账不一致"
+        else:
+            disb, released = spent, 0.0
+        self.disb_hist.append(disb)
+        # 年度预算只在决策期内到账；尾部余额冻结（既不进钱也无处可花）
+        if not tail:
+            self.budget = min(self.budget - spent + released + BUDGET,
+                              CARRY_CAP * BUDGET)
 
         done_u = np.where((prev == S3) & (self.env.sigma == S4))[0]
         floor = cost = 0.0
@@ -205,6 +284,12 @@ class RenewalEnv:
             cost += sum(self.R.convert_cost(f, tgt, c) for f, c in hist.items())
             self.LU[m] = 0.0
             self.LU[..., tgt][m] = 1.0
+
+        # Cost 的计入时点必须与资金口径一致（见模块顶部 BUDGET_MODE 说明）：
+        # staged 下记当年实际支付额，upfront 下沿用完工年全额（旧行为，逐位等价）。
+        # 两式的总额按构造相等——convert_cost 与 pair_cost/PC 同式。
+        if BUDGET_MODE == "staged":
+            cost = disb
 
         dis = self.R.disrupt(self.env.sigma, self.uid, self.res_map)
         rv = self.R.step_reward(self.LU, floor, cost, dis, ev["expired"])

@@ -28,8 +28,10 @@ def _snapshot():
     from tpmorl.env import schedule as S
     return dict(BUDGET=env_gym.BUDGET, CARRY_CAP=env_gym.CARRY_CAP,
                 FAR_GROWTH=env_gym.FAR_GROWTH, GAMMA=env_gym.GAMMA,
+                BUDGET_MODE=env_gym.BUDGET_MODE, STAGE_INIT=env_gym.STAGE_INIT,
                 TAU_VALID=S.TAU_VALID, TAU_EXT=S.TAU_EXT,
                 COOLDOWN=S.COOLDOWN, BUILD_YEARS=S.BUILD_YEARS,
+                QUOTA=S.QUOTA, HAZARD=tuple(S.HAZARD),
                 BUILD_YEARS_BY_CHANNEL=dict(S.BUILD_YEARS_BY_CHANNEL))
 
 
@@ -57,12 +59,16 @@ def reset():
     S.TAU_VALID, S.TAU_EXT = d["TAU_VALID"], d["TAU_EXT"]
     S.COOLDOWN, S.BUILD_YEARS = d["COOLDOWN"], d["BUILD_YEARS"]
     S.BUILD_YEARS_BY_CHANNEL = dict(d["BUILD_YEARS_BY_CHANNEL"])
+    env_gym.BUDGET_MODE, env_gym.STAGE_INIT = d["BUDGET_MODE"], d["STAGE_INIT"]
+    S.QUOTA, S.HAZARD = d["QUOTA"], tuple(d["HAZARD"])
     _HORIZON = _HORIZON_EVAL = None
 
 
 def apply(budget=None, carry=None, growth=None,
           tau_valid=None, tau_ext=None, cooldown=None, build_years=None,
-          horizon=None, gamma=None, horizon_eval=None):
+          horizon=None, gamma=None, horizon_eval=None,
+          quota=None, tau_approval=None, build_years_by_channel=None,
+          budget_mode=None, stage_init=None):
     """把情景参数写回模块常量。None 表示沿用模块默认值，不改写。
 
     `horizon` 不改写任何常量，只登记进 `inst_tag()`：规划期长度改变可达上界，
@@ -102,10 +108,43 @@ def apply(budget=None, carry=None, growth=None,
     if cooldown is not None:
         S.COOLDOWN = parse_cooldown(cooldown)
     if build_years is not None:
-        # 全体通道同值；分档差异化待数据／动作空间到位后再逐通道设
+        # 全体通道同值；逐通道分档改用 build_years_by_channel 显式给出
         S.BUILD_YEARS = int(build_years)
         S.BUILD_YEARS_BY_CHANNEL = {c: int(build_years)
                                     for c in S.BUILD_YEARS_BY_CHANNEL}
+    if build_years_by_channel is not None:
+        # 必须写在 build_years 之后：两者同时给出时以逐通道表为准。
+        # **口径声明**：通道分档没有实证依据（gm_renewal_units.csv 无更新方式字段，
+        # 无法逐单元判定拆除重建／综合整治），故一切分档年限只能作为**情景参数**
+        # 报告，不得写成实证标定值。见 docs/建议条目审计与改动清单_v15.md。
+        d = parse_build_years_by_channel(build_years_by_channel)
+        unknown = set(d) - set(S.BUILD_YEARS_BY_CHANNEL)
+        if unknown:
+            raise ValueError(f"未知通道 {sorted(unknown)}；"
+                             f"可更新通道为 {sorted(S.BUILD_YEARS_BY_CHANNEL)}")
+        S.BUILD_YEARS_BY_CHANNEL = {c: int(d.get(c, S.BUILD_YEARS_BY_CHANNEL[c]))
+                                    for c in S.BUILD_YEARS_BY_CHANNEL}
+    if quota is not None:
+        # 配额改变可达上界（一年最多能立几个项），分母不可跨配额复用 → 入 inst_tag()
+        S.QUOTA = int(quota)
+    if tau_approval is not None:
+        # 把逐年条件批准率整体替换为**常数风险率** 1/τ_A（几何分布，均值 τ_A 年）。
+        # 默认档 HAZARD 是由累计获批数逐年反解的实测向量，本参数是它的敏感性对照，
+        # 不是更精确的估计——写论文时必须说明这一档为几何近似。
+        ta = float(tau_approval)
+        if ta <= 0:
+            raise ValueError(f"tau_approval 必须为正，收到 {ta}")
+        S.HAZARD = tuple([min(1.0 / ta, 1.0)] * len(_DEFAULTS["HAZARD"]))
+    if budget_mode is not None:
+        m = str(budget_mode).strip().lower()
+        if m not in ("upfront", "staged"):
+            raise ValueError(f"budget_mode 只能是 upfront/staged，收到 {budget_mode}")
+        env_gym.BUDGET_MODE = m
+    if stage_init is not None:
+        si = float(stage_init)
+        if not 0.0 <= si <= 1.0:
+            raise ValueError(f"stage_init 须在 [0,1]，收到 {si}")
+        env_gym.STAGE_INIT = si
 
     # "auto" 必须在**最后**解析：auto_horizon_eval() 读 TAU_VALID/TAU_EXT/
     # BUILD_YEARS，而这几个常量到上面几行才写入。放在函数开头会算出旧制度下的值。
@@ -113,6 +152,24 @@ def apply(budget=None, carry=None, growth=None,
         if _HORIZON is None:
             raise ValueError("horizon_eval='auto' 需要同时给出 horizon")
         _HORIZON_EVAL = auto_horizon_eval(_HORIZON)
+
+
+def parse_build_years_by_channel(v):
+    """解析 "1:5,2:3,3:3,5:3" 形式的逐通道建设年限；也接受字典。"""
+    if isinstance(v, dict):
+        return {int(k): int(x) for k, x in v.items()}
+    out = {}
+    for part in str(v).replace("，", ",").replace("：", ":").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if ":" not in part:
+            raise ValueError(f"逐通道建设年限需写成 通道:年数，收到 {part!r}")
+        k, x = part.split(":", 1)
+        out[int(k)] = int(x)
+    if not out:
+        raise ValueError(f"未解析出任何通道，收到 {v!r}")
+    return out
 
 
 _ABSORB_WORDS = ("absorb", "inf", "t", "吸收态", "永久")
@@ -155,7 +212,30 @@ def inst_tag():
     # γ 只在非默认值时入键：默认档保持与既有 _R7 分母缓存的键一致，不作废历史结果
     from tpmorl.rl import env_gym
     g = "" if env_gym.GAMMA == 0.95 else f"G{env_gym.GAMMA:g}".replace(".", "")
-    return f"V{S.TAU_VALID}E{S.TAU_EXT}{cooldown_tag()}Y{y}{t}{g}"
+    # v15 新增三项，同样**只在非出厂值时**入键，既有缓存逐字不变。
+    # 三者都改变可达上界，漏入键会让对照组静默复用基线分母（与 FAR_GROWTH 泄漏同类）：
+    #   配额   —— 一年最多能立几个项，直接决定可达总量
+    #   批准率 —— 决定有多少立项能走到完工
+    #   资金口径 —— staged 下 Cost 改按支付年计入，目标本身的定义就变了
+    d = _DEFAULTS or {}
+    q = "" if S.QUOTA == d.get("QUOTA", S.QUOTA) else f"Q{int(S.QUOTA)}"
+    hz = tuple(float(x) for x in S.HAZARD)
+    a = "" if hz == tuple(d.get("HAZARD", hz)) else f"A{_hazard_tag(hz)}"
+    if env_gym.BUDGET_MODE == d.get("BUDGET_MODE", env_gym.BUDGET_MODE) \
+            and env_gym.STAGE_INIT == d.get("STAGE_INIT", env_gym.STAGE_INIT):
+        m = ""
+    else:
+        m = f"M{env_gym.BUDGET_MODE[0].upper()}{env_gym.STAGE_INIT:g}".replace(".", "")
+    return f"V{S.TAU_VALID}E{S.TAU_EXT}{cooldown_tag()}Y{y}{t}{g}{q}{a}{m}"
+
+
+def _hazard_tag(hz):
+    """批准率向量的短标识。常数向量（τ_A 档）记其倒数，便于人读；
+    非常数向量退回 4 位十六进制摘要，保证不同向量不会撞键。"""
+    import hashlib
+    if len(set(hz)) == 1 and hz[0] > 0:
+        return f"{1.0 / hz[0]:g}".replace(".", "")
+    return hashlib.md5(repr(hz).encode()).hexdigest()[:4]
 
 
 def describe():
@@ -166,7 +246,13 @@ def describe():
             f"有效期 {S.TAU_VALID}+{S.TAU_EXT} 年  "
             f"失效后 {'本规划期内不再申请（吸收态）' if not _np_isfinite(S.COOLDOWN) else f'冷却 {int(S.COOLDOWN)} 年'}"
             f"（无条文依据，依 2026-09 规划局实务答复）  "
-            f"建设年限 {S.BUILD_YEARS_BY_CHANNEL}  折现率 {env_gym.GAMMA:g}")
+            f"建设年限 {S.BUILD_YEARS_BY_CHANNEL}  折现率 {env_gym.GAMMA:g}\n"
+            f"批准率 {tuple(round(float(x), 3) for x in S.HAZARD)}  "
+            f"资金口径 {env_gym.BUDGET_MODE}"
+            + (f"（立项付 {env_gym.STAGE_INIT:.0%}，余额实施期内按年等额；"
+               f"Cost 按支付年计入）" if env_gym.BUDGET_MODE == "staged"
+               else "（立项当年全额；Cost 按完工年计入）")
+            + f"\n分母缓存键 {inst_tag()}")
 
 
 def auto_horizon_eval(T):
@@ -205,6 +291,27 @@ def add_args(ap):
                          "对照，敏感性方向 {2, 5, 吸收态}，0 档仅为最宽松极端参照")
     ap.add_argument("--build-years", type=int, default=None,
                     help="建设年限（年），全通道同值。默认按通道表取 5")
+    ap.add_argument("--build-years-by-channel", default=None,
+                    help="逐通道建设年限，形如 1:5,2:3,3:3,5:3。与 --build-years "
+                         "同时给出时以本项为准。**无实证依据**：单元表没有更新方式"
+                         "字段，无法判定拆除重建／综合整治，故分档年限一律作情景"
+                         "参数报告，不得写成标定值")
+    ap.add_argument("--quota", type=int, default=None,
+                    help="年度立项配额，默认 3。敏感性方向 {2, 3, 4, 6}。改变可达"
+                         "上界，故入分母缓存键")
+    ap.add_argument("--tau-approval", type=float, default=None,
+                    help="平均审批时长 τ_A（年）。给出后把逐年条件批准率整体换成"
+                         "常数风险率 1/τ_A（几何近似），敏感性方向 {1, 3, 5}。"
+                         "默认档是由累计获批数反解的实测向量，本参数是对照而非"
+                         "更精确的估计")
+    ap.add_argument("--budget-mode", default=None, choices=["upfront", "staged"],
+                    help="资金口径。upfront=立项当年全额支付（默认，与既往结果逐位"
+                         "等价）；staged=立项付前期款、余额在实施期内按年等额支付，"
+                         "且 Cost 目标改按实际支付年计入。upfront 下失效单元花掉了"
+                         "预算却从不进入 Cost（实测差额 4290/13470），staged 下"
+                         "两者按构造相等")
+    ap.add_argument("--stage-init", type=float, default=None,
+                    help="staged 口径下立项当年支付的比例，默认 0.2")
     ap.add_argument("--gamma", type=float, default=None,
                     help="年度折现率，默认 0.95。敏感性方向 {0.90, 0.95, 0.926}；"
                          "0.926 对应财政部社会折现率 8%%")
@@ -223,4 +330,9 @@ def from_args(a):
     """从 argparse 结果取出 apply() 用的关键字字典。"""
     return dict(tau_valid=a.tau_valid, tau_ext=a.tau_ext,
                 cooldown=a.cooldown, build_years=a.build_years,
-                gamma=getattr(a, "gamma", None))
+                gamma=getattr(a, "gamma", None),
+                build_years_by_channel=getattr(a, "build_years_by_channel", None),
+                quota=getattr(a, "quota", None),
+                tau_approval=getattr(a, "tau_approval", None),
+                budget_mode=getattr(a, "budget_mode", None),
+                stage_init=getattr(a, "stage_init", None))

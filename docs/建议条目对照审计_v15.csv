@@ -14,7 +14,7 @@ B12,时空优先级地图输出,现落盘 rec_*.csv(逐年立项)/objectives.csv
 §6,Global state 补全,"时间 F[:,14]、余额 rows[:,N_FEAT+15] 已有；缺配额余量、活跃项目计数、α",部分满足,需改：补全局状态特征
 §8,sequential multi-selection + STOP,"sample_action 在 QUOTA 内逐次采样、每次更新掩码；STOP=(-1,-1) 已有",已满足,不改
 §9,temporal feasibility mask 用柔性版,晚立项不禁止；T_eval 修好后由折现自然惩罚,已满足,不改（比 terminal penalty 干净）
-§11.1,空间奖励改增量式 Φ(S_t+1)−Φ(S_t),现为存量式：step_reward 在当年 LU 上求值，evaluate 按 γ^t 累加,冲突,建议不采纳：增量式折现后近似 telescoping 到终局差值，弱化「早改善→多受益年」
+§11.1,空间奖励改增量式 Φ(S_t+1)−Φ(S_t),step_reward(mode='delta') 为默认，env_gym.step 按默认调用 → 空间目标本就是逐年增量 Φ(S_t)−Φ(S_{t-1})；'level' 仅为可选档。函数内注明改增量的实测依据：绝对水平下三个差异极大的基线在 7 个空间目标上相对离散度仅 0.09%–0.26%（时序目标 22%–82%）,已满足,不改（我先前误判为存量式，据此下的'不采纳'结论已作废）
 §12,Floor 加预期完工价值 F·γ^(T̂−t),Floor 在建成年结算，evaluate 按真实年份 γ^t 折现 → 数学上已等于 F·γ^T̂,已等价满足,不改（用实际完工年而非预期值）
 §13,Cost 改为分阶段,cost 在建成年一次记(convert_cost),需改,与 B8 同一处改动：按阶段成本表分摊
 §14,施工扰动保留,"R.disrupt(sigma,uid,res_map)，DISRUPT_RADIUS=3 格=300m",已满足,不改
