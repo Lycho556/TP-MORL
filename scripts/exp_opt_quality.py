@@ -51,7 +51,8 @@ def one_run(job):
 
     # spawn 子进程重新 import 模块、拿回默认值，故必须在此再改写一次情景参数。
     scenario.apply(budget=budget, carry=carry, growth=growth,
-                   horizon=scen["horizon"], **scen["inst"])
+                   horizon=scen["horizon"], horizon_eval=scen.get("horizon_eval"),
+                   **scen["inst"])
     sc = _load_scale(ds, budget, carry, growth, scen)
     # 守卫：_load_scale 在缓存未命中时会经 reference_returns 改写情景全局。2026-09-12
     # 之前它不还原，导致 FAR_GROWTH 被遗留成 0.1——批次 v12 有三组因此在与自己记录的
@@ -62,7 +63,8 @@ def one_run(job):
         f"建分母后 FAR_GROWTH 被改写：期望 {growth}，实际 {_EG.FAR_GROWTH}")
     assert abs(_EG.BUDGET - float(budget)) < 1e-9 and abs(_EG.CARRY_CAP - float(carry)) < 1e-9, (
         f"建分母后预算/结转被改写：期望 {budget}/{carry}，实际 {_EG.BUDGET}/{_EG.CARRY_CAP}")
-    env = RenewalEnv(ds, T=scen["horizon"], weights=T.weight_vector(alpha), scale=sc)
+    env = RenewalEnv(ds, T=scen["horizon"], T_eval=scen.get("horizon_eval"),
+                     weights=T.weight_vector(alpha), scale=sc)
 
     t0 = time.time()
     net, hist = T.train(env, iters=iters, eps_per_iter=eps, seed=seed)
@@ -104,9 +106,11 @@ def random_runs(ds, seeds, budget, carry, growth, scen):
     from tpmorl.rl import train_ppo as T, scenario
     from tpmorl.rl.env_gym import RenewalEnv
     scenario.apply(budget=budget, carry=carry, growth=growth,
-                   horizon=scen["horizon"], **scen["inst"])
+                   horizon=scen["horizon"], horizon_eval=scen.get("horizon_eval"),
+                   **scen["inst"])
     sc = _load_scale(ds, budget, carry, growth, scen)
-    env = RenewalEnv(ds, T=scen["horizon"], weights=T.weight_vector(0.5), scale=sc)
+    env = RenewalEnv(ds, T=scen["horizon"], T_eval=scen.get("horizon_eval"),
+                     weights=T.weight_vector(0.5), scale=sc)
     out = []
     for s in seeds:
         g = T.eval_random(env, seed=s)
@@ -121,9 +125,12 @@ def main(ds, out, iters, eps, budget, carry, growth, workers, scen):
     # 主进程也要改写：下面 build_scale 的缓存键含制度参数，须与子进程一致。
     from tpmorl.rl import scenario
     scenario.apply(budget=budget, carry=carry, growth=growth,
-                   horizon=scen["horizon"], **scen["inst"])
+                   horizon=scen["horizon"], horizon_eval=scen.get("horizon_eval"),
+                   **scen["inst"])
     print(f"{len(jobs)} 个运行 × {iters} 迭代 × {eps} 回合  并行 {workers}\n"
-          + scenario.describe() + f"\n规划期 T={scen['horizon']}", flush=True)
+          + scenario.describe()
+          + f"\n决策期 T={scen['horizon']}"
+          + f"  评价期 T_eval={scen.get('horizon_eval') or scen['horizon']}", flush=True)
 
     # 必须在起进程池**之前**把分母落盘：否则 workers 会同时构建并竞争写同一个文件。
     # 2026-09-12 修正：原先这里无条件预建 `ref_`（逐增长率分母），但启用 --fixed-scale
@@ -165,7 +172,8 @@ def main(ds, out, iters, eps, budget, carry, growth, workers, scen):
     with open(os.path.join(out, "runs.json"), "w") as f:
         json.dump(dict(config=dict(iters=iters, eps=eps, budget=budget, carry=carry,
                                    growth=growth, alphas=ALPHAS, seeds=SEEDS,
-                                   horizon=scen["horizon"], **scen["inst"]),
+                                   horizon=scen["horizon"], horizon_eval=scen.get("horizon_eval"),
+                   **scen["inst"]),
                        runs=res, random=rnd), f)
 
     rows = []
@@ -198,7 +206,8 @@ if __name__ == "__main__":
     scenario.add_args(ap)
     a = ap.parse_args()
     main(a.dataset, a.out, a.iters, a.eps, a.budget, a.carry, a.growth, a.workers,
-         dict(horizon=a.horizon, inst=scenario.from_args(a),
+         dict(horizon=a.horizon, horizon_eval=a.horizon_eval,
+              inst=scenario.from_args(a),
               scale_growth=a.scale_growth,
               fixed_scale=([float(x) for x in a.fixed_scale.split(",")]
                            if a.fixed_scale else None)))

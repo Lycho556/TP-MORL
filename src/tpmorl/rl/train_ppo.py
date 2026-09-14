@@ -127,6 +127,20 @@ def run_episode(env, net, greedy=False, seed=None):
         tr["X"].append(Xt); tr["meta"].append(meta); tr["picks"].append(picks)
         tr["cost"].append(cost); tr["budget"].append(b)
         tr["units_t"].append(units_t); tr["cost_t"].append(cost_t)
+    # 尾部评价期（T_eval > T 时才进入）：不调用策略、不立项、不进钱，
+    # 只推进状态机并结算建成年释放的 11 个目标。
+    # 尾部的折现奖励折回最后一个决策步，这样 gae 的回报口径仍然正确，
+    # 而轨迹长度保持 T——buf/gae/采样器/优势归一化全都无需改动。
+    # vec 则按真实年份 append，evaluate() 里的 gamma**t 会自动给出正确折现。
+    tail = 0.0
+    for k in range(1, env.T_eval - env.T + 1):
+        _, r, done, info = env.step([])
+        tail += (env.gamma ** k) * r
+        tr["vec"].append(info["vec"])
+        if done:
+            break
+    if tail and tr["r"]:
+        tr["r"][-1] += tail
     return tr
 
 
@@ -222,19 +236,23 @@ def eval_random(env, n_ep=5, seed=0):
     for e in range(n_ep):
         env.reset(seed=90000 + e)
         g = np.zeros(len(OBJ_NAMES))
-        for t in range(env.T):
-            X, meta, cost, units = env.pairs()
-            act, used, left = [], set(), env.budget
-            order = rng.permutation(len(meta))
-            for i in order:
-                if len(act) >= QUOTA:
-                    break
-                u = meta[i][0]
-                if u < 0 or u in used or cost[i] > left + 1e-6:
-                    continue
-                act.append(meta[i]); used.add(u); left -= float(cost[i])
+        for t in range(env.T_eval):
+            act = []
+            if t < env.T:          # 尾部评价年不立项，与策略侧口径一致
+                X, meta, cost, units = env.pairs()
+                used, left = set(), env.budget
+                order = rng.permutation(len(meta))
+                for i in order:
+                    if len(act) >= QUOTA:
+                        break
+                    u = meta[i][0]
+                    if u < 0 or u in used or cost[i] > left + 1e-6:
+                        continue
+                    act.append(meta[i]); used.add(u); left -= float(cost[i])
             _, r, done, info = env.step(act)
             g += (env.gamma ** t) * info["vec"] * env.scale
+            if done:
+                break
         V.append(g)
     return np.mean(V, 0)
 

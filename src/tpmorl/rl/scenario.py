@@ -17,6 +17,7 @@ BUDGET_FIELDS = ("budget", "carry", "growth")
 
 
 _HORIZON = None      # 仅供 inst_tag() 入键；T 本身由各脚本传给 RenewalEnv
+_HORIZON_EVAL = None # 同上，对应 RenewalEnv 的 T_eval（尾部评价期）
 
 _DEFAULTS = None     # 首次 reset()/apply() 时抓拍的模块出厂值
 
@@ -44,7 +45,7 @@ def reset():
     的说明）：**沉默的状态继承**。多进程池若复用 worker（Pool 默认行为），同样会踩到，
     故审计类脚本除调用本函数外还应设 `maxtasksperchild=1`。
     """
-    global _DEFAULTS, _HORIZON
+    global _DEFAULTS, _HORIZON, _HORIZON_EVAL
     from tpmorl.rl import env_gym
     from tpmorl.env import schedule as S
     if _DEFAULTS is None:            # 进程内首次调用即出厂值，无需恢复
@@ -56,18 +57,21 @@ def reset():
     S.TAU_VALID, S.TAU_EXT = d["TAU_VALID"], d["TAU_EXT"]
     S.COOLDOWN, S.BUILD_YEARS = d["COOLDOWN"], d["BUILD_YEARS"]
     S.BUILD_YEARS_BY_CHANNEL = dict(d["BUILD_YEARS_BY_CHANNEL"])
-    _HORIZON = None
+    _HORIZON = _HORIZON_EVAL = None
 
 
 def apply(budget=None, carry=None, growth=None,
           tau_valid=None, tau_ext=None, cooldown=None, build_years=None,
-          horizon=None, gamma=None):
+          horizon=None, gamma=None, horizon_eval=None):
     """把情景参数写回模块常量。None 表示沿用模块默认值，不改写。
 
     `horizon` 不改写任何常量，只登记进 `inst_tag()`：规划期长度改变可达上界，
     分母不可跨 T 复用。
+
+    `horizon_eval` 同理：启用尾部评价会改变可达回报的上界，分母**不可**与
+    闭区间口径共用缓存。若忘记入键，会静默复用旧分母——这正是必须显式登记的原因。
     """
-    global _HORIZON, _DEFAULTS
+    global _HORIZON, _HORIZON_EVAL, _DEFAULTS
     from tpmorl.rl import env_gym
     from tpmorl.env import schedule as S
 
@@ -76,6 +80,8 @@ def apply(budget=None, carry=None, growth=None,
 
     if horizon is not None:
         _HORIZON = int(horizon)
+    if horizon_eval is not None:
+        _HORIZON_EVAL = int(horizon_eval)
 
     if budget is not None:
         env_gym.BUDGET = float(budget)
@@ -133,6 +139,10 @@ def inst_tag():
     y = "".join(f"{c}-{S.BUILD_YEARS_BY_CHANNEL[c]}"
                 for c in sorted(S.BUILD_YEARS_BY_CHANNEL))
     t = "" if _HORIZON is None else f"T{_HORIZON}"
+    # 尾部评价期只在被显式启用且真的长于决策期时入键：
+    # 这样闭区间口径（T_eval==T）的键与既有分母缓存逐字一致，历史结果不作废。
+    if _HORIZON_EVAL is not None and _HORIZON_EVAL != _HORIZON:
+        t += f"X{_HORIZON_EVAL}"
     # γ 只在非默认值时入键：默认档保持与既有 _R7 分母缓存的键一致，不作废历史结果
     from tpmorl.rl import env_gym
     g = "" if env_gym.GAMMA == 0.95 else f"G{env_gym.GAMMA:g}".replace(".", "")
@@ -167,6 +177,11 @@ def add_args(ap):
                          "0.926 对应财政部社会折现率 8%%")
     ap.add_argument("--horizon", type=int, default=15,
                     help="规划期长度 T。建设年限延长后可能需要放宽，见第 3 条诊断")
+    ap.add_argument("--horizon-eval", type=int, default=None,
+                    help="评价期 T_eval：第 T 年起不再立项、不再进钱，仅推进状态机"
+                         "并结算建成年释放的目标，直到管道排空。默认 None=闭区间口径"
+                         "（等于 T）。主设定建议 26=15+3+2+5+1，依据见 "
+                         "docs/跨期结转_口径修正_v1.md")
 
 
 def from_args(a):

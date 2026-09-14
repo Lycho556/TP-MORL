@@ -55,10 +55,21 @@ GAMMA = 0.95      # 年度折现率。情景参数，由 scenario.apply() 改写
 
 
 class RenewalEnv:
-    def __init__(self, ds, T=15, weights=None, scale=None, seed=0, gamma=None):
+    def __init__(self, ds, T=15, weights=None, scale=None, seed=0, gamma=None,
+                 T_eval=None):
+        """T = 决策期（可立项、有预算到账的年数）；T_eval = 评价期（推进到管道排空）。
+
+        T_eval 默认等于 T，即旧的闭区间口径——保证既有结果可复现。
+        传 T_eval > T 时启用「立项与记分分离」：第 T 年起不再立项、不再进钱，
+        仅推进状态机并结算建成年释放的目标，直到 t == T_eval。
+        依据与推导见 docs/跨期结转_口径修正_v1.md。
+        """
         (self.LU0, self.cls, self.road, self.water, self.inside,
          self.uid, self.U, self.UUM, self.CM, self.CCM) = load(ds)
         self.T, self.seed = T, seed
+        self.T_eval = int(T if T_eval is None else T_eval)
+        if self.T_eval < self.T:
+            raise ValueError(f"T_eval({self.T_eval}) 不得小于决策期 T({self.T})")
         # gamma=None 表示取模块常量：子进程 import 后由 scenario.apply() 改写才生效
         self.gamma = GAMMA if gamma is None else float(gamma)
         self.n = len(self.U)
@@ -90,7 +101,10 @@ class RenewalEnv:
         prog[s1] = e.tau[s1] / max(e.tau_max, 1)
         F[:, 12] = np.clip(prog, 0.0, 1.0)
         F[:, 13] = self.farcap / 10.0
-        F[:, 14] = self.t / self.T
+        # 除以决策期 T（不是 T_eval）：该特征的语义是「决策期内的进度」，
+        # 且必须与 T_eval=T 的旧口径逐值一致。尾部 t>=T 时钳到 1.0，
+        # 否则会喂给策略网络训练时从未见过的 >1 取值。
+        F[:, 14] = min(self.t / self.T, 1.0)
         F[:, 15] = self.mask_init.astype(np.float32)
         return F
 
@@ -162,10 +176,16 @@ class RenewalEnv:
     def step(self, actions):
         """actions: [(单元, 目标功能), ...]，至多 QUOTA 个；STOP 项被忽略。"""
         actions = [(int(u), int(tg)) for u, tg in actions if int(u) >= 0]
+        tail = self.t >= self.T          # 尾部评价年：不立项、不进钱
+        if tail and actions:
+            raise AssertionError(
+                f"第 {self.t} 年已超出决策期 T={self.T}，不得立项（收到 {len(actions)} 个动作）")
         spent = sum(self.pair_cost(u, tg) for u, tg in actions)
         assert spent <= self.budget + 1e-6, f"超预算 {spent:.0f} > {self.budget:.0f}"
         self.budget_hist.append(self.budget); self.spent_hist.append(spent)
-        self.budget = min(self.budget - spent + BUDGET, CARRY_CAP * BUDGET)
+        # 年度预算只在决策期内到账；尾部余额冻结（既不进钱也无处可花）
+        if not tail:
+            self.budget = min(self.budget - spent + BUDGET, CARRY_CAP * BUDGET)
         for u, tg in actions:
             self.plan[int(u)] = int(tg)
         prev = self.env.sigma.copy()
@@ -192,5 +212,8 @@ class RenewalEnv:
         r = float((self.weights / self.weights.sum() * vec).sum())
 
         self.t += 1
-        self.mask_init = self.env.mask_initiate()
-        return self.obs(), r, self.t >= self.T, dict(vec=vec, raw=rv, events=ev)
+        # 决策期结束后立项掩码强制全关：pairs() 因此只剩 STOP 行，
+        # 采样器与随机基线都无需改动即可在尾部自然「无动作」。
+        self.mask_init = (self.env.mask_initiate() if self.t < self.T
+                          else np.zeros(self.n, dtype=bool))
+        return self.obs(), r, self.t >= self.T_eval, dict(vec=vec, raw=rv, events=ev)
