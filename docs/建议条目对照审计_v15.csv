@@ -1,0 +1,27 @@
+﻿条目,建议要求,现状（代码证据）,判定,处理
+A1,决策年与实施年分离,状态机 S1→S2(hazard)→S3(build_years)→S4 已是延迟实施；本轮又把记分期 T_eval 与决策期 T 分离(a9a6c00),已满足,不改
+A2,S0–S5 + elapsed/remaining timer,"内部已有 tau(S1已用年)/clock(S2,S3,S5计时)；obs F[:,12] 暴露「当前状态内已用比例」prog∈[0,1]",部分满足,需改：补显式 remaining_build / remaining_valid / expected_completion_year
+A3,解决 completion-only reward 的晚期盲区,"本轮 T_eval 口径分离已修：晚立项交付按真实年份折现计入(8e3dde1, a9a6c00)",已满足,不改
+A4,建设期做异质性,"BUILD_YEARS_BY_CHANNEL={1:5,2:5,3:5,5:5} 四通道全为 5（运行时实测），BUILD_YEARS_BY_MODE={拆除重建:5,综合整治:3} 已定义但综合整治未进动作空间，无调用方；_build_years_array 支持逐单元数组，机制在位但未启用",需改,按通道真正分档（需依据），并新增 τ_C=3/5/7 全局场景档供 EXP3 扫描
+A5,审批延迟做不确定性,"HAZARD=(0.174,0.212,0.239,0.277,0.179) 为逐有效年条件批准率，已随机且逐年异质",部分满足,需改：新增 τ_A=1/3/5 场景可控档
+A6,state 增加 remaining horizon,"F[:,14]=min(t/T,1)，remaining=1−该值，线性等价；已有信息",已满足,增量：新增逐单元 slack（全局 t/T 无法替代）
+A7,重新设计 baseline,现只有 eval_random 与 scale 的参考策略集；无 greedy / myopic / oracle,需改,实现三个基线，共用同一 evaluate 与同一分母
+B8,available / committed budget 分离,env.step 在立项当年一次扣 pair_cost 全额；budget 单一标量,需改,分阶段占用：立项进 committed，按阶段释放为实际支出
+B9,5 primary + 6 operational 目标分层,OBJ_SPATIAL 7 项 + OBJ_TEMPORAL 4 项；α 只线性混合权重向量,分析层面,不改代码；需先用实测数据核实「仅 5 个随 α 明显变化」
+B10,Oracle 上界,无,需改,决策时可见本回合审批/建设实现值的策略
+B11,5–10 random seeds,7 权重档 × 5 种子 = 35 次/组,已满足,不改
+B12,时空优先级地图输出,现落盘 rec_*.csv(逐年立项)/objectives.csv/curves.csv；无地图数据,需改,补 priority/timing/trajectory 三类绘图数据
+§6,Global state 补全,"时间 F[:,14]、余额 rows[:,N_FEAT+15] 已有；缺配额余量、活跃项目计数、α",部分满足,需改：补全局状态特征
+§8,sequential multi-selection + STOP,"sample_action 在 QUOTA 内逐次采样、每次更新掩码；STOP=(-1,-1) 已有",已满足,不改
+§9,temporal feasibility mask 用柔性版,晚立项不禁止；T_eval 修好后由折现自然惩罚,已满足,不改（比 terminal penalty 干净）
+§11.1,空间奖励改增量式 Φ(S_t+1)−Φ(S_t),现为存量式：step_reward 在当年 LU 上求值，evaluate 按 γ^t 累加,冲突,建议不采纳：增量式折现后近似 telescoping 到终局差值，弱化「早改善→多受益年」
+§12,Floor 加预期完工价值 F·γ^(T̂−t),Floor 在建成年结算，evaluate 按真实年份 γ^t 折现 → 数学上已等于 F·γ^T̂,已等价满足,不改（用实际完工年而非预期值）
+§13,Cost 改为分阶段,cost 在建成年一次记(convert_cost),需改,与 B8 同一处改动：按阶段成本表分摊
+§14,施工扰动保留,"R.disrupt(sigma,uid,res_map)，DISRUPT_RADIUS=3 格=300m",已满足,不改
+§15,失效惩罚保留,Expire 目标 + EXPIRE_PENALTY=1.0；S5 在 COOLDOWN=inf 下为吸收态,已满足,不改
+§17,CRH / ACD / LSR,无；现有 idle_years / stop_rate / spend_ratio,需改,按项目记立项年、完工年、终态后计算
+§19,α 至少 5 档,ALPHAS 为 7 档,已满足,不改
+§23,"配额敏感性 Q∈{2,3,4,6}",QUOTA=3 为模块常量，无 CLI 参数,需改,新增 --quota 并接入 scenario 与分母缓存键
+§27,按 validation 最优挑 checkpoint,train() 返回最终网络，evaluate 直接评最终网络，不挑 checkpoint,前提不成立,不改；如需再议须先证明最终网络劣于中途
+§28,三层评价指标体系,现落盘偏优化层,需改,补规划层与空间层的统一落盘
+C13-16,暂不做 GNN / LLM / LoRA / 改网络,本来未做；建议 Step5 亦为「最后才改 PPO」,已满足,不改
