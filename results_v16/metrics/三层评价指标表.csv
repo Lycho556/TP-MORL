@@ -1,0 +1,19 @@
+﻿层,指标,定义,时间口径,数据来源,可跨情景比,备注
+一 目标层,目标 Gdp（原始量纲）,评价期内累计的 Gdp 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 Gdp,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+一 目标层,目标 Eco（原始量纲）,评价期内累计的 Eco 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 Eco,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+一 目标层,目标 Res（原始量纲）,评价期内累计的 Res 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 Res,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+一 目标层,目标 Emp（原始量纲）,评价期内累计的 Emp 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 Emp,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+一 目标层,目标 Aec（原始量纲）,评价期内累计的 Aec 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 Aec,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+一 目标层,目标 E2r（原始量纲）,评价期内累计的 E2r 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 E2r,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+一 目标层,目标 Cpt（原始量纲）,评价期内累计的 Cpt 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 Cpt,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+一 目标层,目标 Floor（原始量纲）,评价期内累计的 Floor 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 Floor,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+一 目标层,目标 Cost（原始量纲）,评价期内累计的 Cost 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 Cost,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+一 目标层,目标 Disrupt（原始量纲）,评价期内累计的 Disrupt 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 Disrupt,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+一 目标层,目标 Expire（原始量纲）,评价期内累计的 Expire 目标值，未做任何归一化,T_eval（评价期，建成年结算）,objectives.csv 列 Expire,是,原始量纲，不含情景相关分母，故可跨情景直接比较
+二 实施层,CRH_T（期内完成率，决策期口径）,期望完工单元数 / 立项单元数，完工判据 t_c <= T-1,T（决策期）,"rec_a*_s*.csv 列 unit(>=0 过滤)/year/channel + 情景参数 (hazard, tau_max, build_years)，按 t_c=y0+k+b+2 解析展开",是,比率指标，分母是本组自己的立项数，不依赖参考策略集，故可跨情景比
+二 实施层,CRH_Teval（期内完成率，评价期口径）,期望完工单元数 / 立项单元数，完工判据 t_c <= T_eval-1,T_eval（评价期）,同 CRH_T，仅完工判据的时间界改为 T_eval-1,是,恒有 CRH_Teval >= CRH_T；闭区间批次(T_eval==T)下两者相等
+二 实施层,ACD（平均交付时长）,完工年 - 立项年的加权均值，只对该口径下已完工单元计；并给出 p25/p50/p75,随 CRH 分 T / T_eval 两版,rec_a*_s*.csv 列 year/channel + 情景参数，duration=t_c-y0,是,分布右偏且**右尾被截断**：未在界内完工者（含失效单元）不计入，故 ACD 系统性偏小，只能同口径横比
+二 实施层,LSR（窗外立项率）,立项时 slack<0 的单元占全部立项的比例；slack=(T-1-y0)-ey，ey=E[离开S1]+1+b,T（决策期，与 env_gym 的 slack 特征同式）,rec_a*_s*.csv 列 year/channel + 情景参数；ey 复用 schedule.expected_years_to_delivery(if_initiated_now=True) 的期望口径,是,期望口径而非乐观口径；乐观口径会高估可交付性
+二 实施层,失效率（S5 占立项数）,有效期届满仍未获批而进入 S5 的期望单元数 / 立项单元数,分 T / T_eval 两版（t_x=y0+tau_max 须落在界内）；另给无截断值 ∏(1-h),"rec_a*_s*.csv 列 year(>=0 过滤) + 情景参数 (hazard, tau_max)",是,无截断值与立项年无关，只由 hazard×tau_max 决定；带截断值才反映择时（临界前立项者来不及失效）
+二 实施层,资金闲置率,1 - 累计支出 / 累计到账；累计到账 = budget * T * 回合数,T（决策期；尾部评价年不进钱）,rec_a*_s*.csv 列 cost（unit>=0 过滤）求和作分子；分母由 runs.json config.budget 与 config.horizon 给出,是,与既有判据 diag.spend_ratio 同分母，可逐位对照；分解出 clipped_ratio（超结转上限被作废）与 residual_ratio（期末余额）
+三 标量层,标量化折扣回报,Σ_t γ^t · (w/Σw)·(符号化原始目标 / scale)，scale 取参考策略集的可达上界,T_eval（评价期）,curves.csv（训练曲线）/ runs.json runs[*].curve；分母来自 rl/scale.py 的 REF_MODES×REF_SEEDS 参考集,否,**不可跨情景比**：分母 scale 依赖情景（quota/hazard/budget_mode 等均进 inst_tag 缓存键），换情景即换分母，数值不同量纲

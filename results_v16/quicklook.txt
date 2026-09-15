@@ -1,0 +1,86 @@
+  buildmix    True 0.517066         7        0.511256     0.634308    True
+    bytype    True 0.690409         5        0.690409     1.000000    True
+ bytypeAbl    True 0.677143         5        0.677143     1.000000    True
+    carry1    True 0.664740         5        0.664740     1.000000    True
+      main    True 0.663538         5        0.663538     1.000000    True
+      poor    True 0.717827         5        0.717827     1.000000    True
+   poorAbl    True 0.698551         5        0.698551     1.000000    True
+    quota2    True 0.666667         5        0.666667     1.000000    True
+    richQ6    True 0.647665         5        0.647665     1.000000    True
+ richQ6Abl    True 0.646983         5        0.646983     1.000000    True
+    staged    True 0.677834         5        0.677834     1.000000    True
+ statutory    True 0.596364         6        0.596364     1.000000    True
+     tauA1    True 0.466844         7        0.535146     0.928747    True
+     tauA5    True 0.663690         5        0.663690     1.000000    True
+
+        实施层指标     对比对象  分层数  每层样本数中位数  最小层样本数  组内分层平均相关r                 解读
+        CRH_T 标量层_折扣回报  107         5       4   0.076247 接近 0：实施层携带标量层没有的信息
+          LSR 标量层_折扣回报  107         5       4  -0.103171 接近 0：实施层携带标量层没有的信息
+expire_rate_T 标量层_折扣回报  100         5       4   0.040480 接近 0：实施层携带标量层没有的信息
+   idle_ratio 标量层_折扣回报  110         5       5   0.207800 接近 0：实施层携带标量层没有的信息
+各组生效的 obs_lifecycle（须与组名一致，main=True / ablation=False）：
+  ablation     obs_lifecycle_eff = False
+  budget1500   obs_lifecycle_eff = True
+  buildmix     obs_lifecycle_eff = True
+  bytype       obs_lifecycle_eff = True
+  bytypeAbl    obs_lifecycle_eff = False
+  carry1       obs_lifecycle_eff = True
+  main         obs_lifecycle_eff = True
+  poor         obs_lifecycle_eff = True
+  poorAbl      obs_lifecycle_eff = False
+  quota2       obs_lifecycle_eff = True
+  richQ6       obs_lifecycle_eff = True
+  richQ6Abl    obs_lifecycle_eff = False
+  staged       obs_lifecycle_eff = True
+  statutory    obs_lifecycle_eff = True
+  tauA1        obs_lifecycle_eff = True
+  tauA5        obs_lifecycle_eff = True
+
+配对样本 35 对（权重档 × 种子逐对配齐）
+| 指标 | 主组 | 消融组 | 差(主−消融) | 配对 t 检验 p | 期望方向 |
+|---|---|---|---|---|---|
+| LSR | 0.6635 | 0.6512 | +0.01229 | 0.0504 | 下降 |
+| CRH_T | 0.3011 | 0.3075 | -0.006435 | 0.103 | 上升 |
+| ACD_T | 8.375 | 8.387 | -0.0119 | 0.0365 | 下降 |
+| expire_rate_T | 0.1959 | 0.1966 | -0.000695 | 0.636 | 下降 |
+| 标量回报 | 0.7159 | 0.7125 | +0.003311 | 0.526 | 上升 |
+
+注：LSR 下降且 CRH_T 上升 = 主判据成立。标量回报一栏之所以可比，是因为这两组**共用同一套分母**（消融开关不入缓存键）；其余任意两组之间都不可比这一列。
+
+--- 次判据：立项年份分布（均匀期望 7.0）
+| 组 | 均年 | 卡方 p | 前移 |
+|---|---|---|---|
+| ablation | 6.92 | 0.693 | 否 |
+| budget1500 | 6.96 | 0.947 | 否 |
+| buildmix | 6.86 | 0.233 | 否 |
+| bytype | 7.16 | 0.000244 | 否 |
+| bytypeAbl | 7.05 | 0.558 | 否 |
+| carry1 | 6.99 | 0.954 | 否 |
+| main | 6.98 | 0.999 | 否 |
+| poor | 7.49 | 8.07e-09 | 否 |
+| poorAbl | 7.36 | 0.00378 | 否 |
+| quota2 | 6.99 | 1 | 否 |
+| richQ6 | 6.88 | 0.0692 | 否 |
+| richQ6Abl | 6.88 | 0.0572 | 否 |
+| staged | 7.16 | 0.493 | 否 |
+| statutory | 7.02 | 0.869 | 否 |
+| tauA1 | 7.00 | 0.99 | 否 |
+| tauA5 | 6.95 | 0.851 | 否 |
+
+--- 策略 vs 规则基线（期内交付率 CRH_T；oracle 是**松**上界，只去掉审批不确定性这一个维度，差距不能读作"策略还差多少"）
+  ablation     策略 CRH_T=0.307  backload=0.000  evenspread=0.240  frontload=0.613  greedy_crh=0.613  myopic=0.293  oracle=1.000
+  budget1500   策略 CRH_T=0.301  backload=0.000  evenspread=0.267  frontload=0.557  greedy_crh=0.557  myopic=0.280  oracle=1.000
+  buildmix     策略 CRH_T=0.399  backload=0.000  evenspread=0.320  frontload=0.613  greedy_crh=0.676  myopic=0.382  oracle=1.000
+  bytype       策略 CRH_T=0.287  backload=0.000  evenspread=0.253  frontload=0.587  greedy_crh=0.587  myopic=0.286  oracle=1.000
+  bytypeAbl    策略 CRH_T=0.294  backload=0.000  evenspread=0.253  frontload=0.587  greedy_crh=0.587  myopic=0.286  oracle=1.000
+  carry1       策略 CRH_T=0.302  backload=0.000  evenspread=0.280  frontload=0.560  greedy_crh=0.560  myopic=0.295  oracle=1.000
+  main         策略 CRH_T=0.301  backload=0.000  evenspread=0.240  frontload=0.613  greedy_crh=0.613  myopic=0.293  oracle=1.000
+  poor         策略 CRH_T=0.265  backload=0.000  evenspread=0.280  frontload=0.557  greedy_crh=0.557  myopic=0.270  oracle=1.000
+  poorAbl      策略 CRH_T=0.274  backload=0.000  evenspread=0.280  frontload=0.557  greedy_crh=0.557  myopic=0.270  oracle=1.000
+  quota2       策略 CRH_T=0.300  backload=0.000  evenspread=0.320  frontload=0.640  greedy_crh=0.640  myopic=0.253  oracle=1.000
+  richQ6       策略 CRH_T=0.310  backload=0.000  evenspread=0.240  frontload=0.679  greedy_crh=0.679  myopic=0.382  oracle=1.000
+  richQ6Abl    策略 CRH_T=0.311  backload=0.000  evenspread=0.240  frontload=0.679  greedy_crh=0.679  myopic=0.382  oracle=1.000
+  staged       策略 CRH_T=0.290  backload=0.000  evenspread=0.267  frontload=0.613  greedy_crh=0.613  myopic=0.280  oracle=1.000
+  statutory    策略 CRH_T=0.238  backload=0.000  evenspread=0.227  frontload=0.453  greedy_crh=0.433  myopic=0.204  oracle=1.000
+  tauA1        策略 CRH_T=0.533  backload=0.000  evenspread=0.533  frontload=1.000  greedy_crh=1.000  myopic=0.533  oracle=1.000
+  tauA5        策略 CRH_T=0.291  backload=0.000  evenspread=0.253  frontload=0.587  greedy_crh=0.587  myopic=0.276  oracle=1.000
