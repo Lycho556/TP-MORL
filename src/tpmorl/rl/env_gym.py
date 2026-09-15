@@ -227,11 +227,22 @@ class RenewalEnv:
         # (单元 × 目标) 成本矩阵：只依赖静态的 ncell/CCM/hist0，一次算好。
         # 原先每年为 ~1985 个配对逐个调用 pair_cost，是训练的主要开销之一。
         # 注意：因此在 env 构造之后再改 CELL_COST/CCM 不会生效。
+        # 逐类拆除基数：按候选池构成现算（均值保持），并写回 Reward 实例，使
+        # 「预算路径 PC」与「Cost 目标路径 convert_cost」读**同一个向量对象**。
+        # flat 档该向量恒等于 CELL_COST，PC 与改动前逐位相同（数值中性）。
+        from tpmorl.objectives.reward import cell_base_vector, CELL_COST_MODE
+        self.cell_base = cell_base_vector(self.hist0, self.ncell, CELL_COST_MODE)
+        self.cell_cost_mode = str(CELL_COST_MODE)
+        self.R.cell_base = self.cell_base
         self.PC = np.zeros((len(self.hist0), 12), dtype=np.float64)
         for u, h in enumerate(self.hist0):
             for f, c in h.items():
-                self.PC[u] += self.CCM[f, :12] * c
-        self.PC += CELL_COST * np.asarray(self.ncell, dtype=np.float64)[:, None]
+                self.PC[u] += (self.CCM[f, :12] + self.cell_base[f]) * c
+        # 断言两条路径按构造相等：漏掉一侧正是 v1 的缺陷类型，须当场响。
+        _u = int(np.argmax(self.ncell))
+        assert abs(self.PC[_u, 6] - sum(self.R.convert_cost(f, 6, c)
+                                        for f, c in self.hist0[_u].items())) < 1e-9, \
+            "PC 与 convert_cost 口径不一致：拆除基数只进了一条路径"
         # 全量 (单元, 目标) 配对枚举：只依赖静态的通道归属，一次算好。
         # 每年的候选集 = 用 mask_init 在这三个数组上做布尔选择，无需重新枚举。
         ch_all = np.asarray(self.ch, dtype=int)

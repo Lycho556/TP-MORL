@@ -26,7 +26,9 @@ def _snapshot():
     """抓拍受 apply() 改写的全部模块常量的当前值。"""
     from tpmorl.rl import env_gym
     from tpmorl.env import schedule as S
-    return dict(BUDGET=env_gym.BUDGET, CARRY_CAP=env_gym.CARRY_CAP,
+    from tpmorl.objectives import reward as R
+    return dict(CELL_COST_MODE=R.CELL_COST_MODE,
+                BUDGET=env_gym.BUDGET, CARRY_CAP=env_gym.CARRY_CAP,
                 FAR_GROWTH=env_gym.FAR_GROWTH, GAMMA=env_gym.GAMMA,
                 BUDGET_MODE=env_gym.BUDGET_MODE, STAGE_INIT=env_gym.STAGE_INIT,
                 OBS_LIFECYCLE=env_gym.OBS_LIFECYCLE,
@@ -63,6 +65,8 @@ def reset():
     env_gym.BUDGET_MODE, env_gym.STAGE_INIT = d["BUDGET_MODE"], d["STAGE_INIT"]
     env_gym.OBS_LIFECYCLE = d["OBS_LIFECYCLE"]
     S.QUOTA, S.HAZARD = d["QUOTA"], tuple(d["HAZARD"])
+    from tpmorl.objectives import reward as R
+    R.CELL_COST_MODE = d["CELL_COST_MODE"]
     _HORIZON = _HORIZON_EVAL = None
 
 
@@ -70,7 +74,8 @@ def apply(budget=None, carry=None, growth=None,
           tau_valid=None, tau_ext=None, cooldown=None, build_years=None,
           horizon=None, gamma=None, horizon_eval=None,
           quota=None, tau_approval=None, build_years_by_channel=None,
-          budget_mode=None, stage_init=None, obs_lifecycle=None):
+          budget_mode=None, stage_init=None, obs_lifecycle=None,
+          cell_cost_mode=None):
     """把情景参数写回模块常量。None 表示沿用模块默认值，不改写。
 
     `horizon` 不改写任何常量，只登记进 `inst_tag()`：规划期长度改变可达上界，
@@ -154,6 +159,15 @@ def apply(budget=None, carry=None, growth=None,
         if not 0.0 <= si <= 1.0:
             raise ValueError(f"stage_init 须在 [0,1]，收到 {si}")
         env_gym.STAGE_INIT = si
+    if cell_cost_mode is not None:
+        # 拆除基数口径。bytype 把一刀切的每格基数换成按**被拆除现状类别**取值的
+        # 向量（均值保持，见 reward.cell_base_vector）。成本结构变了 → 可达上界变了
+        # → **必须**入 inst_tag，否则对照组会静默复用 flat 档的分母。
+        cm = str(cell_cost_mode).strip().lower()
+        if cm not in ("flat", "bytype"):
+            raise ValueError(f"cell_cost_mode 只能是 flat/bytype，收到 {cell_cost_mode}")
+        from tpmorl.objectives import reward as R
+        R.CELL_COST_MODE = cm
     if obs_lifecycle is not None:
         # 消融开关。刻意**不**进 inst_tag：参考策略不读观测，两组分母按构造相同，
         # 共用缓存才能让标量化回报直接相减（见 env_gym.OBS_LIFECYCLE 的说明）。
@@ -255,7 +269,12 @@ def inst_tag():
         m = ""
     else:
         m = f"M{env_gym.BUDGET_MODE[0].upper()}{env_gym.STAGE_INIT:g}".replace(".", "")
-    return f"V{S.TAU_VALID}E{S.TAU_EXT}{cooldown_tag()}Y{y}{t}{g}{q}{a}{m}"
+    # v16：拆除基数口径。bytype 改变成本结构（贵单元更贵、便宜单元更便宜），
+    # 可达上界随之变，故只在非出厂值时入键，flat 档的键与既有缓存逐字不变。
+    from tpmorl.objectives import reward as R
+    k = "" if R.CELL_COST_MODE == d.get("CELL_COST_MODE", R.CELL_COST_MODE) \
+        else f"K{R.CELL_COST_MODE[0].upper()}"
+    return f"V{S.TAU_VALID}E{S.TAU_EXT}{cooldown_tag()}Y{y}{t}{g}{q}{a}{m}{k}"
 
 
 def _hazard_tag(hz):
@@ -344,6 +363,12 @@ def add_args(ap):
                          "两者按构造相等")
     ap.add_argument("--stage-init", type=float, default=None,
                     help="staged 口径下立项当年支付的比例，默认 0.2")
+    ap.add_argument("--cell-cost-mode", default=None, choices=["flat", "bytype"],
+                    help="拆除基数口径。flat=每格同价（默认，与既往结果逐位等价）；"
+                         "bytype=按被拆除的现状用地类别取值（住宅>商业>工业>农地>"
+                         "生态），倍率按候选池构成**均值保持**归一，故两档总成本尺度"
+                         "相同、差异纯为类型间再分配。**倍率是假设不是标定值**："
+                         "单元表无投资额字段、平台无逐类补偿标准数据集")
     ap.add_argument("--no-obs-lifecycle", action="store_true",
                     help="消融：把生命周期观测特征（剩余有效年/剩余建设年/期望交付"
                          "年数/slack/期内可交付标志/在建管道占比，共 6 维）**置零**。"
@@ -375,6 +400,7 @@ def from_args(a):
                 tau_approval=getattr(a, "tau_approval", None),
                 budget_mode=getattr(a, "budget_mode", None),
                 stage_init=getattr(a, "stage_init", None),
+                cell_cost_mode=getattr(a, "cell_cost_mode", None),
                 # 未加 --no-obs-lifecycle 时传 None（不改写），而不是传 True：
                 # apply() 对 None 一律不改写，出厂值由 reset() 保证为 True。
                 # 传 True 会让"未指定"与"显式开启"在日志里无法区分。

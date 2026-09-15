@@ -106,6 +106,9 @@ class ScenarioSpec:
         default_factory=lambda: dict(BUILD_YEARS_BY_CHANNEL))
     budget: float = 900.0
     carry_cap: float | None = None
+    # 年度立项配额。窗内立项位的上限之一（另一个是资金），故 v16 起进 spec。
+    # None = 未知，此时只按资金算上限，`early_binding` 记为"资金"。
+    quota: int | None = None
 
     def __post_init__(self):
         self.T = int(self.T)
@@ -409,6 +412,59 @@ def implementation_metrics(rec: pd.DataFrame, spec: ScenarioSpec) -> dict:
     out["late_share_y0"] = y0
     out["late_share_late"] = float((y >= y0).mean())
     out["late_share_later"] = float((y >= y0 + 1).mean())
+
+    # --- 窗内立项位的占用情况（v16 新增，替代 LSR 作主判据）---------------
+    #
+    # 为什么换：LSR 是**占比**，分母是本组自己的立项总数，于是它被两件与择时无关的
+    # 事绑住。第一，年度额度按年到账、不可借贷，前 y0 年能立几个项有一个**资金上限**
+    # = y0·budget / 单元均价；第二，配额把窗内立项位硬顶在 y0·quota。v15 前 8 组实测
+    # 全部落在资金上限以内 2–3 个百分点（见 docs/验收_v15前8组.md），也就是说 LSR
+    # 几乎没有可动空间，而这一点与策略聪不聪明无关。更糟的是：放宽预算会让立项总数
+    # 上升、窗内立项位却仍被配额顶住，于是 LSR **反而变差**——它不是一个可优化的量。
+    #
+    # 故改报**绝对量与占用率**：
+    #   n_init_early     前 y0 年（含）的立项数／回合
+    #   cap_early_quota  配额给出的窗内立项位上限 = y0 × quota
+    #   cap_early_money  资金给出的上限 = y0 × budget / 立项单元均价（本组实测均价）
+    #   early_fill       占用率 = n_init_early / min(两个上限)  ← **新主判据**
+    #   early_binding    哪个上限更紧（"配额"／"资金"），即当前情景的瓶颈
+    # 占用率接近 1 说明"窗内能立的都立了、剩下的是制度顶死的"；明显小于 1 才说明
+    # 策略自己没用满窗口，那时候观测／奖励的改动才有可能起作用。
+    y0e = max(y0, 1)
+    n_early = float((y < y0).sum()) / n_ep
+    mean_cost = float(real["cost"].mean()) if "cost" in real.columns else float("nan")
+    cap_q = float(y0 * spec.quota) if getattr(spec, "quota", None) else float("nan")
+    cap_m = (y0 * float(spec.budget) / mean_cost
+             if mean_cost and mean_cost > 0 else float("nan"))
+    caps = [c for c in (cap_q, cap_m) if c == c]
+    cap = min(caps) if caps else float("nan")
+    out["n_init_early"] = n_early
+    out["late_share_y0_years"] = y0
+    out["cap_early_quota"] = cap_q
+    out["cap_early_money"] = cap_m
+    out["early_fill"] = n_early / cap if cap and cap == cap and cap > 0 else float("nan")
+    out["early_binding"] = ("配额" if cap_q == cap else "资金") if caps else ""
+    # 窗内**选得对不对**（v16 新增）。窗内立项位在钱松时会被配额顶死、任何策略
+    # 都能填满（实测 early_fill 0.99，连未训练的策略也是），故"立了几个"在那一档
+    # 不区分策略；真正的自由度是**立了哪几个**。这两项只看窗内那批单元：
+    #   CRH_T_early     窗内立项单元的期内交付率（选的是不是交付得了的单元）
+    #   slack_mean_early 窗内立项时的平均 slack（选的时点离"来不及"还有多远）
+    # 两者都不被配额顶住，可作 early_fill 饱和时的替代主判据。
+    early_ev = ev[ev["y0"] < y0]
+    if len(early_ev) and n_early > 0:
+        n_early_ev = int(early_ev.drop_duplicates(subset=["ep", "unit", "y0"]).shape[0])
+        de = early_ev[(early_ev["outcome"] == "approved")
+                      & (early_ev["t_complete"] <= spec.T - 1)]
+        out["CRH_T_early"] = (float(de["prob"].sum()) / n_early_ev
+                              if n_early_ev else float("nan"))
+        out["slack_mean_early"] = float(
+            early_ev.drop_duplicates(subset=["ep", "unit", "y0"])["slack"].mean())
+
+    # LSR 的结构下限与超出量：下限 = 1 − min(上限, 立项总数)/立项总数。
+    tot = n / n_ep
+    if cap == cap and tot > 0:
+        out["LSR_floor"] = float(1.0 - min(cap, tot) / tot)
+        out["LSR_excess"] = float(out["LSR"] - out["LSR_floor"])
 
     out.update(funds_decomposition(rec, spec))
     return out

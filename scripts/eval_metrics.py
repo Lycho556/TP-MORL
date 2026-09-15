@@ -157,6 +157,11 @@ def spec_of_group(gdir: str, override: dict) -> tuple[ScenarioSpec, dict]:
             src_by = "config"
             kw["build_years"] = ({int(k): int(v) for k, v in by.items()}
                                  if isinstance(by, dict) else int(by))
+    # 年度配额：窗内立项位的上限之一。读生效值 quota_eff，与 hazard 同理——
+    # 扫配额那几组若按默认 3 算，窗内占用率的分母就错了。
+    qd, src_q = eff_opt("quota_eff", int)
+    if qd is not None:
+        kw["quota"] = qd
     kw.update(T=T, T_eval=T_eval, budget=budget,
               carry_cap=(None if not np.isfinite(carry) else carry))
     # CLI 覆盖最后生效（--T / --T-eval / --tau-max），故必须放在最后一步 update
@@ -164,6 +169,7 @@ def spec_of_group(gdir: str, override: dict) -> tuple[ScenarioSpec, dict]:
     spec = ScenarioSpec(**kw)
     prov = dict(T来源=src_T, T_eval来源=src_Te, budget来源=src_B, carry来源=src_C,
                 tau_max来源=src_tau, hazard来源=src_hz, build_years来源=src_by,
+                quota来源=src_q, quota=spec.quota,
                 tau_max=spec.tau_max, T=spec.T, T_eval=spec.T_eval,
                 budget=spec.budget, carry_cap=spec.carry_cap,
                 hazard=",".join(f"{x:.4f}" for x in spec.hazard),

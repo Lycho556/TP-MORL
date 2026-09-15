@@ -35,6 +35,69 @@ CELL_AREA = 1e4       # 100 m x 100 m = 10000 平方米
 # 导致预算咬住、Cost 仍报 0；现由 convert_cost 统一实现，两条路径口径一致。
 CELL_COST = 50.0
 
+# 逐类拆除基数（v16 新增，情景参数）。
+#
+# 为什么要加：上面那个 50 是**一刀切**——拆一格城中村（R2）与清一格农地（A）记同一个
+# 价。CCM 确实按"转成什么"区分了成本（0–100，非对称），但实测候选池里拆除基数占
+# 单元总成本的中位 62%，也就是说**类型差异只解释了 38%**，而占主导的那 62% 对
+# "拆的是什么"完全不敏感。现实里拆迁补偿主要由被拆除物的性质决定（住宅要补偿产权人、
+# 工业厂房补构筑物、农地基本只需征转），一刀切会系统性高估农转用、低估旧居住改造。
+#
+# 取值口径（**假设，非标定值**）：单元表 gm_renewal_units.csv 没有投资额／补偿额字段，
+# 平台亦无逐类补偿标准数据集，故这里只能给**相对倍率**并声明为情景参数。倍率的排序
+# 依据是补偿对象的有无与强弱：住宅（须补偿产权人）> 商业 > 公用设施 > 工业 > 农地 > 生态绿地。
+CELL_COST_MULT = {0: 2.0,    # R1 一类居住
+                  1: 2.4,    # R2 二类居住（城中村，补偿最重）
+                  2: 1.8,    # RC 商住混合（光明区无此类）
+                  3: 1.8,    # C  商业
+                  4: 2.0,    # CBD 中心商务（光明区无此类）
+                  5: 1.0,    # IH 工业配套（光明区无此类）
+                  6: 1.0,    # I1 一类工业
+                  7: 0.9,    # I2 二类工业
+                  8: 0.5,    # A  农业
+                  9: 0.35,   # E  生态
+                  10: 0.35,  # G  绿地
+                  11: 1.2}   # U  公用设施
+
+# **均值保持**是本参数的关键设计：倍率按候选池的现状用地格数加权归一，使
+# `Σ_u Σ_f base_f · c_uf == CELL_COST · Σ_u ncell_u`。这样 bytype 与 flat 两档的
+# **总成本尺度完全相同**，差异是纯粹的"钱在类型间重新分配"，不掺入"整体变贵/变便宜"。
+# 若不做归一，bytype 组同时改变了成本水平与成本结构，两个效应无法分离——而分母、
+# 预算咬合、可达上界全都对成本水平敏感，那样的对照是不可解释的。
+#
+# 归一系数由数据现算（见 cell_base_vector），不硬写：候选池构成随数据集版本而变，
+# 硬写会在换数据集时静默失配。gm_dataset_v1 上现算结果（加权均值锁定 50.0）：
+#   A 25.17 · I1 50.34 · I2 45.31 · C 90.62 · R1 100.69 · R2 120.83
+# 即拆一格城中村约等于清 4.8 格农地，这正是一刀切档看不见的差别。
+CELL_COST_MODE = "flat"      # "flat" = 沿用单一 CELL_COST；"bytype" = 逐类基数
+
+
+def cell_base_vector(hist0, ncell, mode=None):
+    """按候选池构成算出 12 维逐类拆除基数向量（均值保持）。
+
+    `hist0[u]` 是单元 u 的 {现状类别: 格数}，`Σ_f c_uf == ncell_u`（LU0 为独热，
+    已在 env_gym 侧核过）。flat 档返回全体等于 CELL_COST 的向量，使两档共用同一
+    段代码路径——**不留"另一条分支"**，避免两条路径日后各自漂移（v1 的 CELL_COST
+    就是因为只进了预算路径、没进 Cost 路径而算错过）。
+    """
+    import numpy as np
+    m = CELL_COST_MODE if mode is None else str(mode)
+    v = np.full(12, float(CELL_COST))
+    if m == "flat":
+        return v
+    if m != "bytype":
+        raise ValueError(f"CELL_COST_MODE 只能是 flat/bytype，收到 {m!r}")
+    cnt = np.zeros(12)
+    for h in hist0:
+        for f, c in h.items():
+            cnt[f] += c
+    tot = cnt.sum()
+    if tot <= 0:
+        raise ValueError("候选池为空，无法归一化逐类拆除基数")
+    raw = np.array([CELL_COST_MULT[f] for f in range(12)], float)
+    k = tot / float((raw * cnt).sum())        # 均值保持的归一系数
+    return CELL_COST * raw * k
+
 OBJ_SPATIAL = ("Gdp", "Eco", "Res", "Emp", "Aec", "E2r", "Cpt")
 OBJ_TEMPORAL = ("Floor", "Cost", "Disrupt", "Expire")
 OBJ_NAMES = OBJ_SPATIAL + OBJ_TEMPORAL
@@ -74,6 +137,9 @@ class Reward:
         self.water = np.asarray(water, float)
         self.inside = np.asarray(inside, bool)
         self.gamma = gamma
+        # 逐类拆除基数向量，由 env_gym 在建好 hist0 后写入（见 convert_cost）。
+        # None = flat 口径，逐位等价于既往结果。
+        self.cell_base = None
 
     # ---- 空间目标：复用 pSO ----
     def spatial(self, LU):
@@ -132,11 +198,18 @@ class Reward:
     def convert_cost(self, from_idx, to_idx, n_cells):
         """资金成本 = (拆除补偿基数 + 非对称转换成本) × 格数。
 
-        CCM 取自 pSO（如 A->E 85 而 E->A 20），对角线为 0；CELL_COST 保证
+        CCM 取自 pSO（如 A->E 85 而 E->A 20），对角线为 0；拆除基数保证
         「原类重建」也要花钱（见模块顶部 CELL_COST 的说明）。
         与 env_gym 的 pair_cost/PC 同式，两者按构造相等。
+
+        拆除基数按**被拆除的现状类别** from_idx 取值：`self.cell_base` 由 env_gym 在
+        建好 hist0 后写入（cell_base_vector，均值保持）。之所以放在实例上而不是读
+        模块常量，是为了让本路径与 PC 路径**读同一个向量对象**——v1 的缺陷正是
+        CELL_COST 只进了预算路径、Cost 目标那条路径漏掉，两条路径各算一套。
+        未写入时回退到单一 CELL_COST（flat 口径），与既往结果逐位等价。
         """
-        return (CELL_COST + float(self.CCM[from_idx, to_idx])) * n_cells
+        base = CELL_COST if self.cell_base is None else float(self.cell_base[from_idx])
+        return (base + float(self.CCM[from_idx, to_idx])) * n_cells
 
     def disrupt(self, sigma_units, unit_id, res_map, s3_code=3):
         """施工干扰：S3 实施中的单元，对邻域居住承载造成的当期损失。"""
