@@ -1,0 +1,66 @@
+{
+ "scenario": "年度预算 1500（结转上限 3×）  配额 3  容积率年增 0%\n有效期 3+2 年  失效后 本规划期内不再申请（吸收态）（无条文依据，依 2026-09 规划局实务答复）  建设年限 {1: 5, 2: 5, 3: 5, 5: 5}  折现率 0.95\n批准率 (0.174, 0.212, 0.239, 0.277, 0.179)  资金口径 upfront（立项当年全额；Cost 按完工年计入）\n分母缓存键 V3E2DAY1-52-53-55-5T15X26",
+ "T": 15,
+ "T_eval": 26,
+ "quota": 3,
+ "budget": 1500.0,
+ "carry_cap": 3.0,
+ "far_growth": 0.0,
+ "alpha": 0.5,
+ "pace_years": 5,
+ "seeds": [
+  0,
+  1,
+  2,
+  3,
+  4
+ ],
+ "policies": [
+  "myopic",
+  "greedy_crh",
+  "frontload",
+  "evenspread",
+  "backload",
+  "oracle"
+ ],
+ "ratio_objs": [
+  "Res",
+  "Emp",
+  "Gdp",
+  "Eco",
+  "Cpt",
+  "Floor"
+ ],
+ "scale": {
+  "Gdp": 8489.013594545202,
+  "Eco": 6322.62749419535,
+  "Res": 5767.03842684802,
+  "Emp": 4288.38384631344,
+  "Aec": 6005.962793824106,
+  "E2r": 1388.8701105208575,
+  "Cpt": 5666.066729044853,
+  "Floor": 6451935.732210817,
+  "Cost": 7521.248581275175,
+  "Disrupt": 53562.54227444943,
+  "Expire": 9.14662455412246
+ },
+ "oracle_kind": "无审批不确定性(hazard=1.0) + 贪心；松上界，非组合最优",
+ "checks": {
+  "(a) oracle 期内完工 >= 其余所有策略": {
+   "pass": true,
+   "detail": "oracle=21.0，其余最大=11.2（myopic）"
+  },
+  "(b) greedy_crh 期内完工 >= myopic": {
+   "pass": false,
+   "detail": "greedy_crh=7.8，myopic=11.2"
+  },
+  "(c) backload 期内完工 <= frontload": {
+   "pass": true,
+   "detail": "frontload=7.8，backload=0.0"
+  },
+  "myopic 相对 oracle 的期内完工缺口": {
+   "pass": true,
+   "detail": "9.8 个（myopic 11.2 vs oracle 21.0，相当于 oracle 的 47%）"
+  }
+ }
+}
