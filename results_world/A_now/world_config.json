@@ -1,0 +1,27 @@
+{
+ "out": "results_world/A_now",
+ "iters": 250,
+ "eps": 16,
+ "seeds": [
+  0,
+  1,
+  2
+ ],
+ "T": 12,
+ "lead": 1,
+ "quota": 1,
+ "n_per_kind": 1,
+ "gamma": 0.95,
+ "channel": "value",
+ "shape": "window",
+ "foresight": 3,
+ "shaping": false,
+ "action_mode": "now",
+ "stop_context": false,
+ "wa_feat": false,
+ "g_scan": [
+  0.2,
+  0.4
+ ],
+ "g_target": 0.05
+}

@@ -1,0 +1,28 @@
+{
+ "out": "results_world/E_long",
+ "iters": 600,
+ "eps": 32,
+ "seeds": [
+  0,
+  1,
+  2
+ ],
+ "T": 12,
+ "lead": 1,
+ "quota": 1,
+ "n_per_kind": 1,
+ "gamma": 0.95,
+ "channel": "value",
+ "shape": "window",
+ "foresight": 3,
+ "shaping": false,
+ "action_mode": "now",
+ "stop_context": false,
+ "drop_no_choice": true,
+ "wa_feat": false,
+ "g_scan": [
+  0.2,
+  0.4
+ ],
+ "g_target": 0.05
+}

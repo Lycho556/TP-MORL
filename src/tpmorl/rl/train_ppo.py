@@ -29,15 +29,69 @@ DEV = "cpu"
 
 
 class Pointer(nn.Module):
-    def __init__(self, nf=N_PAIR_FEAT, h=64):
+    """掩码指针：对每个 (单元, 目标功能) 配对打分，末行是「今年到此为止」。
+
+    ## stop_context：为什么需要它（门槛三的诊断结论）
+
+    默认结构里 actor 是**逐行独立**打分的：
+
+        score_i = score(enc(F_i))
+
+    而 critic 拿到的是池化后的整集合信息：
+
+        v = val( mean_i enc(F_i) )
+
+    「到此为止」在 actor 眼里只是一行**普通候选**，它自己的特征里只有全局年份、
+    停止标志与预算，**没有"所有地块此刻的时序状态如何"这个信息**。于是 actor
+    做的其实是
+
+        Score(STOP)  vs  Score(A)
+
+    而不是
+
+        Q(s, 等)     vs  Q(s, 做 A)
+
+    这与实测吻合：训练后"动手"对"到此为止"的 logit 差约 8 个单位，而地块之间
+    只差 0.04 —— 策略在"做哪个"上几乎没有分辨力，在"做不做"上却有一个很强的
+    全局偏置。它会比较 A/B/C 谁更值得做，但不真正表达"此刻整个候选集合都不值得
+    动，应当持有"。
+
+    `stop_context=True` 时改为：先看完所有候选，再决定今年是否动手 ——
+
+        c       = mean_i enc(F_i)              候选集合的池化表示
+        score_i = w([enc(F_i), c])             普通候选：自身 + 集合上下文
+        score_S = w_stop([enc(F_S), c])        停止行：**单独的头**
+
+    停止行单列一个头，是因为"今年不动"与"做某个地块"根本不是同一类量，
+    共用一个线性头会强迫它们落在同一个打分尺度上。
+
+    默认 False 时，模块的构造顺序与参数量与旧版**完全一致**，故同种子下权重
+    初始化逐位相同，历史结果不受影响。
+    """
+
+    def __init__(self, nf=N_PAIR_FEAT, h=64, stop_context=False):
         super().__init__()
         self.enc = nn.Sequential(nn.Linear(nf, h), nn.Tanh(), nn.Linear(h, h), nn.Tanh())
         self.score = nn.Linear(h, 1)
         self.val = nn.Sequential(nn.Linear(h, h), nn.Tanh(), nn.Linear(h, 1))
+        self.stop_context = bool(stop_context)
+        if self.stop_context:
+            # 只在开启时构造，故关闭时的初始化抽样序列与旧版逐位相同
+            self.score_ctx = nn.Sequential(nn.Linear(2 * h, h), nn.Tanh(),
+                                           nn.Linear(h, 1))
+            self.score_stop = nn.Sequential(nn.Linear(2 * h, h), nn.Tanh(),
+                                            nn.Linear(h, 1))
 
     def forward(self, F):
+        """F 形状 (行数, 特征数)，**末行约定为「到此为止」**（env 与门槛世界同约定）。"""
         z = self.enc(F)
-        return self.score(z).squeeze(-1), self.val(z.mean(0)).squeeze(-1)
+        c = z.mean(0)
+        if not self.stop_context:
+            return self.score(z).squeeze(-1), self.val(c).squeeze(-1)
+        zc = torch.cat([z, c.detach().unsqueeze(0).expand_as(z)], dim=-1)
+        s = self.score_ctx(zc).squeeze(-1)
+        s = torch.cat([s[:-1], self.score_stop(zc[-1:]).squeeze(-1)], dim=0)
+        return s, self.val(c).squeeze(-1)
 
 
 def _step_mask(units_t, cost_t, chosen_units, left):
@@ -167,17 +221,49 @@ def gae(r, v, gamma=0.95, lam=0.95):
 
 
 def train(env, iters=60, eps_per_iter=4, epochs=4, lr=3e-3, clip=0.2,
-          ent_c=0.01, vf_c=0.5, seed=0):
+          stop_context=False,
+          ent_c=0.01, vf_c=0.5, seed=0, drop_no_choice=False,
+          advantage="gae"):
     torch.manual_seed(seed)
-    net = Pointer().to(DEV)
+    net = Pointer(stop_context=stop_context).to(DEV)
     opt = torch.optim.Adam(net.parameters(), lr=lr)
     hist = []
     for it in range(iters):
         buf, RS = [], []
         for e in range(eps_per_iter):
             tr = run_episode(env, net, seed=seed * 1000 + it * 10 + e)
-            adv, ret = gae(np.array(tr["r"]), np.array(tr["v"]), env.gamma)
+            if advantage == "gae":
+                adv, ret = gae(np.array(tr["r"]), np.array(tr["v"]), env.gamma)
+            elif advantage == "mc":
+                # 精确蒙特卡洛回报，**不用 critic 做基线**（基线改为批内均值，
+                # 在下面的 A 归一化里自动完成）。
+                #
+                # 为什么要有这一档：critic 读的是候选行的**均值池化** val(z.mean(0))。
+                # 地块被逐个消耗后，均值分不清"还剩三个、都在窗口中段"与
+                # "只剩一个、正在峰值"——而这恰好是判断"今年该不该等"所需的信息。
+                # 若换成精确回报后择时行为出现，则偏差来自值函数基线，
+                # 而不是 actor 结构、动作空间或环境。
+                r = np.asarray(tr["r"], float)
+                ret = np.zeros_like(r); run = 0.0
+                for i in range(len(r) - 1, -1, -1):
+                    run = r[i] + env.gamma * run
+                    ret[i] = run
+                adv = ret.copy()
+            else:
+                raise ValueError(f"advantage 只能是 gae/mc，收到 {advantage!r}")
             for t in range(env.T):
+                # 无决策步（当年只有「到此为止」一个合法动作）可选择剔除。
+                #
+                # 为什么这不是"挑数据"而是修一处口径错误：这些步只有一个合法动作，
+                # log-prob 恒为 0、重要性比恒为 1，**本来就不产生任何策略梯度**；
+                # 但它们照样进入优势归一化的均值与标准差，也照样进值函数损失。
+                # 门槛世界实测：训练到后期它们占到缓冲区的 47%，优势均值 −0.93，
+                # 把"主动等"（优势 +0.41，方向正确）整个压到"立项"（+0.84）之下。
+                # 也就是说策略不是学到了"等不好"，而是被一堆"无事可做"的年份带偏了。
+                # 真实环境里 717 个单元、候选集几乎不会空，故这一项默认关闭、
+                # 只在小世界诊断与名额紧张的情景里开。
+                if drop_no_choice and len(tr["meta"][t]) <= 1:
+                    continue
                 buf.append((tr["X"][t], tr["meta"][t], tr["picks"][t],
                             tr["lp"][t], adv[t], ret[t],
                             tr["cost"][t], tr["budget"][t],

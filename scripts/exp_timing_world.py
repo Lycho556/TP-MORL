@@ -129,7 +129,7 @@ class TimingWorld:
     def __init__(self, n_per_kind=2, T=12, lead=1, gamma=0.95, quota=1,
                  g_target=0.05, channel="value", shape="window",
                  q_lo=0.30, q_hi=0.95, base=100.0, foresight=3, shaping=False,
-                 wa_feat=False):
+                 wa_feat=False, action_mode="now"):
         self.T, self.T_eval = int(T), int(T)
         self.lead, self.gamma, self.quota = int(lead), float(gamma), int(quota)
         self.channel, self.shape = str(channel), str(shape)
@@ -142,6 +142,14 @@ class TimingWorld:
         # 等于把答案写在选项旁边——若策略仍然不等，那么信息不是瓶颈，
         # 后续力气应当全部花在动作选择/信用分配上，而不是继续加观测维度。
         self.wa_feat = bool(wa_feat)
+        # 动作表示。now = 每年只能决定"这个地块现在立项 / 今年到此为止"（真实环境
+        # 的动作空间）；schedule = 动作直接是"给这个地块排在第 y 年立项"。
+        # 两档在**同一个有判别力的世界**上对照（oracle 要求留空 5~7 年、贪心只得
+        # 最优的 0.64~0.93），才能回答：PPO 不会择时，是真的做不了时序推理，
+        # 还是"今年停、明年再看"这种逐年表达太难——等待必须靠多次局部决策才能表达。
+        if str(action_mode) not in ("now", "schedule"):
+            raise ValueError(f"action_mode 只能是 now/schedule，收到 {action_mode!r}")
+        self.action_mode = str(action_mode)
         self.g_target = float(g_target)
 
         self.names, self.kind, peaks = [], [], []
@@ -308,14 +316,25 @@ class TimingWorld:
 
     def pairs(self):
         av = self._available()
-        rows = np.zeros((len(av) + 1, N_PAIR_FEAT), dtype=np.float32)
-        for j, u in enumerate(av):
-            rows[j, 0] = self.opp(u, self.t)                       # 当期机会
+        if self.action_mode == "now":
+            opts = [(u, self.t) for u in av]
+        else:
+            # 配额落在**被排定的那一年**上：某年已排满就不再出现，否则"排期"
+            # 会退化成无约束的一次性分配，与逐年名额有限这件事不符
+            used = {}
+            for _u, _y in self.init_year.items():
+                used[_y] = used.get(_y, 0) + 1
+            opts = [(u, y) for u in av for y in range(self.t, self.T - self.lead)
+                    if used.get(y, 0) < self.quota]
+        rows = np.zeros((len(opts) + 1, N_PAIR_FEAT), dtype=np.float32)
+        for j, (u, yy) in enumerate(opts):
+            rows[j, 0] = self.opp(u, yy)                           # 该选项的机会
             if self.foresight:
                 # 趋势：机会窗世界里这一维会**变号**——峰前为正、峰后为负，
                 # 这正是"窗口正在关闭"的信号，单调场里它永远为正、没有信息量
-                rows[j, 1] = self.opp(u, self.t + self.foresight) - rows[j, 0]
+                rows[j, 1] = self.opp(u, yy + self.foresight) - rows[j, 0]
             rows[j, 2] = self.base[u] / max(self.base.max(), 1e-9)
+            rows[j, 5] = (yy - self.t) / self.T     # 排在多少年之后（now 档恒 0）
             if self.wa_feat:
                 now = self.dvalue(u, self.t)
                 best = max([self.dvalue(u, y)
@@ -325,11 +344,12 @@ class TimingWorld:
                 rows[j, 4] = (nxt / now - 1.0) if now > 0 else 0.0    # 一年等待优势
             rows[j, 14] = self.t / self.T
             rows[j, 15] = 1.0
-        rows[len(av), 14] = self.t / self.T
-        rows[len(av), N_FEAT + 16] = 1.0
-        meta = [(u, 0) for u in av] + [STOP]
-        cost = np.zeros(len(av) + 1)
-        units = np.concatenate([np.asarray(av, np.int64), np.array([-1], np.int64)])
+        rows[len(opts), 14] = self.t / self.T
+        rows[len(opts), N_FEAT + 16] = 1.0
+        meta = [(u, y) for u, y in opts] + [STOP]
+        cost = np.zeros(len(opts) + 1)
+        units = np.concatenate([np.asarray([u for u, _ in opts], np.int64),
+                                np.array([-1], np.int64)])
         return rows, meta, cost, units
 
     def potential(self):
@@ -354,11 +374,12 @@ class TimingWorld:
         self.budget_hist.append(self.budget)
         self.spent_hist.append(0.0)
         self.released_hist.append(0.0)
-        for u, _ in actions:
-            self.init_year[u] = self.t
-            self.done_year[u] = self.t + self.lead
+        for u, y in actions:
+            y0 = self.t if self.action_mode == "now" else int(y)
+            self.init_year[u] = y0
+            self.done_year[u] = y0 + self.lead
             if self.channel == "prob":
-                self.approved[u] = bool(self.arng.random() < self.q(u, self.t))
+                self.approved[u] = bool(self.arng.random() < self.q(u, y0))
         gain = 0.0
         for u, dy in self.done_year.items():
             if dy != self.t:
@@ -377,10 +398,67 @@ class TimingWorld:
         return self._obs(), r, self.t >= self.T_eval, dict(vec=vec, raw={}, events={})
 
 
+def stop_diagnostics(w, net):
+    """贪心走一遍，记录策略在"该等的时候等不等"上的行为，以及 STOP 的打分位置。
+
+    两个条件概率（建议 §9 要的那两项）：
+        P(停 | 存在 WA>0 的候选)  该等的时候，它等了吗
+        P(停 | 不存在)            不该等的时候，它是不是乱等
+    一个健康的择时策略前者高、后者低；两者都低 = 从不等；都高 = 无脑拖延。
+
+    同时记录每年 STOP 的 logit 与最高候选 logit 之差。这个差值回答的是
+    "STOP 到底有没有被抬起来过"——只看最终立项年是看不出来的。
+    """
+    import torch
+    w.reset(seed=0)
+    n_pos = n_pos_stop = n_neg = n_neg_stop = 0
+    gaps = []
+    for t in range(w.T_eval):
+        act = []
+        if t < w.T:
+            X, meta, cost, units = w.pairs()
+            with torch.no_grad():
+                logits, _ = net(torch.as_tensor(X))
+            lg = logits.numpy()
+            i_best = int(np.argmax(lg[:-1])) if len(lg) > 1 else None
+            gaps.append(float(lg[-1] - (lg[i_best] if i_best is not None else lg[-1])))
+            chose_stop = bool(np.argmax(lg) == len(lg) - 1)
+            if len(meta) <= 1:
+                # 候选集为空（全部地块都已立项）：这一年"停止"是被迫的，不是选择。
+                # 把它算进条件概率会让 P(停|不该等) 虚高到 1.00，读成"该停的时候
+                # 都停了"——实际只是无事可做。
+                _, _, done, _ = w.step([])
+                if done:
+                    break
+                continue
+            # 本年是否存在"等一年更好"的候选（只看 now 档的当期决策）
+            has_pos = any(w.dvalue(u, t + 1) > w.dvalue(u, t) > 0
+                          for u, _y in meta[:-1])
+            if has_pos:
+                n_pos += 1; n_pos_stop += int(chose_stop)
+            else:
+                n_neg += 1; n_neg_stop += int(chose_stop)
+            if not chose_stop and i_best is not None:
+                act = [meta[i_best]]
+        _, _, done, _ = w.step(act)
+        if done:
+            break
+    return dict(p_stop_given_wa_pos=(n_pos_stop / n_pos) if n_pos else np.nan,
+                p_stop_given_wa_neg=(n_neg_stop / n_neg) if n_neg else np.nan,
+                n_years_wa_pos=n_pos,
+                stop_logit_gap_mean=float(np.mean(gaps)) if gaps else np.nan,
+                stop_logit_gap_max=float(np.max(gaps)) if gaps else np.nan)
+
+
 def run_one(world_kw, seed, iters, eps):
+    stop_ctx = bool(world_kw.pop("stop_context", False))
+    drop_nc = bool(world_kw.pop("drop_no_choice", False))
+    advk = str(world_kw.pop("advantage", "gae"))
     w = TimingWorld(**world_kw)
     diag = w.validate()
-    net, hist = train_ppo.train(w, iters=iters, eps_per_iter=eps, seed=seed)
+    net, hist = train_ppo.train(w, iters=iters, eps_per_iter=eps, seed=seed,
+                                stop_context=stop_ctx, drop_no_choice=drop_nc,
+                                advantage=advk)
     rec = []
     train_ppo.evaluate(w, net, n_ep=1, record=rec)
     R = pd.DataFrame(rec)
@@ -403,7 +481,10 @@ def run_one(world_kw, seed, iters, eps):
     # 退化解检查：早峰型不得被一起往后拖
     dump = [init[nm] <= plan[nm] + 1 for u, nm in enumerate(w.names)
             if w.kind[u] == "early" and nm in init and plan[nm] is not None]
-    return dict(seed=seed,
+    sd = stop_diagnostics(w, net)
+    return dict(seed=seed, stop_context=stop_ctx, drop_no_choice=drop_nc,
+                advantage=advk,
+                action_mode=world_kw.get("action_mode", "now"), **sd,
                 g_target=world_kw.get("g_target"), g_measured=diag["g_measured"],
                 shape=world_kw.get("shape"), channel=world_kw.get("channel"),
                 shaping=bool(world_kw.get("shaping")),
@@ -440,6 +521,24 @@ def main():
     ap.add_argument("--shape", default="window", choices=["window", "rising", "static"])
     ap.add_argument("--foresight", type=int, default=3)
     ap.add_argument("--shaping", action="store_true")
+    ap.add_argument("--action-mode", default="now", choices=["now", "schedule"],
+                    help="动作表示。now=每年决定现在做/今年到此为止（真实环境）；"
+                         "schedule=直接给地块排一个立项年。两档在同一个有判别力的"
+                         "世界上对照，回答「不会择时」是做不了时序推理，还是逐年"
+                         "表达太难")
+    ap.add_argument("--stop-context", action="store_true",
+                    help="让「到此为止」的打分看到整个候选集合的池化表示，并单列"
+                         "一个头。默认结构下 STOP 只是一行普通候选，它自己的特征里"
+                         "没有「所有地块此刻时序状态如何」这个信息")
+    ap.add_argument("--drop-no-choice", action="store_true",
+                    help="把「当年只有到此为止一个合法动作」的无决策步从 PPO 缓冲区"
+                         "剔除。这些步本来就不产生策略梯度，却进入优势归一化，"
+                         "实测占到 47%、优势均值 −0.93，把「主动等」压在「立项」之下")
+    ap.add_argument("--advantage", default="gae", choices=["gae", "mc"],
+                    help="优势估计。gae=现有的 critic + GAE；mc=精确蒙特卡洛回报"
+                         "（不用 critic 基线）。critic 读的是候选行均值池化，"
+                         "地块被消耗后分不清「还剩三个都在窗口中段」与「只剩一个"
+                         "正在峰值」——这一档用来判断偏差是否来自值函数基线")
     ap.add_argument("--wa-feat", action="store_true",
                     help="把一年等待优势与最优等待增益直接作为特征给策略。"
                          "用于分离「看不出来等更好」与「看得出来也不选」两种失败")
@@ -453,17 +552,22 @@ def main():
 
     base_kw = dict(n_per_kind=a.n_per_kind, T=a.T, lead=a.lead, gamma=a.gamma,
                    quota=a.quota, channel=a.channel, shape=a.shape,
-                   foresight=a.foresight, shaping=a.shaping, wa_feat=a.wa_feat)
+                   foresight=a.foresight, shaping=a.shaping, wa_feat=a.wa_feat,
+                   action_mode=a.action_mode, stop_context=a.stop_context,
+                   drop_no_choice=a.drop_no_choice, advantage=a.advantage)
     gs = a.g_scan if a.g_scan else [a.g_target]
     rows = []
     for g in gs:
         kw = dict(base_kw, g_target=g)
+        # 世界自证只关心环境，不关心策略结构：stop_context 是网络选项，须剔除
+        wkw = {k: v for k, v in kw.items()
+               if k not in ("stop_context", "drop_no_choice", "advantage")}
         try:
-            TimingWorld(**kw).validate()
+            TimingWorld(**wkw).validate()
         except (AssertionError, ValueError) as e:
             print(f"[跳过] G={g:+.3f}：{e}")
             continue
-        _d = TimingWorld(**kw).validate()
+        _d = TimingWorld(**wkw).validate()
         if not _d["discriminative"]:
             print(f"[警告] G={g:+.3f}：贪心解已达最优的 {_d['greedy_ratio']:.3f}，"
                   "该实例判别力不足，结果只作参考")
@@ -478,6 +582,10 @@ def main():
               f"未退化 {d.no_dump.mean():.2f}  回报比 {d.ratio.mean():.3f}  "
               f"[贪心参照 {d.greedy_ratio.iloc[0]:.3f}  最优留空 "
               f"{int(d.oracle_idle_years.iloc[0])} 年]")
+        print(f"        P(停|该等) {d.p_stop_given_wa_pos.mean():.2f}  "
+              f"P(停|不该等) {d.p_stop_given_wa_neg.mean():.2f}  "
+              f"STOP logit 相对最高候选 均值 {d.stop_logit_gap_mean.mean():+.2f} / "
+              f"最高 {d.stop_logit_gap_max.mean():+.2f}")
 
     if not rows:
         raise SystemExit("没有任何一档通过世界自证，未进行训练。")
@@ -491,6 +599,9 @@ def main():
                早峰型准确率=("timing_acc_early", "mean"),
                未退化=("no_dump", "mean"), 回报比=("ratio", "mean"),
                贪心参照=("greedy_ratio", "mean"),
+               P停_该等=("p_stop_given_wa_pos", "mean"),
+               P停_不该等=("p_stop_given_wa_neg", "mean"),
+               STOP_logit差=("stop_logit_gap_mean", "mean"),
                最优留空年数=("oracle_idle_years", "mean"),
                立项重心=("init_mean", "mean"), 最优重心=("opt_mean", "mean"))
           .reset_index())
