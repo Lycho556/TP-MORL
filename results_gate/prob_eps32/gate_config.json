@@ -1,0 +1,28 @@
+{
+ "T": 10,
+ "onset": 4,
+ "iters": 500,
+ "eps": 32,
+ "leads": [
+  1
+ ],
+ "seeds": [
+  0,
+  1,
+  2,
+  3,
+  4
+ ],
+ "gamma": 0.95,
+ "ent_c": 0.01,
+ "lr": 0.003,
+ "epochs": 4,
+ "reward_at": "done",
+ "ramp_years": 3.0,
+ "foresight": 3,
+ "lo": 0.6,
+ "hi": 1.6,
+ "shaping": false,
+ "channel": "prob",
+ "label": "prob_eps32"
+}

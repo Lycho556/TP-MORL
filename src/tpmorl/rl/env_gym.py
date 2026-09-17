@@ -29,16 +29,20 @@ from tpmorl.objectives.run_reward_demo import load, pick_target, ALLOWED
 # v15：16 -> 22。新增 16..21 = 剩余有效年 / 剩余建设年 / 期望交付年数 / slack /
 # 期内可交付标志 / 在建管道占比。**改变网络输入维度**，v14 及更早的权重不可载入，
 # 两批结果亦不可混在一张图里比较（见 docs/建议条目审计与改动清单_v15.md 第三节）。
-# v17：22 -> 30。新增
-#   22..25 机会场**当期水平**：上位规划 / 基础设施 / 更新必要性 / 实施条件
+# v18：22 -> 32。新增
+#   22..25 机会场**当期水平**：上位规划 / 基础设施（**公布**层）/ 更新必要性 /
+#          实施条件
 #   26..29 同四项的**趋势**（t+FORESIGHT 与 t 之差）
+#   30     动态更新机会 O(i,t)：概率通道三项的乘性合成，归一化到 [0,1]，
+#          即"这个地块这一年有多大可能真正推得动"
+#   31     O 的趋势
 # 即四张逐年变化的机会场（tpmorl/env/opportunity.py）。趋势那四维不是冗余：
 # 门槛实验（scripts/exp_timing_gate.py）实测只给当期水平时学习器在任何超参数下
 # 都学不会等，因为"现在一般但会变好"与"一直不好"在观测上不可区分，最优解不在
 # 可表示的策略类里。推导见 opportunity.obs_block 的文档。
 # 同样**改变网络输入维度**，v16 及更早的权重不可载入，跨批次不可混在一张图里
 # 比较；v17 的结论一律由批次内 2×2 给出。
-N_FEAT = 30
+N_FEAT = 32
 N_PAIR_FEAT = N_FEAT + 12 + 2 + 3 + 1  # +本对成本/预算, +当前可用预算/年度额度, +是否为「到此为止」, +已承诺占用/年度额度
 CH_ORDER = [1, 2, 3, 5]
 
@@ -216,12 +220,13 @@ class RenewalEnv:
             F[:, 16:22] = 0.0
 
         # ---- 机会场（v17 新增，见 tpmorl/env/opportunity.py）----
-        # 22..25 当期水平（规划/设施/必要性/实施条件），26..29 同四项的趋势。
+        # 22..25 当期水平（规划/设施公布层/必要性/实施条件），26..29 趋势，
+        # 30..31 动态更新机会 O 及其趋势。
         # 这八维回答的是 16..21 回答不了的另一个问题：不是"现在立项还赶得上吗"，
         # 而是"**现在**是不是这个地块的好时候、还是再等两年更好"。
         # 消融（OBS_OPPORTUNITY=False）时整段返回全零，位宽不变
         # （与 OBS_LIFECYCLE 同一约定）；FORESIGHT=0 时只有趋势四维为零。
-        F[:, 22:30] = self.opp.obs_block(self.t)
+        F[:, 22:32] = self.opp.obs_block(self.t)
         return F
 
     def pair_cost(self, u, tg):
@@ -308,7 +313,7 @@ class RenewalEnv:
         self._pt_all = np.concatenate(
             [np.asarray(ALLOWED[int(c)], dtype=np.int64) for c in ch_all])
         self._cost_all = self.PC[self._pu_all, self._pt_all]
-        self.mask_init = self.env.mask_initiate()
+        self.mask_init = self._init_mask()
         self.budget = BUDGET            # 已拨付未承诺（可承诺额度）
         self.committed = 0.0            # 已承诺未支付
         self._owe_year = {}             # 单元 -> 实施期内每年应付额
@@ -321,6 +326,22 @@ class RenewalEnv:
         self.released_hist = []
         self._phi = self._potential_table()
         return self.obs()
+
+    def _init_mask(self):
+        """本年可立项的单元：制度状态机的掩码 **∩** 上位规划的立项可及性。
+
+        规划这一层是 v18 新增的通道（`opportunity.admissible`）：法定图则尚未
+        覆盖、不在更新单元计划名单里的地块，这一年报上去本就进不了流程。
+        它是**逐年重抽的随机准入**而非硬阈值——规划支持只提高被纳入的机会，
+        不保证纳入，也不永久禁入低支持度的地块。
+
+        抽样借用状态机的发生器 `self.env.rng`：A_PLAN=0 时 `admissible` 整条
+        跳过、**不消耗随机数**，故场全关时与 v16 的随机序列逐位相同。
+        """
+        m = self.env.mask_initiate()
+        if OPP.A_PLAN:
+            m = m & self.opp.admissible(self.t, self.env.rng)
+        return m
 
     def _potential_table(self):
         """(n, T+1) 的持有价值表 φ_u(t)；REWARD_SHAPING=0 时返回 None。
@@ -475,6 +496,6 @@ class RenewalEnv:
             r += REWARD_SHAPING * (self.gamma * self.potential() - phi0)
         # 决策期结束后立项掩码强制全关：pairs() 因此只剩 STOP 行，
         # 采样器与随机基线都无需改动即可在尾部自然「无动作」。
-        self.mask_init = (self.env.mask_initiate() if self.t < self.T
+        self.mask_init = (self._init_mask() if self.t < self.T
                           else np.zeros(self.n, dtype=bool))
         return self.obs(), r, self.t >= self.T_eval, dict(vec=vec, raw=rv, events=ev)

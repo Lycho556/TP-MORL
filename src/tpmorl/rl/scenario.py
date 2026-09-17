@@ -34,7 +34,9 @@ def _snapshot():
                 FORESIGHT=O.FORESIGHT, FIELD_SEED=O.FIELD_SEED,
                 SHARE_NOW=O.SHARE_NOW, SHARE_RAMP=O.SHARE_RAMP,
                 ONSET_LO_FRAC=O.ONSET_LO_FRAC, ONSET_HI_FRAC=O.ONSET_HI_FRAC,
-                RAMP_YEARS=O.RAMP_YEARS,
+                RAMP_YEARS=O.RAMP_YEARS, OPP_SHAPE=O.OPP_SHAPE,
+                WINDOW_YEARS_LO=O.WINDOW_YEARS_LO,
+                WINDOW_YEARS_HI=O.WINDOW_YEARS_HI,
                 BUDGET=env_gym.BUDGET, CARRY_CAP=env_gym.CARRY_CAP,
                 FAR_GROWTH=env_gym.FAR_GROWTH, GAMMA=env_gym.GAMMA,
                 BUDGET_MODE=env_gym.BUDGET_MODE, STAGE_INIT=env_gym.STAGE_INIT,
@@ -86,6 +88,9 @@ def reset():
     O.SHARE_NOW, O.SHARE_RAMP = d["SHARE_NOW"], d["SHARE_RAMP"]
     O.ONSET_LO_FRAC, O.ONSET_HI_FRAC = d["ONSET_LO_FRAC"], d["ONSET_HI_FRAC"]
     O.RAMP_YEARS = d["RAMP_YEARS"]
+    O.OPP_SHAPE = d["OPP_SHAPE"]
+    O.WINDOW_YEARS_LO = d["WINDOW_YEARS_LO"]
+    O.WINDOW_YEARS_HI = d["WINDOW_YEARS_HI"]
     _HORIZON = _HORIZON_EVAL = None
 
 
@@ -98,7 +103,8 @@ def apply(budget=None, carry=None, growth=None,
           a_plan=None, a_infra=None, a_age=None, a_ready=None,
           obs_opportunity=None, foresight=None, field_seed=None,
           share_now=None, share_ramp=None, onset_lo=None, onset_hi=None,
-          ramp_years=None, reward_shaping=None):
+          ramp_years=None, reward_shaping=None, opp_shape=None,
+          window_years=None):
     """把情景参数写回模块常量。None 表示沿用模块默认值，不改写。
 
     `horizon` 不改写任何常量，只登记进 `inst_tag()`：规划期长度改变可达上界，
@@ -234,6 +240,16 @@ def apply(budget=None, carry=None, growth=None,
         if not 0.0 <= O.ONSET_LO_FRAC <= O.ONSET_HI_FRAC <= 1.0:
             raise ValueError(f"须 0 <= onset_lo <= onset_hi <= 1，"
                              f"收到 {O.ONSET_LO_FRAC} / {O.ONSET_HI_FRAC}")
+    if opp_shape is not None:
+        if str(opp_shape) not in ("rising", "window"):
+            raise ValueError(f"opp_shape 只能是 rising/window，收到 {opp_shape!r}")
+        O.OPP_SHAPE = str(opp_shape)
+    if window_years is not None:
+        lo, hi = (float(window_years[0]), float(window_years[1])
+                  if len(window_years) > 1 else float(window_years[0]))
+        if not 0 < lo <= hi:
+            raise ValueError(f"window_years 须 0 < lo <= hi，收到 {window_years}")
+        O.WINDOW_YEARS_LO, O.WINDOW_YEARS_HI = lo, hi
     if ramp_years is not None:
         ry = float(ramp_years)
         if ry <= 0:
@@ -498,19 +514,29 @@ def add_args(ap):
                          "（这是批次内单因子消融，比跨批次对比可辩护得多）")
     # ---- 机会场（v17）。四个幅度默认 None=不改写，出厂值 0=关闭 ----
     ap.add_argument("--a-plan", type=float, default=None,
-                    help="上位规划支持度对交付价值的最大加成（读**立项年**取值）。"
-                         "**情景参数，无实证标定**：单元表没有历年规划定位字段。"
-                         "敏感性方向 {0, 0.3, 0.6, 1.0}")
+                    help="上位规划对**立项可及性** P_init 的调制幅度（读当年）。"
+                         "v18 起走\"能不能报上去\"这条通道，不再乘交付价值："
+                         "法定图则未覆盖、不在更新单元计划名单里的地块，报上去"
+                         "本就进不了流程。实现为逐年重抽的随机准入而非硬阈值——"
+                         "规划只提高被纳入的机会，不保证纳入也不永久禁入。"
+                         "**情景参数，无实证标定**：单元表没有历年规划定位字段")
     ap.add_argument("--a-infra", type=float, default=None,
-                    help="周边设施成熟度对交付价值的最大加成（读**建成年**取值，"
-                         "价值在交付时点实现）。同为情景参数：无设施投用年份数据")
+                    help="周边设施成熟度对交付价值的加成（读**建成年**取值）。"
+                         "v18 起这是**唯一保留的价值通道**，因为它最好辩护："
+                         "价值在交付时点实现，地铁通了房子才值那个钱。"
+                         "观测给的是**公布**层（提前 INFRA_ANNOUNCE_LEAD 年），"
+                         "价值只认**建成**层——规划先产生预期，建成才兑现。"
+                         "情景参数：无设施投用年份数据")
     ap.add_argument("--a-age", type=float, default=None,
-                    help="建筑老化带来的更新必要性对交付价值的最大加成（读建成年）。"
+                    help="更新必要性 Need 的幅度。**与建议的一处明示偏离**：建议把"
+                         "Need 列为独立机制，但本环境里必要性没有独立作用位"
+                         "（既非准入、也不改变客观收益），故并入**批准风险率**："
+                         "越必要的项目在审批与协调中越顺利。引用建议 §9 时须按此标注。"
                          "情景参数：单元表无建成年份字段，基期年龄按分布抽样")
     ap.add_argument("--a-ready", type=float, default=None,
-                    help="实施条件对**逐年批准风险率**的调制幅度（读当年取值），"
-                         "在 [0,1]。走概率通道而非价值通道：条件成熟的年份更容易"
-                         "批得下来、因而更不容易失效。ready=0.5 处调制为中性")
+                    help="实施条件对**批准风险率** P_approve 的调制幅度（读当年），"
+                         "在 [0,1]。报上去之后能不能批下来、推得动，与能不能报"
+                         "上去（--a-plan）是两条通道。ready=0.5 处调制为中性")
     ap.add_argument("--no-obs-opportunity", action="store_true",
                     help="消融：把机会场四维观测特征（22..25）**置零**，位宽不变。"
                          "场仍作用于奖励与转移，只是策略看不见——用于分离\"信息\"与"
@@ -532,6 +558,16 @@ def add_args(ap):
                          "用比例而非年份，使 T=15 与 T=25 两档的场在相对时序上可比")
     ap.add_argument("--onset-hi", type=float, default=None,
                     help="爬升起始年的上界（T 的比例），默认 0.60")
+    ap.add_argument("--opp-shape", default=None, choices=["rising", "window"],
+                    help="机会曲线形状。rising=单调爬升（v17 口径，低→高→一直高）；"
+                         "window=有限机会窗（低→升→峰→回落）。"
+                         "单调场下最优立项年只有\"立刻\"或\"能拖多久拖多久\"两种，"
+                         "P0 诊断实测加大幅度时\"拖满\"占比从 0.13 升到 0.31——"
+                         "环境奖励的是无脑延后。有限窗让\"等太久\"由机会场自然惩罚")
+    ap.add_argument("--window-years", type=float, nargs=2, default=None,
+                    metavar=("LO", "HI"),
+                    help="逐单元机会窗宽度的抽样区间（年），默认 3 7。"
+                         "对应\"全局 25 年期限 + 局部 3~7 年机会窗\"")
     ap.add_argument("--ramp-years", type=float, default=None,
                     help="逻辑斯蒂爬升的时间常数（年），默认 3。刻意不做成阶跃："
                          "机会改善在现实中是逐渐的，硬阈值会把择时变成查表")
@@ -583,6 +619,8 @@ def from_args(a):
                 onset_lo=getattr(a, "onset_lo", None),
                 onset_hi=getattr(a, "onset_hi", None),
                 ramp_years=getattr(a, "ramp_years", None),
+                opp_shape=getattr(a, "opp_shape", None),
+                window_years=getattr(a, "window_years", None),
                 # 与 obs_lifecycle 同一处理：未加开关时传 None（不改写），
                 # 而不是传 True——那会让"未指定"与"显式开启"在日志里无法区分。
                 obs_opportunity=(False if getattr(a, "no_obs_opportunity", False)

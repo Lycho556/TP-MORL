@@ -200,7 +200,16 @@ WORKERS="${WORKERS:-$(( NPROC > 4 ? NPROC - 2 : 2 ))}"
 #   实施条件 0.4 —— 走概率通道，0.4 时 ready 从 0.5 升到 1.0 使批准率提高约
 #     1.4 倍；取到 1.0 会让条件差的年份批准率归零，那是"行政冻结"而非"难推动"。
 #   前瞻 3 年 —— 法定图则与设施计划确实提前公布，3 年是保守取值。
-FIELD="--a-plan 0.8 --a-infra 0.6 --a-age 0.3 --a-ready 0.4 --foresight 3"
+# 主组配置由 P0 环境门槛的实测结果定下（docs/v18三道门槛_本地结论.md）：
+#   --opp-shape window  有限机会窗（升→峰→落）。单调场加幅度买到的是退化解
+#     （"拖满最优"占比 0.14→0.31）；有限窗加幅度买到的是内点择时
+#     （0.15→0.19→0.29，拖满守在 0.05）。
+#   ×3 幅度  有限窗下 WA>0 占比 0.321、内点最优 0.29，是扫过的档里择时问题
+#     最实在的一档；再往上 a_ready 触到 1.0 的上界（>1 会让条件差的年份
+#     批准率归零，那是行政冻结而非难推动）。
+#   --foresight 0  主组只给**当期水平 + 趋势**，不给前瞻。给了前瞻，审稿人会问
+#     这是在学时序规划还是在读未来曲线；前瞻 1/3 年留作敏感性臂（第 5 组）。
+FIELD="--opp-shape window --window-years 3 7 --a-plan 2.4 --a-infra 1.8 --a-age 0.9 --a-ready 1.0 --foresight 0"
 
 # ---------------------------------------------------------------------------
 # 实验组：编号 | 目录 | 中文名 | 额外参数 | 每轮回合数（可留空=用 $EPS）
@@ -418,8 +427,8 @@ for fn in ("remaining_valid", "remaining_build", "expected_years_to_delivery"):
 assert hasattr(EG, "OBS_LIFECYCLE"), "v15 生命周期观测开关缺失"
 
 # ---- v17 专项 ----
-assert EG.N_FEAT == 30, f"N_FEAT 应为 30（22 生命周期 + 8 机会场），实际 {EG.N_FEAT}"
-assert EG.N_PAIR_FEAT == 30 + 12 + 2 + 3 + 1, f"配对特征宽度不符：{EG.N_PAIR_FEAT}"
+assert EG.N_FEAT == 32, f"N_FEAT 应为 32（22 生命周期 + 8 机会场 + 2 动态机会），实际 {EG.N_FEAT}"
+assert EG.N_PAIR_FEAT == 32 + 12 + 2 + 3 + 1, f"配对特征宽度不符：{EG.N_PAIR_FEAT}"
 
 # (a) 幅度全 0 + 整形 0 时，价值乘子与批准率调制必须是**精确的** 1.0
 SC.reset()
@@ -427,6 +436,7 @@ assert not O.active(), "出厂默认应为机会场关闭"
 assert O.tag() == "", f"场全关时分母键后缀应为空，实际 {O.tag()!r}"
 f0 = O.OpportunityField(5, 15, T_total=26)
 assert f0.value_mult(0, 0, 9) == 1.0 and f0.hazard_mult(3) == 1.0, "场关闭时不中性"
+assert bool(f0.admissible(0, np.random.default_rng(0)).all()), "场关闭时准入不应受限"
 assert EG.REWARD_SHAPING == 0.0, "整形默认应为 0"
 
 # (b) 四个幅度都必须入分母缓存键；观测开关、前瞻、整形强度都必须**不入**键
@@ -484,7 +494,7 @@ SC.reset(); SC.apply(horizon=25, horizon_eval="auto", a_plan=0.8, a_infra=0.6,
 print(SC.inst_tag())
 SC.reset()
 print("  python", sys.version.split()[0], "| 依赖与数据齐备")
-print("  N_FEAT=%d（22 生命周期 + 8 机会场）| 四幅度入键、观测/前瞻/整形不入键、无碰撞"
+print("  N_FEAT=%d（22 生命周期 + 8 机会场 + 2 动态机会）| 四幅度入键、观测/前瞻/整形不入键、无碰撞"
       % EG.N_FEAT)
 PY
 

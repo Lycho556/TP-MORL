@@ -77,14 +77,16 @@ class GateEnv:
         budget_hist / spent_hist / released_hist
     """
 
-    # 三个地块的 (名称, 基准收益, 类型)。数值是情景设定，不是标定值。
-    UNITS = (("B", 100.0, "flat_high"),
-             ("A", 100.0, "ramp"),
-             ("C", 100.0, "flat_low"))
+    # 三型地块的 (名称前缀, 基准收益, 类型)。数值是情景设定，不是标定值。
+    KINDS = (("B", 100.0, "flat_high"),     # 现在就好、以后不变 -> 应当早做
+             ("A", 100.0, "ramp"),          # 现在一般、以后变好 -> 应当等
+             ("C", 100.0, "flat_low"))      # 一直不好          -> 低优先
 
     def __init__(self, T=10, lead=1, onset=4, gamma=0.95,
                  lo=0.6, hi=1.6, c_level=0.7, quota=1, reward_at="done",
-                 ramp_years=0.0, foresight=0, shaping=False):
+                 ramp_years=0.0, foresight=0, shaping=False, channel="value",
+                 q_lo=0.35, q_hi=0.95, action_mode="now", slack_feat=True,
+                 n_per_kind=1):
         """lo/hi = ramp 型地块 onset 前后的收益乘子；c_level = C 型地块的乘子。
 
         取值口径：**情景参数**。选 0.6→1.6 是为了让"等 onset 年"在 γ=0.95 下
@@ -139,10 +141,58 @@ class GateEnv:
         # 该方法可以写进论文的前提——它不是"把答案喂给 agent"，而是把同一个
         # 最优解的梯度变得可跟随。这一点必须与"改奖励函数"区分开。
         self.shaping = bool(shaping)
-        self.n = len(self.UNITS)
-        self.names = [u[0] for u in self.UNITS]
-        self.base = np.array([u[1] for u in self.UNITS], float)
-        self.kind = [u[2] for u in self.UNITS]
+        # 机制通道。v18 起真实环境的主机制是**概率通道**，故门槛实验也必须测它。
+        #   value —— 时机好坏改变**交付价值**（v17 的机制，保留作对照）
+        #   prob  —— 时机好坏改变**批得下来的概率**：立项当年按 q(u,t) 抽一次，
+        #            批不下来就什么也没有，名额白占。这对应真实环境里
+        #            "报早了在有效期内批不下来、白占一个名额"。
+        # 两档的**最优解都可以精确算**（prob 档按期望），但 prob 档的回报是随机的，
+        # 梯度噪声天然更大——这正是要在本机先测出来的东西：v18 的主机制是不是
+        # 比 v17 更难学。
+        if str(channel) not in ("value", "prob"):
+            raise ValueError(f"channel 只能是 value/prob，收到 {channel!r}")
+        self.channel = str(channel)
+        self.q_lo, self.q_hi = float(q_lo), float(q_hi)
+        # 判据的前提：必须留得下"等到 onset 再立项仍然建得成"的年份，
+        # 否则最优解本身就是"早做"，测不到任何择时能力（建议 ①）。
+        # 动作表示。这是本脚本最后一个、也是判别力最强的一个变量。
+        #   now      —— 每年只能决定"这个地块现在立项 / 今年到此为止"（v16–v18
+        #               的真实动作空间）。要实现"等"，策略必须**主动放弃**一个
+        #               当下有正收益的动作，而每一次立项都在把共享打分函数往上推。
+        #   schedule —— 动作直接是"给这个地块排在第 y 年立项"。等待不再需要被
+        #               学出来，它就是一个可选动作。
+        # 两档一起跑，才能把"学不会等"归到**动作表示**而不是环境或优化器：
+        # 若 schedule 档一次就对，那么前面二十多档的失败与机会场怎么设无关，
+        # 与折现、熵、样本量也无关，而是"必须学会拒绝眼前的正收益"这件事本身难。
+        if str(action_mode) not in ("now", "schedule"):
+            raise ValueError(f"action_mode 只能是 now/schedule，收到 {action_mode!r}")
+        self.action_mode = str(action_mode)
+        # 是否给出"剩余年数"这一维。真实环境里 16..21 那六维生命周期特征
+        # （slack、剩余有效年、剩余建设年、期望交付年数）**全都随时间单调递减**，
+        # 若打分函数对它们是正权重，策略就会系统性偏向早动手——而那正好会被
+        # 读成"学会了赶在窗口内立项"，与 v16 的主判据成立并不矛盾。
+        # 这一档把它去掉，用来判断早动手是不是这几维造成的。
+        self.slack_feat = bool(slack_feat)
+        if not self.onset + self.lead < self.T - 1:
+            raise ValueError(
+                f"onset({self.onset}) + lead({self.lead}) 必须 < T-1({self.T - 1})："
+                "否则等到 onset 就已经建不成，穷举最优必然是早做，该档测不到择时")
+        # 每型几个地块。**这一条决定门槛实验有没有判别力**：
+        # 名额宽松时（地块数 << 可用年份数），早做几乎不牺牲什么，贪心解本来
+        # 就能拿到穷举最优的九成以上，于是"学没学会择时"被压缩进几个百分点，
+        # 测不出东西——本脚本第一版 3 个地块 × 10 年就是这个毛病。
+        # 名额紧张时，为 A 等到它变好就意味着这一年的名额让给别人，
+        # 择时才真正有代价、也才真正有价值。
+        self.n_per_kind = int(n_per_kind)
+        self.names, base, kind = [], [], []
+        for pre, b, k in self.KINDS:
+            for i in range(self.n_per_kind):
+                self.names.append(pre if self.n_per_kind == 1 else f"{pre}{i + 1}")
+                base.append(b)
+                kind.append(k)
+        self.n = len(self.names)
+        self.base = np.array(base, float)
+        self.kind = kind
         # 资金刻意不咬：预算恒大于任何单项成本，掩码里的资金项永不生效
         self.cost = np.zeros(self.n)
         self.scale = np.ones(len(OBJ_NAMES))
@@ -163,8 +213,27 @@ class GateEnv:
         return self.lo + (self.hi - self.lo) * s
 
     def value(self, u, t_init):
-        """立项年 t_init 下该地块的建成收益（未折现）。"""
+        """立项年 t_init 下该地块的建成收益（未折现）。
+
+        prob 档下收益与时机无关（恒为基数），时机只改变**能不能拿到**。
+        """
+        if self.channel == "prob":
+            return float(self.base[u])
         return float(self.base[u] * self.mult(u, t_init))
+
+    def q(self, u, t_init):
+        """prob 档：于第 t_init 年立项时批得下来的概率。"""
+        return float(self.q_lo + (self.q_hi - self.q_lo)
+                     * (self.mult(u, t_init) - self.lo) / max(self.hi - self.lo, 1e-9))
+
+    def evalue(self, u, t_init):
+        """期望收益：value 档 = 收益本身；prob 档 = 批准概率 × 收益。
+
+        穷举最优与判据都用这一式——prob 档比的是**期望**，否则"最优解"会随
+        某一次抽样漂移，判据就不再是判据。
+        """
+        v = self.value(u, t_init)
+        return v * self.q(u, t_init) if self.channel == "prob" else v
 
     def potential(self):
         """Φ(s) = 所有**尚未立项**且期内还来得及的地块的持有价值之和。"""
@@ -174,7 +243,7 @@ class GateEnv:
         for u in range(self.n):
             if u in self.init_year:
                 continue
-            cand = [self.value(u, t2) * self.gamma ** (self.pay_year(t2) - self.t)
+            cand = [self.evalue(u, t2) * self.gamma ** (self.pay_year(t2) - self.t)
                     for t2 in range(self.t, self.T - self.lead + 1)
                     if t2 + self.lead <= self.T - 1]
             if cand:
@@ -189,6 +258,10 @@ class GateEnv:
         return float(self.cost[int(u)])
 
     def reset(self, seed=None):
+        # prob 档的批准抽样用独立的发生器：与策略采样分开，换算法不改变
+        # 这一串审批运气，两档之间才可比。
+        self.arng = np.random.default_rng(12345 if seed is None else int(seed))
+        self.approved = {}
         self.t = 0
         self.done_year = {}            # 地块 -> 建成年
         self.init_year = {}            # 地块 -> 立项年
@@ -209,22 +282,45 @@ class GateEnv:
         return [u for u in range(self.n)
                 if u not in self.init_year and self.t + self.lead <= self.T - 1]
 
+    # 说明：schedule 档下 `_available` 仍按"当年是否还来得及"筛地块，
+    # 具体排在哪一年由 pairs() 枚举，两者不重复约束。
+
     def pairs(self):
+        """now 档：每个可立项地块一行。schedule 档：每个 (地块, 立项年) 一行。
+
+        schedule 档的配额约束落在**被排定的那一年**上：某一年已经排满 quota 个，
+        该年就不再出现在候选行里。否则"排期"会变成无约束的一次性分配，
+        与真实环境里逐年名额有限这件事不符。
+        """
         av = self._available()
-        rows = np.zeros((len(av) + 1, N_PAIR_FEAT), dtype=np.float32)
-        for j, u in enumerate(av):
-            rows[j, 0] = self.mult(u, self.t)                  # 当期机会场取值
+        if self.action_mode == "now":
+            opts = [(u, self.t) for u in av]
+        else:
+            used = {}
+            for uu, yy in self.init_year.items():
+                used[yy] = used.get(yy, 0) + 1
+            opts = [(u, y) for u in av
+                    for y in range(self.t, self.T - self.lead)
+                    if used.get(y, 0) < self.quota]
+        rows = np.zeros((len(opts) + 1, N_PAIR_FEAT), dtype=np.float32)
+        for j, (u, y) in enumerate(opts):
+            rows[j, 0] = (self.q(u, y) if self.channel == "prob" else self.mult(u, y))
             rows[j, 1] = self.base[u] / max(self.base.max(), 1e-9)
             if self.foresight:
-                rows[j, 2] = self.mult(u, self.t + self.foresight) - self.mult(u, self.t)
+                rows[j, 2] = ((self.q(u, y + self.foresight) - self.q(u, y))
+                              if self.channel == "prob"
+                              else (self.mult(u, y + self.foresight) - self.mult(u, y)))
+            rows[j, 3] = (y - self.t) / self.T        # 排在多少年之后（now 档恒 0）
             rows[j, 14] = self.t / self.T
             rows[j, 15] = 1.0
-            rows[j, 16] = (self.T - 1 - self.lead - self.t) / self.T   # 剩余可立项年数
-        rows[len(av), 14] = self.t / self.T
-        rows[len(av), N_FEAT + 16] = 1.0                       # 「到此为止」标志
-        meta = [(u, 0) for u in av] + [STOP]
-        cost = np.concatenate([self.cost[av], [0.0]])
-        units = np.concatenate([np.asarray(av, np.int64), np.array([-1], np.int64)])
+            if self.slack_feat:
+                rows[j, 16] = (self.T - 1 - self.lead - y) / self.T
+        rows[len(opts), 14] = self.t / self.T
+        rows[len(opts), N_FEAT + 16] = 1.0                     # 「到此为止」标志
+        meta = [(u, y) for u, y in opts] + [STOP]
+        cost = np.concatenate([np.zeros(len(opts)), [0.0]])
+        units = np.concatenate([np.asarray([u for u, _ in opts], np.int64),
+                                np.array([-1], np.int64)])
         return rows, meta, cost, units
 
     def step(self, actions):
@@ -239,17 +335,23 @@ class GateEnv:
         # 近似常数项，看起来"开了整形"而实际上没有任何时序信号。
         # （本脚本第一版就是这么写错的，三个种子跑出与未整形档逐位相同的结果。）
         phi0 = self.potential()
-        for u, _ in actions:
+        for u, y in actions:
             if u in self.init_year:
                 raise ValueError(f"地块 {u} 已立项")
-            self.init_year[u] = self.t
-            self.done_year[u] = self.t + self.lead
+            y0 = self.t if self.action_mode == "now" else int(y)
+            self.init_year[u] = y0
+            self.done_year[u] = y0 + self.lead
+            if self.channel == "prob":
+                # 按**排定年份**的机会抽批准：排在好年份就是好机会，
+                # 这正是 schedule 档要检验的那件事
+                self.approved[u] = bool(self.arng.random() < self.q(u, y0))
         # 收益结算：done 档在建成年、init 档在立项年（见 reward_at 的说明）
         if self.reward_at == "init":
             gain = sum(self.value(u, self.t) for u, _ in actions)
         else:
             gain = sum(self.value(u, self.init_year[u])
-                       for u, dy in self.done_year.items() if dy == self.t)
+                       for u, dy in self.done_year.items()
+                       if dy == self.t and self.approved.get(u, True))
         vec = np.zeros(len(OBJ_NAMES))
         vec[FLOOR_IDX] = gain
         self.t += 1
@@ -270,6 +372,10 @@ class GateEnv:
         不需要 DP——把最优解写成闭式推导反而更容易出错。
         """
         years = list(range(self.T - self.lead)) + [None]
+        if len(years) ** self.n > 4_000_000:
+            raise ValueError(
+                f"穷举规模 {len(years)}^{self.n} 过大：判据依赖精确最优，"
+                "不接受近似解。请减少 --n-per-kind 或 --T")
         best, best_plan = -np.inf, None
         for combo in itertools.product(years, repeat=self.n):
             used = [y for y in combo if y is not None]
@@ -277,7 +383,7 @@ class GateEnv:
                 continue
             if self.quota > 1:
                 pass                               # quota>1 时上面的去重过严，暂不支持
-            g = sum(self.value(u, y) * self.gamma ** self.pay_year(y)
+            g = sum(self.evalue(u, y) * self.gamma ** self.pay_year(y)
                     for u, y in enumerate(combo) if y is not None)
             if g > best:
                 best, best_plan = g, {self.names[u]: y for u, y in enumerate(combo)}
@@ -286,10 +392,14 @@ class GateEnv:
 
 def run_one(lead, seed, iters, T, onset, eps_per_iter, gamma=0.95, ent_c=0.01,
             lr=3e-3, epochs=4, reward_at="done", ramp_years=0.0, foresight=0,
-            lo=0.6, hi=1.6, shaping=False):
+            lo=0.6, hi=1.6, shaping=False, channel="value",
+            q_lo=0.35, q_hi=0.95, action_mode="now", slack_feat=True,
+            n_per_kind=1):
     env = GateEnv(T=T, lead=lead, onset=onset, gamma=gamma, reward_at=reward_at,
                   ramp_years=ramp_years, foresight=foresight, lo=lo, hi=hi,
-                  shaping=shaping)
+                  shaping=shaping, channel=channel, q_lo=q_lo, q_hi=q_hi,
+                  action_mode=action_mode, slack_feat=slack_feat,
+                  n_per_kind=n_per_kind)
     net, hist = train_ppo.train(env, iters=iters, eps_per_iter=eps_per_iter, seed=seed,
                                 ent_c=ent_c, lr=lr, epochs=epochs)
     rec = []
@@ -297,22 +407,49 @@ def run_one(lead, seed, iters, T, onset, eps_per_iter, gamma=0.95, ent_c=0.01,
     R = pd.DataFrame(rec)
     R = R[R["unit"] >= 0] if len(R) else R
     init = {env.names[int(r.unit)]: int(r.year) for r in R.itertuples()}
-    got = sum(env.value(u, init[nm]) * env.gamma ** env.pay_year(init[nm])
+    got = sum(env.evalue(u, init[nm]) * env.gamma ** env.pay_year(init[nm])
               for u, nm in enumerate(env.names) if nm in init)
     opt, opt_plan = env.brute_force_optimum()
     return dict(lead=lead, seed=seed, gamma=gamma, ent_c=ent_c, lr=lr,
                 epochs=epochs, reward_at=reward_at, iters=iters,
                 ramp_years=ramp_years, foresight=foresight, lo=lo, hi=hi,
-                shaping=shaping,
-                A_init=init.get("A"), B_init=init.get("B"), C_init=init.get("C"),
+                shaping=shaping, channel=channel, q_lo=q_lo, q_hi=q_hi,
+                action_mode=action_mode, slack_feat=slack_feat,
+                n_per_kind=n_per_kind, n_units=len(env.names),
+                slots=max(T - lead, 0), binding=bool(len(env.names) > max(T - lead, 0) * 1),
+                A_init=np.mean([init[nm] for u, nm in enumerate(env.names)
+                                if env.kind[u] == "ramp" and nm in init] or [np.nan]),
+                B_init=np.mean([init[nm] for u, nm in enumerate(env.names)
+                                if env.kind[u] == "flat_high" and nm in init] or [np.nan]),
+                C_init=np.mean([init[nm] for u, nm in enumerate(env.names)
+                                if env.kind[u] == "flat_low" and nm in init] or [np.nan]),
                 ret=got, opt=opt, ratio=got / opt if opt else np.nan,
-                opt_A=opt_plan["A"], opt_B=opt_plan["B"], opt_C=opt_plan["C"],
-                pass_wait=(init.get("A") is not None and init["A"] >= onset),
+                opt_A=np.mean([opt_plan[nm] for u, nm in enumerate(env.names)
+                               if env.kind[u] == "ramp"
+                               and opt_plan[nm] is not None] or [np.nan]),
+                opt_B=np.mean([opt_plan[nm] for u, nm in enumerate(env.names)
+                               if env.kind[u] == "flat_high"
+                               and opt_plan[nm] is not None] or [np.nan]),
+                opt_C=np.mean([opt_plan[nm] for u, nm in enumerate(env.names)
+                               if env.kind[u] == "flat_low"
+                               and opt_plan[nm] is not None] or [np.nan]),
+                pass_wait=float(np.mean([init[nm] >= onset
+                                         for u, nm in enumerate(env.names)
+                                         if env.kind[u] == "ramp" and nm in init])
+                                 ) if any(env.kind[u] == "ramp" and nm in init
+                                          for u, nm in enumerate(env.names)) else 0.0,
                 # 与穷举最优时点的距离容 1 年：爬升档下最优年可能晚于 onset，
                 # 只判"是否等过了 onset"会给爬升档虚高的通过率。
-                pass_opt=(init.get("A") is not None
-                          and abs(init["A"] - opt_plan["A"]) <= 1),
-                pass_now=(init.get("B") == 0),
+                pass_opt=float(np.mean(
+                    [abs(init[nm] - opt_plan[nm]) <= 1
+                     for u, nm in enumerate(env.names)
+                     if env.kind[u] == "ramp" and nm in init
+                     and opt_plan[nm] is not None] or [0.0])),
+                pass_now=float(np.mean(
+                    [init[nm] <= opt_plan[nm] + 1
+                     for u, nm in enumerate(env.names)
+                     if env.kind[u] == "flat_high" and nm in init
+                     and opt_plan[nm] is not None] or [0.0])),
                 pass_ret=(got >= 0.95 * opt),
                 curve_last=hist[-1])
 
@@ -351,6 +488,30 @@ def main():
                     help="ramp 型地块爬升**后**的收益乘子，默认 1.6。lo/hi 之比决定"
                          "\"等对不等\"的净收益有多大；比值太小时择时收益会低于"
                          "PPO 的梯度噪声，学不到不是因为不可表示而是因为看不见")
+    ap.add_argument("--channel", default="value", choices=["value", "prob"],
+                    help="机制通道。value=时机改变交付价值（v17 机制，作对照）；"
+                         "prob=时机改变**批得下来的概率**（v18 主机制：报早了在"
+                         "有效期内批不下来、白占名额）。prob 档回报是随机的，"
+                         "梯度噪声更大，是本机必须先测出来的东西")
+    ap.add_argument("--action-mode", default="now", choices=["now", "schedule"],
+                    help="动作表示。now=每年决定现在做/不做（真实环境的动作空间）；"
+                         "schedule=直接给地块排一个立项年。若 schedule 档一次就对"
+                         "而 now 档永远学不会，则瓶颈在动作表示，与机会场怎么设无关")
+    ap.add_argument("--n-per-kind", type=int, default=1,
+                    help="每型地块几个（共 3×K 个）。名额是否**紧张**由它与 T-lead "
+                         "个可用年份之比决定；名额宽松时贪心解本就能拿到穷举最优的"
+                         "九成以上，门槛实验测不出择时能力")
+    ap.add_argument("--no-slack-feat", action="store_true",
+                    help="去掉\"剩余年数\"特征。真实环境的六维生命周期特征都随时间"
+                         "单调递减，若打分函数对它们是正权重，策略会系统性偏向早"
+                         "动手——而那会被读成\"学会了赶窗口\"。这一档用来分离二者")
+    ap.add_argument("--q-lo", type=float, default=0.35,
+                    help="prob 档：时机最差时的批准概率。q_hi/q_lo 之比决定"
+                         "\"等对不等\"的净收益有多大——这是本机要标定的关键量："
+                         "摆幅小于某个阈值时，择时收益低于梯度噪声，学不到不是"
+                         "因为不可表示，而是因为看不见")
+    ap.add_argument("--q-hi", type=float, default=0.95,
+                    help="prob 档：时机最好时的批准概率")
     ap.add_argument("--shaping", action="store_true",
                     help="开启势函数型奖励整形（PBRS，Ng et al. 1999）。"
                          "**不改变最优策略集**，只把\"等待\"的梯度从机械扣分变成"
@@ -371,18 +532,21 @@ def main():
                         gamma=a.gamma, ent_c=a.ent_c, lr=a.lr, epochs=a.epochs,
                         reward_at=a.reward_at, ramp_years=a.ramp_years,
                         foresight=a.foresight, lo=a.lo, hi=a.hi,
-                        shaping=a.shaping)
+                        shaping=a.shaping, channel=a.channel,
+                        q_lo=a.q_lo, q_hi=a.q_hi, action_mode=a.action_mode,
+                        slack_feat=not a.no_slack_feat, n_per_kind=a.n_per_kind)
             r["label"] = a.label or f"lead{lead}"
             rows.append(r)
             print(f"lead={lead} seed={seed}  A={r['A_init']} B={r['B_init']} "
                   f"C={r['C_init']}  (最优 A={r['opt_A']} B={r['opt_B']} "
                   f"C={r['opt_C']})  回报比={r['ratio']:.3f}")
+            # A/B/C 在多地块档下是**同型均值**，不是单个地块
     D = pd.DataFrame(rows)
     D.to_csv(os.path.join(a.out, "gate_runs.csv"), index=False, encoding="utf-8-sig")
 
     summ = (D.groupby(["label", "lead"])
-             .agg(n=("seed", "size"), 学会等=("pass_wait", "mean"),
-                  命中最优年=("pass_opt", "mean"),
+             .agg(n=("seed", "size"), 命中最优年=("pass_opt", "mean"),
+                  学会等=("pass_wait", "mean"),
                   B不拖延=("pass_now", "mean"), 回报达标=("pass_ret", "mean"),
                   A立项年均值=("A_init", "mean"), A最优年=("opt_A", "mean"),
                   回报比均值=("ratio", "mean"))
@@ -395,6 +559,9 @@ def main():
                    ent_c=a.ent_c, lr=a.lr, epochs=a.epochs,
                    reward_at=a.reward_at, ramp_years=a.ramp_years,
                    foresight=a.foresight, lo=a.lo, hi=a.hi, shaping=a.shaping,
+                   channel=a.channel, q_lo=a.q_lo, q_hi=a.q_hi,
+                   action_mode=a.action_mode, slack_feat=not a.no_slack_feat,
+                   n_per_kind=a.n_per_kind,
                    label=a.label),
               open(os.path.join(a.out, "gate_config.json"), "w"),
               ensure_ascii=False, indent=1)

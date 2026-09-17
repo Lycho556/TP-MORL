@@ -1,0 +1,6 @@
+﻿lead,seed,gamma,ent_c,lr,epochs,reward_at,iters,ramp_years,foresight,lo,hi,shaping,channel,q_lo,q_hi,A_init,B_init,C_init,ret,opt,ratio,opt_A,opt_B,opt_C,pass_wait,pass_opt,pass_now,pass_ret,curve_last,label
+1,0,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,False,prob,0.15,0.95,0,1,2,92.2413730767794,114.76316182697707,0.8037541978483244,8,0,1,False,False,False,False,175.0,swing6x
+1,1,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,False,prob,0.15,0.95,1,0,2,97.32469562291364,114.76316182697707,0.8480482244785607,8,0,1,False,False,True,False,100.0,swing6x
+1,2,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,False,prob,0.15,0.95,0,1,2,92.2413730767794,114.76316182697707,0.8037541978483244,8,0,1,False,False,False,False,25.0,swing6x
+1,3,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,False,prob,0.15,0.95,1,0,2,97.32469562291364,114.76316182697707,0.8480482244785607,8,0,1,False,False,True,False,125.0,swing6x
+1,4,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,False,prob,0.15,0.95,1,0,2,97.32469562291364,114.76316182697707,0.8480482244785607,8,0,1,False,False,True,False,150.0,swing6x

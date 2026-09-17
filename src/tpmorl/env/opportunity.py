@@ -66,15 +66,42 @@ import numpy as np
 # 四个场各自对结果的作用强度。**默认全 0 = 关闭**，此时环境与 v16 动态逐位等价。
 #
 # 幅度的含义：
-#   A_PLAN  上位规划支持度对**交付价值**的最大加成（读立项年取值）。
-#           读立项年而非建成年，对应"申报时点的规划定位决定了批得下来多少容积率
-#           与多少价值捕获空间"这一读法。
-#   A_INFRA 周边设施成熟度对**交付价值**的最大加成（读建成年取值）。
-#           读建成年，对应"价值在交付时点实现——地铁通了这片房子才值钱"。
-#   A_AGE   建筑老化带来的**更新必要性**对交付价值的最大加成（读建成年取值）。
-#   A_READY 实施条件对**逐年批准风险率**的调制幅度（读当年取值），
-#           这一条不走价值通道而走**概率通道**：条件好的年份更容易批得下来、
-#           因而更不容易失效。它给出的是与价值无关的第二类"等的理由"。
+#   A_PLAN  上位规划支持度对**立项可及性** P_init(i,t) 的调制幅度（读当年）。
+#           **v18 起走"能不能报上去"这条通道，不再乘交付价值，也不并进批准
+#           hazard。** 这是本版最重要的机制改动，也是与建议 §9 对应的那一格：
+#           规划决定的是"这一年这个地块值不值得/能不能申报"——法定图则尚未
+#           覆盖、不在更新单元计划名单里，报上去本就进不了流程；进了重点片区，
+#           它才真正进入候选集。
+#           实现成**逐年逐单元的随机可及性**而不是硬阈值：
+#               可报 ~ Bernoulli(P_ADMIT_LO + (1−P_ADMIT_LO)·Plan(i,t))，
+#           幅度由 A_PLAN 在 [1, P_ADMIT_LO] 之间插值。规划支持只是**提高**
+#           它被纳入的机会，不保证纳入，也不禁止低支持度的地块被纳入——
+#           与 Liang et al. (2018, IJGIS) 的规划发展区"提高发展概率而非强制
+#           发展"同构，也正是建议 §12 强调的那一点。
+#   A_READY 实施条件对**批准风险率** P_approve(i,t) 的调制幅度（读当年）。
+#           报上去之后能不能在有效期内批下来、推得动，是另一件事，故与上一条
+#           分属两条通道。
+#   A_AGE   更新必要性 Need(i,t) 的幅度。**与建议的一处明示偏离**：建议把
+#           Need 列为独立的第三种机制，但本环境里"必要性"没有独立的作用位——
+#           它既不是准入（那是法定图则的事），也不改变客观收益（面积不会因为
+#           房子旧而变多）。故这里把它并入**批准风险率**：越必要的项目在审批
+#           与各方协调中越顺利。这是实现上的合并，不是建议的原意，凡引用
+#           §9 的地方都按此标注，不得写成"完全照表实现"。
+#   A_INFRA 周边设施成熟度对**交付价值**的加成（读**建成年**取值）。
+#           **v18 起这是唯一保留的价值通道**，因为它是四者中最好辩护的一条：
+#           价值在交付时点实现——地铁通了、学校医院商业到位了，同样的房子才
+#           值那个钱。其余三者若也乘在 Floor 上，Floor 就不再是计容建筑面积，
+#           而审稿人必然会问那个乘数是哪来的（v17 的写法确实有这个问题）。
+#
+# 于是四个因素按**阶段**分工，而不是一起乘价值（建议 §9 的表）：
+#     上位规划   → 什么时候值得申报       概率通道
+#     建筑老化   → 什么时候更新越来越必要   概率通道
+#     实施条件   → 什么时候更容易推进成功   概率通道
+#     基础设施   → 建成之后值不值钱        价值通道
+#
+# "等"因此有**两个互相独立**的理由，且都不需要改写奖励的定义：
+#     等到规划与条件成熟 → 批得下来、不至于在有效期内失效（概率）
+#     等到设施建成      → 交付时真正值那个钱（价值）
 A_PLAN = 0.0
 A_INFRA = 0.0
 A_AGE = 0.0
@@ -107,6 +134,25 @@ SHARE_RAMP = 0.40     # 现在一般、若干年后变好 -> 应当等
 # 全部堆在前三分之一，两档的差异就混进了"场被压缩"这一无关因素。
 ONSET_LO_FRAC = 0.15
 ONSET_HI_FRAC = 0.60
+# 机会曲线的**形状**。这是 v18 最后一项、也是 P0 诊断直接要求的改动。
+#   "rising" 单调爬升（v17 口径）：低 → 高 → 一直高。
+#   "window" 有限机会窗：低 → 升 → **峰** → 回落。
+#
+# 为什么必须有"关窗"这一侧（P0 诊断的实测依据）：
+# 单调场下，最优立项年只有两种可能——"立刻"或"能拖多久拖多久"。实测
+# （scripts/exp_waiting_advantage.py，v18 主组 T=15）最优等待年的分布是
+# 立刻 0.75 / 内点 0.12 / 拖满 0.13；把幅度加倍，WA>0 的状态占比从 0.25 升到
+# 0.57，但"拖满"同时从 0.13 升到 0.31 —— 环境开始奖励**无脑延后**这个退化解。
+# 也就是说单调场里"择时机会变多"与"延后被奖励"是同一件事，无法分开。
+#
+# 有限窗把这两件事分开：等过峰值开始亏，于是"等太久"由机会场**自然**惩罚，
+# 不需要人为的 wait penalty（那种罚项一加，审稿人必问罚多少是怎么定的）。
+# 窗宽取 3~7 年（WINDOW_YEARS_LO/HI），与 25 年决策期的关系是
+# "全局 25 年期限 + 局部 3~7 年机会窗"，而不是靠延长期限制造择时空间。
+OPP_SHAPE = "rising"
+WINDOW_YEARS_LO = 3.0
+WINDOW_YEARS_HI = 7.0
+
 RAMP_YEARS = 3.0      # 逻辑斯蒂爬升的时间常数（年）。刻意不做成阶跃：
                       # 建议明确要求"不要写成 30 年以上=必须更新"这类硬阈值，
                       # 机会改善在现实中是逐渐的。
@@ -122,6 +168,16 @@ LEVEL_NEVER = 0.10    # "一直不好"型的恒定水平
 # nb² 而不是 k（k=6 时实际为 9）。`eff()` 报的是**实际**片区数，不是这个目标值。
 INFRA_CLUSTERS = 6
 
+# 设施的**公布**比**建成**早多少年。这一条是 Liang et al. 那套"未来规划替换"
+# 机制在本模型里的落点：同一条地铁线有两个状态——
+#     Infra_plan(i,t)    规划已公布、预期已形成（提前 INFRA_ANNOUNCE_LEAD 年）
+#     Infra_active(i,t)  真正通车、价值可以兑现
+# 观测给的是 plan 层（规划师确实看得见已公布的线路与建设计划），
+# 交付价值用的是 active 层（地铁没通，房子就还没值那个钱）。
+# 于是"规划先产生预期、建成以后才兑现"这句话在代码里是两条曲线而不是一句话。
+# 取 4 年：轨道线路从公布建设计划到通车通常是数年量级；**情景参数**，可扫。
+INFRA_ANNOUNCE_LEAD = 4.0
+
 # 建筑老化。AGE0_* 是**基期建筑年龄**的抽样分布（无数据，情景参数）。
 AGE0_MEAN = 22.0
 AGE0_SD = 8.0
@@ -130,6 +186,11 @@ AGE_SLOPE = 6.0       # 平滑尺度：AGE_MID 处 0.5，±6 年约 0.27/0.73
 
 # 实施条件场。与规划场独立抽样（现实中两者相关，但相关强度无数据，
 # 故取独立并在文档中声明；需要时另设相关档）。
+# 立项可及性的底水平：规划支持为 0 时仍有这么大的机会被纳入候选集。
+# 不取 0：现实中没有"不在任何规划里就绝对报不上去"这回事，且取 0 会让
+# A_PLAN 从"提高机会"变成"一票否决"，那正是建议 §12 反对的硬规则。
+P_ADMIT_LO = 0.35
+
 READY_BASE = 0.5      # 基期水平。取 0.5 使 A_READY 的调制在 hazard 上近似中性：
                       # hazard_mult = 1 + A_READY·(2·ready − 1)，ready=0.5 时恰为 1。
 
@@ -167,6 +228,10 @@ class OpportunityField:
         self.kind = np.where(u < SHARE_NOW, 0,
                              np.where(u < SHARE_NOW + SHARE_RAMP, 1, 2))  # 0 早 1 等 2 从不
 
+        # 逐单元机会窗宽度（仅 OPP_SHAPE="window" 时起作用）。**逐单元不同**：
+        # 现实中有的地块窗口很短（一次规划调整的空档），有的较长。
+        self.window = rng.uniform(WINDOW_YEARS_LO, WINDOW_YEARS_HI, self.n)
+
         lo_y = ONSET_LO_FRAC * self.T
         hi_y = ONSET_HI_FRAC * self.T
         # ---- 上位规划场 ----
@@ -179,10 +244,33 @@ class OpportunityField:
         self.infra_onset = c_onset[self.infra_cluster]
         # 设施场不分三型：设施要么早就有、要么某年建成，没有"永远不好"的读法，
         # 故对全体单元一律用爬升曲线，差别只在投用年份的早晚。
-        self.infra = np.clip(LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW)
-                             * _logistic((self.years[None, :]
-                                          - self.infra_onset[:, None]) / RAMP_YEARS),
-                             0.0, 1.0)
+        # 设施场：window 档下同样开窗。设施建成后周边价值确实会经历
+        # "投用—成熟—相对优势被后建成的新片区稀释"这个过程，故回落有现实读法；
+        # 但它比规划场更缓（窗宽 ×1.5），因为设施是存量、不像规划名额那样过期。
+        if OPP_SHAPE == "window":
+            ipk = self.infra_onset + self.window * 0.75
+            self.infra = np.clip(LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW) * np.exp(
+                -((self.years[None, :] - ipk[:, None])
+                  / np.maximum(self.window[:, None] * 0.75, 1e-6)) ** 2), 0.0, 1.0)
+        else:
+            self.infra = np.clip(LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW)
+                                 * _logistic((self.years[None, :]
+                                              - self.infra_onset[:, None]) / RAMP_YEARS),
+                                 0.0, 1.0)
+        # 公布层：同一条曲线整体左移 INFRA_ANNOUNCE_LEAD 年。左移而不是另抽一条
+        # 随机曲线，是因为"公布"与"通车"说的是同一件工程，两者必须同序——
+        # 另抽一条会出现"先通车后公布"这种无意义的样本。
+        if OPP_SHAPE == "window":
+            ipk2 = self.infra_onset + self.window * 0.75 - INFRA_ANNOUNCE_LEAD
+            self.infra_plan = np.clip(LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW) * np.exp(
+                -((self.years[None, :] - ipk2[:, None])
+                  / np.maximum(self.window[:, None] * 0.75, 1e-6)) ** 2), 0.0, 1.0)
+        else:
+            self.infra_plan = np.clip(
+                LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW)
+                * _logistic((self.years[None, :]
+                             - (self.infra_onset[:, None] - INFRA_ANNOUNCE_LEAD))
+                            / RAMP_YEARS), 0.0, 1.0)
 
         # ---- 建筑老化 -> 更新必要性 ----
         self.age0 = np.clip(rng.normal(AGE0_MEAN, AGE0_SD, self.n), 0.0, 80.0)
@@ -198,9 +286,20 @@ class OpportunityField:
 
     # ---- 场的构造 ----
     def _field(self, onset):
-        """按三型给出 (n, H) 的场：早型恒高、等型爬升、从不型恒低。"""
-        ramp = LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW) * _logistic(
-            (self.years[None, :] - onset[:, None]) / RAMP_YEARS)
+        """按三型给出 (n, H) 的场：早型恒高、等型爬升（或开窗）、从不型恒低。
+
+        `OPP_SHAPE="window"` 时"等"型不再是爬升到高位不动，而是在 onset 之后
+        升到峰值、再回落——峰值年 = onset + 窗宽/2，回落尺度 = 窗宽/2，
+        故该单元的有效机会窗长度约等于 `self.window`（3~7 年）。
+        """
+        if OPP_SHAPE == "window":
+            peak = onset + self.window / 2.0
+            ramp = LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW) * np.exp(
+                -((self.years[None, :] - peak[:, None])
+                  / np.maximum(self.window[:, None] / 2.0, 1e-6)) ** 2)
+        else:
+            ramp = LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW) * _logistic(
+                (self.years[None, :] - onset[:, None]) / RAMP_YEARS)
         F = np.empty_like(ramp)
         F[self.kind == 0] = LEVEL_HIGH
         F[self.kind == 1] = ramp[self.kind == 1]
@@ -235,7 +334,12 @@ class OpportunityField:
         return self._at(self.plan, t)
 
     def infra_at(self, t):
+        """**建成**层：价值兑现用这一层。"""
         return self._at(self.infra, t)
+
+    def infra_plan_at(self, t):
+        """**公布**层：观测用这一层（规划师看得见已公布的线路与建设计划）。"""
+        return self._at(self.infra_plan, t)
 
     def necessity_at(self, t):
         return self._at(self.necessity, t)
@@ -244,45 +348,120 @@ class OpportunityField:
         return self._at(self.ready, t)
 
     def value_mult(self, u, t_init, t_done):
-        """交付价值的时机乘子。幅度全 0 时**恒等于精确的 1.0**。
+        """交付价值的时机乘子。**v18 起只含基础设施一项**，读建成年取值。
 
-        M = (1 + A_PLAN·Plan(i, 立项年))
-          × (1 + A_INFRA·Infra(i, 建成年))
-          × (1 + A_AGE·Necessity(i, 建成年))
+            M = 1 + A_INFRA · Infra_active(i, 建成年)
 
-        三项相乘而非相加：三者是同一个项目在不同维度上的"时机好不好"，
-        相加会让任一项单独变好就足以拉满，相乘要求它们**同时**到位，
-        这才是"等到规划、设施、必要性都成熟"的那个读法。
+        用 `Infra_active`（真正建成通车的那一年起）而**不是** `Infra_plan`
+        （规划公布年起）：规划先产生预期、建成才兑现价值。预期那一层只进观测，
+        供策略判断"再等两年设施就到位了"，不进价值——否则等于认定规划一公布
+        房子就值钱了。
+
+        A_INFRA=0 时返回**精确的 1.0**。`t_init` 保留在签名里是为了兼容调用点，
+        v18 起不再使用（规划已改走概率通道）。
         """
-        if not active():
+        if not A_INFRA:
             return 1.0
         i = int(u)
-        m = 1.0
-        if A_PLAN:
-            m *= 1.0 + A_PLAN * float(self.plan[i, int(np.clip(t_init, 0, self.plan.shape[1] - 1))])
-        if A_INFRA:
-            m *= 1.0 + A_INFRA * float(self.infra[i, int(np.clip(t_done, 0, self.infra.shape[1] - 1))])
-        if A_AGE:
-            m *= 1.0 + A_AGE * float(self.necessity[i, int(np.clip(t_done, 0, self.necessity.shape[1] - 1))])
-        return float(m)
+        j = int(np.clip(t_done, 0, self.infra.shape[1] - 1))
+        return float(1.0 + A_INFRA * float(self.infra[i, j]))
 
     def hazard_mult(self, t):
-        """逐年批准风险率的调制因子，长度 n。A_READY=0 时**恒为精确的 1.0**。
+        """逐年批准风险率的调制因子，长度 n。三个幅度全 0 时返回**精确的标量 1.0**。
 
-        factor = 1 + A_READY·(2·Ready(i,t) − 1)
-        Ready=0.5（基期水平）时恰为 1，故本参数在基期是中性的：它改变的是
-        "条件成熟之后更容易批"，而不是整体抬高或压低批准率。若不做这个中性化，
-        A_READY 会同时改变审批速度的**水平**与**时序**，两个效应无法分离。
+            factor = (1 + A_AGE·(2·Need(i,t) − 1))
+                   × (1 + A_READY·(2·Ready(i,t) − 1))
+
+        **不含** A_PLAN：规划走的是立项可及性（能不能报上去），不是批准概率
+        （报上去能不能批下来）。两者在建议 §9 里是两格，这里也是两条通道。
+
+        每一项都在场取值 0.5 处**中性化**（取值 0.5 → 因子 1）。不做这个中性化，
+        这三个参数会同时改变审批速度的**水平**与**时序**，两个效应无法分离——
+        那样得到的"等待有价值"分不清是因为时机变好了，还是因为整体批准率被抬高了。
+
+        两项**相乘**：必要性与实施条件同时到位才真正推得动，任一项拖后腿都会
+        把机会拉回来。叠加上游的立项可及性，就得到"规划支持 ≠ 必须更新"——
+        重点片区里的地块报上去了，若建筑还新、实施条件差，当年依然可能批不下来。
+
+        实测力度（基准 HAZARD、有效期 3+2 年）：因子 0.44 时有效期内获批概率
+        0.394，因子 1.8 时 0.918。即"等到时机成熟再报"能把项目活下来的机会
+        提高一倍以上——这个量级足以让等待成为真正的决策，而不必动奖励定义。
         """
-        if not A_READY:
+        if not (A_AGE or A_READY):
             return 1.0
-        return np.clip(1.0 + A_READY * (2.0 * self.ready_at(t) - 1.0), 0.0, None)
+        f = np.ones(self.n)
+        if A_AGE:
+            f *= 1.0 + A_AGE * (2.0 * self.necessity_at(t) - 1.0)
+        if A_READY:
+            f *= 1.0 + A_READY * (2.0 * self.ready_at(t) - 1.0)
+        return np.clip(f, 0.0, None)
+
+    def admit_prob(self, t):
+        """立项可及性 P_init(i,t) ∈ [0,1]：这一年这个地块能不能报进候选集。
+
+        A_PLAN=0 时返回**全 1**（人人可报，与 v16 逐位等价）。
+        A_PLAN=1 时为 P_ADMIT_LO + (1−P_ADMIT_LO)·Plan(i,t)；
+        中间幅度在"全 1"与该式之间线性插值，故 A_PLAN 的含义是
+        "规划对准入的影响有多强"，0 = 完全不影响。
+        """
+        if not A_PLAN:
+            return np.ones(self.n)
+        full = P_ADMIT_LO + (1.0 - P_ADMIT_LO) * self.plan_at(t)
+        return np.clip(1.0 + A_PLAN * (full - 1.0), 0.0, 1.0)
+
+    def admissible(self, t, rng):
+        """按 `admit_prob` 抽一次，返回本年可立项的布尔掩码。
+
+        **逐年重抽**而不是一次定死：规划支持低的地块今年报不上去，明年可能
+        报得上去；一次定死就变成了永久禁入，那是硬规则。
+        抽样用调用方传入的发生器（环境的状态机 rng），A_PLAN=0 时整条跳过、
+        **不消耗随机数**，这是与 v16 逐位等价的前提。
+        """
+        if not A_PLAN:
+            return np.ones(self.n, dtype=bool)
+        return rng.random(self.n) < self.admit_prob(t)
+
+    def opportunity_index(self, t):
+        """动态更新机会 O(i,t) ∈ [0,1]：这个地块在这一年有多大可能真正推得动。
+
+        合成两条概率通道并归一化到 [0,1]：
+
+            O(i,t) = admit_prob(i,t) · clip(hazard_mult(i,t) / MAX_FACTOR, 0, 1)
+
+        即"报得上去"× "报上去能批下来"——这正是"这个地块这一年有多大可能
+        真正进入更新流程"的字面含义。
+
+        `MAX_FACTOR` 是三项各自取满时的上界（各场取 1 时的因子），故 O 的分母
+        是**构造上的常数**而不是本次抽样的样本最大值——用样本最大值会让 O 的
+        含义随场种子漂移，两个批次之间就不可比了。
+
+        这是建议 §10 里"环境每年告诉策略：A 地块当前机会 0.35、明年 0.50"的那个量。
+        它不是四个场的简单平均：合成是**乘性**的，一项拖后腿就会把机会拉回来，
+        这与线性平均给出的排序并不相同，故它在观测里不是冗余维。
+        """
+        if not (A_PLAN or A_AGE or A_READY):
+            return np.zeros(self.n, dtype=float)
+        hi = 1.0
+        for a in (A_AGE, A_READY):
+            if a:
+                hi *= 1.0 + a
+        hz = self.hazard_mult(t)
+        hz = np.full(self.n, 1.0) if np.ndim(hz) == 0 else hz
+        return np.clip(self.admit_prob(t) * np.clip(hz / hi, 0.0, 1.0), 0.0, 1.0)
 
     def obs_block(self, t):
         """观测用的 (n, 8) 特征块。
 
-            0..3  当期水平：规划 / 设施 / 更新必要性 / 实施条件
+            0..3  当期水平：规划 / 设施（**公布**层）/ 更新必要性 / 实施条件
             4..7  **趋势**：同四项在 t+FORESIGHT 与 t 之间的差值
+            8     动态更新机会 O(i,t)：概率通道三项的乘性合成，归一化到 [0,1]
+            9     O 的趋势（t+FORESIGHT 与 t 之差）
+
+        第 1 维给的是设施的**公布**层而非建成层：规划师看得见已公布的线路与
+        建设计划，这正是"未来规划替换"机制要交给决策者的那段信息；价值那一侧
+        仍然只认建成层（见 `value_mult`）。
+        第 8/9 维不是前八维的线性组合——概率通道的合成是乘性的，一项拖后腿会
+        把机会拉回来，与线性平均给出的排序不同。
 
         ## 为什么必须有"趋势"这四维（门槛实验的结论）
 
@@ -314,20 +493,22 @@ class OpportunityField:
         这一档（用于检验这八维本身不是噪声）；要复现 v16 的观测口径，
         必须**同时**把幅度置 0 并关掉本开关。
         """
-        B = np.zeros((self.n, 8), dtype=np.float32)
+        B = np.zeros((self.n, 10), dtype=np.float32)
         if not OBS_OPPORTUNITY:
             return B
         t0 = int(t)
         B[:, 0] = self.plan_at(t0)
-        B[:, 1] = self.infra_at(t0)
+        B[:, 1] = self.infra_plan_at(t0)      # 公布层，不是建成层
         B[:, 2] = self.necessity_at(t0)
         B[:, 3] = self.ready_at(t0)
+        B[:, 8] = self.opportunity_index(t0)
         if FORESIGHT:
             t1 = t0 + int(FORESIGHT)
             B[:, 4] = self.plan_at(t1) - B[:, 0]
-            B[:, 5] = self.infra_at(t1) - B[:, 1]
+            B[:, 5] = self.infra_plan_at(t1) - B[:, 1]
             B[:, 6] = self.necessity_at(t1) - B[:, 2]
             B[:, 7] = self.ready_at(t1) - B[:, 3]
+            B[:, 9] = self.opportunity_index(t1) - B[:, 8]
         return B
 
     # ---- 自证 ----
@@ -344,6 +525,10 @@ class OpportunityField:
                     onset_hi_eff=float(ONSET_HI_FRAC * self.T),
                     ramp_years_eff=float(RAMP_YEARS),
                     infra_clusters_eff=int(self.infra_cluster.max()) + 1,
+                    infra_announce_lead_eff=float(INFRA_ANNOUNCE_LEAD),
+                    opp_shape_eff=str(OPP_SHAPE),
+                    window_years_eff=(float(self.window.mean())
+                                      if OPP_SHAPE == "window" else None),
                     n_kind_now=int((self.kind == 0).sum()),
                     n_kind_ramp=int((self.kind == 1).sum()),
                     n_kind_never=int((self.kind == 2).sum()))
@@ -380,6 +565,11 @@ def tag():
     # 场的形状参数也入键：改了三型构成或爬升时间常数，可达上界同样变
     if (SHARE_NOW, SHARE_RAMP) != (0.30, 0.40):
         s += f"H{SHARE_NOW:g}-{SHARE_RAMP:g}".replace(".", "")
+    if OPP_SHAPE == "window":
+        # 形状改变可达上界（关窗后晚立项的价值更低），**必须入键**
+        s += f"W{WINDOW_YEARS_LO:g}-{WINDOW_YEARS_HI:g}".replace(".", "")
+    if INFRA_ANNOUNCE_LEAD != 4.0:
+        s += f"L{INFRA_ANNOUNCE_LEAD:g}".replace(".", "")
     if (ONSET_LO_FRAC, ONSET_HI_FRAC, RAMP_YEARS) != (0.15, 0.60, 3.0):
         s += f"N{ONSET_LO_FRAC:g}-{ONSET_HI_FRAC:g}-{RAMP_YEARS:g}".replace(".", "")
     return s

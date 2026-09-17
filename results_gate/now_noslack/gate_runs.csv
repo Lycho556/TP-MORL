@@ -1,0 +1,6 @@
+﻿lead,seed,gamma,ent_c,lr,epochs,reward_at,iters,ramp_years,foresight,lo,hi,shaping,channel,q_lo,q_hi,action_mode,slack_feat,A_init,B_init,C_init,ret,opt,ratio,opt_A,opt_B,opt_C,pass_wait,pass_opt,pass_now,pass_ret,curve_last,label
+1,0,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,False,prob,0.35,0.95,now,False,0,1,2,133.54056105758457,145.37216694705438,0.9186116150158306,7,0,1,False,False,False,False,225.0,now_noslack
+1,1,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,False,prob,0.35,0.95,now,False,0,1,2,133.54056105758457,145.37216694705438,0.9186116150158306,7,0,1,False,False,False,False,125.0,now_noslack
+1,2,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,False,prob,0.35,0.95,now,False,0,1,2,133.54056105758457,145.37216694705438,0.9186116150158306,7,0,1,False,False,False,False,75.0,now_noslack
+1,3,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,False,prob,0.35,0.95,now,False,1,0,2,137.35305296718522,145.37216694705438,0.944837349898005,7,0,1,False,False,True,False,175.0,now_noslack
+1,4,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,False,prob,0.35,0.95,now,False,1,0,2,137.35305296718522,145.37216694705438,0.944837349898005,7,0,1,False,False,True,False,175.0,now_noslack
