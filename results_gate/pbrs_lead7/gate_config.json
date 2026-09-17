@@ -1,0 +1,25 @@
+{
+ "T": 20,
+ "onset": 8,
+ "iters": 300,
+ "eps": 4,
+ "leads": [
+  7
+ ],
+ "seeds": [
+  0,
+  1,
+  2
+ ],
+ "gamma": 0.95,
+ "ent_c": 0.01,
+ "lr": 0.003,
+ "epochs": 4,
+ "reward_at": "done",
+ "ramp_years": 0.0,
+ "foresight": 0,
+ "lo": 0.6,
+ "hi": 1.6,
+ "shaping": true,
+ "label": "pbrs_lead7"
+}

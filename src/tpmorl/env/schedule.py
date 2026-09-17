@@ -93,7 +93,7 @@ class RenewalSchedule:
     """制度时序状态机。一个实例管理全部候选单元在 T 期内的状态演化。"""
 
     def __init__(self, channel_of_unit, quota=None, tau_max=None,
-                 build_years=None, cooldown=None, hazard=None, seed=0):
+                 build_years=None, cooldown=None, hazard=None, seed=0, opp=None):
         # 默认值一律在此处解析，**不写进函数签名**：签名里的默认值在函数定义时
         # 就已求值，CLI 事后改写模块常量（本项目情景参数的既有做法）不会生效，
         # 情景对照会静默失效。
@@ -104,6 +104,11 @@ class RenewalSchedule:
         self.cooldown = COOLDOWN if cooldown is None else cooldown
         self.build_years = self._build_years_array(build_years)
         self.hazard = np.asarray(HAZARD if hazard is None else hazard, float)
+        # 机会场（可选）。只用它的 hazard_mult：实施条件好的年份更容易批得下来。
+        # 这是与"价值通道"无关的第二类等待理由——等的是**批得下来的概率**。
+        # A_READY=0 时 hazard_mult 返回标量 1.0，下面的分支据此整条跳过，
+        # 逐年批准率与随机数消耗序列都与 v16 逐位相同。
+        self.opp = opp
         self.rng = np.random.default_rng(seed)
         self.eligible = np.isin(self.ch, ACTIONABLE_CHANNELS)   # 通道决定是否可能被更新
         self.reset()
@@ -175,6 +180,12 @@ class RenewalSchedule:
         返回长度 tau_max 的数组。tau_max 很小（默认 5），每回合算一次即可。
         这是**期望**值而非乐观值：用乐观值（假设次年必获批）会让 slack 特征
         系统性高估可交付性，策略据此在窗外立项，正是本项目要诊断的行为。
+
+        **一处刻意的口径差（v17）**：本式用的是**基准** hazard，不含实施条件
+        （`opportunity.A_READY`）的逐年调制。理由是 slack 与期望交付年数这几维
+        特征应当只依赖已标定量，不应依赖一个未标定的情景参数；A_READY>0 时真实
+        期望与本式会有偏差，方向取决于该单元实施条件的爬升时点。这属于"特征比
+        真实动态更保守/更粗"，不属于口径错位——真实转移仍按调制后的 h 走。
         """
         m = int(max(self.tau_max, 1))
         E = np.zeros(m + 1, float)
@@ -283,9 +294,16 @@ class RenewalSchedule:
         self.sigma[st], self.clock[st], ev["started"] = S3, 0, int(st.sum())
 
         # 推进：环境按当年 hazard 决定是否获批
+        # 实施条件调制：hm 为长度 n 的因子数组时逐单元调制，为标量 1.0（A_READY=0）
+        # 时整条跳过——`h * 1.0` 虽然在浮点上也精确，但跳过分支使"关闭时逐位等价"
+        # 不依赖任何浮点论证。
+        hm = None if self.opp is None else self.opp.hazard_mult(self.t)
+        if hm is not None and np.ndim(hm) == 0:
+            hm = None
         for u in advance:
             k = min(int(self.tau[u]), len(self.hazard) - 1)
-            if self.rng.random() < self.hazard[k]:
+            h = self.hazard[k] if hm is None else min(self.hazard[k] * float(hm[u]), 1.0)
+            if self.rng.random() < h:
                 self.sigma[u], self.clock[u] = S2, 0
                 ev["approved"] += 1
 

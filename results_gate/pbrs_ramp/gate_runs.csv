@@ -1,0 +1,4 @@
+﻿lead,seed,gamma,ent_c,lr,epochs,reward_at,iters,ramp_years,foresight,lo,hi,shaping,A_init,B_init,C_init,ret,opt,ratio,opt_A,opt_B,opt_C,pass_wait,pass_opt,pass_now,pass_ret,curve_last,label
+1,0,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,True,2,0,1,238.70340083294076,246.4801456305724,0.9684487982683704,7,0,1,False,False,True,True,0.8980764136427339,pbrs_ramp
+1,1,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,True,2,1,0,237.27840083294075,246.4801456305724,0.962667399542098,7,0,1,False,False,False,True,0.18557641364274247,pbrs_ramp
+1,2,0.95,0.01,0.003,4,done,300,3.0,3,0.6,1.6,True,2,0,1,238.70340083294076,246.4801456305724,0.9684487982683704,7,0,1,False,False,True,True,-3.8876013379545427,pbrs_ramp

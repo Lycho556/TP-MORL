@@ -27,10 +27,18 @@ def _snapshot():
     from tpmorl.rl import env_gym
     from tpmorl.env import schedule as S
     from tpmorl.objectives import reward as R
+    from tpmorl.env import opportunity as O
     return dict(CELL_COST_MODE=R.CELL_COST_MODE,
+                A_PLAN=O.A_PLAN, A_INFRA=O.A_INFRA, A_AGE=O.A_AGE,
+                A_READY=O.A_READY, OBS_OPPORTUNITY=O.OBS_OPPORTUNITY,
+                FORESIGHT=O.FORESIGHT, FIELD_SEED=O.FIELD_SEED,
+                SHARE_NOW=O.SHARE_NOW, SHARE_RAMP=O.SHARE_RAMP,
+                ONSET_LO_FRAC=O.ONSET_LO_FRAC, ONSET_HI_FRAC=O.ONSET_HI_FRAC,
+                RAMP_YEARS=O.RAMP_YEARS,
                 BUDGET=env_gym.BUDGET, CARRY_CAP=env_gym.CARRY_CAP,
                 FAR_GROWTH=env_gym.FAR_GROWTH, GAMMA=env_gym.GAMMA,
                 BUDGET_MODE=env_gym.BUDGET_MODE, STAGE_INIT=env_gym.STAGE_INIT,
+                REWARD_SHAPING=env_gym.REWARD_SHAPING,
                 OBS_LIFECYCLE=env_gym.OBS_LIFECYCLE,
                 TAU_VALID=S.TAU_VALID, TAU_EXT=S.TAU_EXT,
                 COOLDOWN=S.COOLDOWN, BUILD_YEARS=S.BUILD_YEARS,
@@ -64,9 +72,20 @@ def reset():
     S.BUILD_YEARS_BY_CHANNEL = dict(d["BUILD_YEARS_BY_CHANNEL"])
     env_gym.BUDGET_MODE, env_gym.STAGE_INIT = d["BUDGET_MODE"], d["STAGE_INIT"]
     env_gym.OBS_LIFECYCLE = d["OBS_LIFECYCLE"]
+    env_gym.REWARD_SHAPING = d["REWARD_SHAPING"]
     S.QUOTA, S.HAZARD = d["QUOTA"], tuple(d["HAZARD"])
     from tpmorl.objectives import reward as R
     R.CELL_COST_MODE = d["CELL_COST_MODE"]
+    # 机会场的全部情景常量一并复原。漏一项就会发生本模块文档所说的静默继承：
+    # 上一组开着 A_PLAN=0.4、这一组没设，实际仍在 0.4 下跑而 runs.json 记成 None。
+    from tpmorl.env import opportunity as O
+    O.A_PLAN, O.A_INFRA = d["A_PLAN"], d["A_INFRA"]
+    O.A_AGE, O.A_READY = d["A_AGE"], d["A_READY"]
+    O.OBS_OPPORTUNITY, O.FORESIGHT = d["OBS_OPPORTUNITY"], d["FORESIGHT"]
+    O.FIELD_SEED = d["FIELD_SEED"]
+    O.SHARE_NOW, O.SHARE_RAMP = d["SHARE_NOW"], d["SHARE_RAMP"]
+    O.ONSET_LO_FRAC, O.ONSET_HI_FRAC = d["ONSET_LO_FRAC"], d["ONSET_HI_FRAC"]
+    O.RAMP_YEARS = d["RAMP_YEARS"]
     _HORIZON = _HORIZON_EVAL = None
 
 
@@ -75,7 +94,11 @@ def apply(budget=None, carry=None, growth=None,
           horizon=None, gamma=None, horizon_eval=None,
           quota=None, tau_approval=None, build_years_by_channel=None,
           budget_mode=None, stage_init=None, obs_lifecycle=None,
-          cell_cost_mode=None):
+          cell_cost_mode=None,
+          a_plan=None, a_infra=None, a_age=None, a_ready=None,
+          obs_opportunity=None, foresight=None, field_seed=None,
+          share_now=None, share_ramp=None, onset_lo=None, onset_hi=None,
+          ramp_years=None, reward_shaping=None):
     """把情景参数写回模块常量。None 表示沿用模块默认值，不改写。
 
     `horizon` 不改写任何常量，只登记进 `inst_tag()`：规划期长度改变可达上界，
@@ -168,6 +191,63 @@ def apply(budget=None, carry=None, growth=None,
             raise ValueError(f"cell_cost_mode 只能是 flat/bytype，收到 {cell_cost_mode}")
         from tpmorl.objectives import reward as R
         R.CELL_COST_MODE = cm
+    # ---- 机会场（v17）----
+    # 四个幅度都改变可达上界（价值乘子抬高 Floor 的上界；实施条件改变有多少立项
+    # 能走到完工），**都已入 inst_tag**。观测开关与前瞻刻意不入键（参考策略不读
+    # 观测，两档可达上界按构造相同，共用分母才能直接相减）——与 OBS_LIFECYCLE 同理。
+    from tpmorl.env import opportunity as O
+    if a_plan is not None:
+        O.A_PLAN = _chk_amp(a_plan, "a_plan")
+    if a_infra is not None:
+        O.A_INFRA = _chk_amp(a_infra, "a_infra")
+    if a_age is not None:
+        O.A_AGE = _chk_amp(a_age, "a_age")
+    if a_ready is not None:
+        # 上界 1.0：hazard_mult = 1 + A_READY·(2·ready − 1)，A_READY>1 时
+        # ready<0.5 的年份会给出负因子，被 clip 成 0（该年永不获批）。那不是
+        # "条件差一点"，而是"行政上完全冻结"，是另一种机制，不在本参数的读法内。
+        O.A_READY = _chk_amp(a_ready, "a_ready", hi=1.0)
+    if obs_opportunity is not None:
+        O.OBS_OPPORTUNITY = bool(obs_opportunity)
+    if foresight is not None:
+        f = int(foresight)
+        if f < 0:
+            raise ValueError(f"foresight 不得为负，收到 {foresight}")
+        O.FORESIGHT = f
+    if field_seed is not None:
+        O.FIELD_SEED = int(field_seed)
+    if share_now is not None or share_ramp is not None:
+        sn = O.SHARE_NOW if share_now is None else float(share_now)
+        sr = O.SHARE_RAMP if share_ramp is None else float(share_ramp)
+        if not (0.0 <= sn <= 1.0 and 0.0 <= sr <= 1.0 and sn + sr <= 1.0):
+            raise ValueError(f"share_now + share_ramp 须 <= 1 且各自在 [0,1]，"
+                             f"收到 {sn} + {sr}；余量是\"一直不好\"型，不可为负")
+        if sr <= 0.0:
+            raise ValueError("share_ramp = 0 意味着没有任何\"会变好\"的地块，"
+                             "机会场退化为平稳场，该档测不到择时")
+        O.SHARE_NOW, O.SHARE_RAMP = sn, sr
+    if onset_lo is not None:
+        O.ONSET_LO_FRAC = float(onset_lo)
+    if onset_hi is not None:
+        O.ONSET_HI_FRAC = float(onset_hi)
+    if onset_lo is not None or onset_hi is not None:
+        if not 0.0 <= O.ONSET_LO_FRAC <= O.ONSET_HI_FRAC <= 1.0:
+            raise ValueError(f"须 0 <= onset_lo <= onset_hi <= 1，"
+                             f"收到 {O.ONSET_LO_FRAC} / {O.ONSET_HI_FRAC}")
+    if ramp_years is not None:
+        ry = float(ramp_years)
+        if ry <= 0:
+            raise ValueError(f"ramp_years 必须为正，收到 {ry}")
+        O.RAMP_YEARS = ry
+
+    if reward_shaping is not None:
+        # 势函数型整形的强度。**不入 inst_tag**：参考策略不读整形项，可达的目标
+        # 上界按构造不变，故整形组与主组共用分母、标量化回报可直接相减。
+        rs = float(reward_shaping)
+        if not 0.0 <= rs <= 10.0:
+            raise ValueError(f"reward_shaping 须在 [0, 10]，收到 {reward_shaping}")
+        env_gym.REWARD_SHAPING = rs
+
     if obs_lifecycle is not None:
         # 消融开关。刻意**不**进 inst_tag：参考策略不读观测，两组分母按构造相同，
         # 共用缓存才能让标量化回报直接相减（见 env_gym.OBS_LIFECYCLE 的说明）。
@@ -179,6 +259,23 @@ def apply(budget=None, carry=None, growth=None,
         if _HORIZON is None:
             raise ValueError("horizon_eval='auto' 需要同时给出 horizon")
         _HORIZON_EVAL = auto_horizon_eval(_HORIZON)
+
+
+AMP_MAX = 5.0           # 机会场幅度的硬上界，见 _chk_amp
+
+
+def _chk_amp(v, what, lo=0.0, hi=AMP_MAX):
+    """机会场幅度的取值校验。
+
+    下界 0 = 关闭。负幅度意味着"机会越好、价值越低"，与四个场的读法相反，
+    真要做这个对照应当换一个明确命名的参数，而不是让主参数取负值静默反向。
+    上界 AMP_MAX：幅度 5 时时机乘子可达 6 倍，交付价值的量级差异会压过全部
+    空间目标，标量化奖励退化为单目标——那不是"择时更重要"，是分母失效。
+    """
+    x = float(v)
+    if not lo <= x <= hi:
+        raise ValueError(f"{what} 须在 [{lo:g}, {hi:g}]，收到 {v}")
+    return x
 
 
 BUILD_YEARS_MAX = 100   # 见 _chk_build_years
@@ -274,7 +371,9 @@ def inst_tag():
     from tpmorl.objectives import reward as R
     k = "" if R.CELL_COST_MODE == d.get("CELL_COST_MODE", R.CELL_COST_MODE) \
         else f"K{R.CELL_COST_MODE[0].upper()}"
-    return f"V{S.TAU_VALID}E{S.TAU_EXT}{cooldown_tag()}Y{y}{t}{g}{q}{a}{m}{k}"
+    # v17：机会场。全关时 tag() 返回空串，既有缓存键逐字不变。
+    from tpmorl.env import opportunity as O
+    return f"V{S.TAU_VALID}E{S.TAU_EXT}{cooldown_tag()}Y{y}{t}{g}{q}{a}{m}{k}{O.tag()}"
 
 
 def _hazard_tag(hz):
@@ -284,6 +383,23 @@ def _hazard_tag(hz):
     if len(set(hz)) == 1 and hz[0] > 0:
         return f"{1.0 / hz[0]:g}".replace(".", "")
     return hashlib.md5(repr(hz).encode()).hexdigest()[:4]
+
+
+def _describe_opp():
+    """机会场的人读摘要。**始终声明这是情景参数**，不给\"看起来像标定值\"的机会。"""
+    from tpmorl.env import opportunity as O
+    if not O.active():
+        return ("\n机会场 关（四个幅度全 0，动态与 v16 逐位等价）  "
+                f"观测{'开' if O.OBS_OPPORTUNITY else '关（置零）'}")
+    return (f"\n机会场 开（**情景参数，无实证标定**）  "
+            f"幅度 规划={O.A_PLAN:g} 设施={O.A_INFRA:g} 老化={O.A_AGE:g} "
+            f"实施条件={O.A_READY:g}\n"
+            f"  三型构成 早{O.SHARE_NOW:.0%}/等{O.SHARE_RAMP:.0%}/"
+            f"从不{1 - O.SHARE_NOW - O.SHARE_RAMP:.0%}  "
+            f"爬升起始 {O.ONSET_LO_FRAC:.0%}T~{O.ONSET_HI_FRAC:.0%}T  "
+            f"时间常数 {O.RAMP_YEARS:g} 年  片区 {O.INFRA_CLUSTERS}\n"
+            f"  观测{'开' if O.OBS_OPPORTUNITY else '关（置零）'}  "
+            f"前瞻 {O.FORESIGHT} 年  场种子 {O.FIELD_SEED}")
 
 
 def describe():
@@ -300,6 +416,10 @@ def describe():
             + (f"（立项付 {env_gym.STAGE_INIT:.0%}，余额实施期内按年等额；"
                f"Cost 按支付年计入）" if env_gym.BUDGET_MODE == "staged"
                else "（立项当年全额；Cost 按完工年计入）")
+            + (f"\n势函数整形 {env_gym.REWARD_SHAPING:g}"
+               "（不改变最优策略集；只进标量奖励，不入分母键）"
+               if env_gym.REWARD_SHAPING else "")
+            + _describe_opp()
             + ("" if env_gym.OBS_LIFECYCLE else
                "\n**消融：生命周期观测特征（16..21 共 6 维）已置零**"
                "（位宽不变；不入分母缓存键，与主组共用分母）")
@@ -376,6 +496,51 @@ def add_args(ap):
                          "该信息本身。**不进分母缓存键**——参考策略不读观测，本组与"
                          "主组分母按构造相同、共用缓存，故两组的标量化回报可直接相减"
                          "（这是批次内单因子消融，比跨批次对比可辩护得多）")
+    # ---- 机会场（v17）。四个幅度默认 None=不改写，出厂值 0=关闭 ----
+    ap.add_argument("--a-plan", type=float, default=None,
+                    help="上位规划支持度对交付价值的最大加成（读**立项年**取值）。"
+                         "**情景参数，无实证标定**：单元表没有历年规划定位字段。"
+                         "敏感性方向 {0, 0.3, 0.6, 1.0}")
+    ap.add_argument("--a-infra", type=float, default=None,
+                    help="周边设施成熟度对交付价值的最大加成（读**建成年**取值，"
+                         "价值在交付时点实现）。同为情景参数：无设施投用年份数据")
+    ap.add_argument("--a-age", type=float, default=None,
+                    help="建筑老化带来的更新必要性对交付价值的最大加成（读建成年）。"
+                         "情景参数：单元表无建成年份字段，基期年龄按分布抽样")
+    ap.add_argument("--a-ready", type=float, default=None,
+                    help="实施条件对**逐年批准风险率**的调制幅度（读当年取值），"
+                         "在 [0,1]。走概率通道而非价值通道：条件成熟的年份更容易"
+                         "批得下来、因而更不容易失效。ready=0.5 处调制为中性")
+    ap.add_argument("--no-obs-opportunity", action="store_true",
+                    help="消融：把机会场四维观测特征（22..25）**置零**，位宽不变。"
+                         "场仍作用于奖励与转移，只是策略看不见——用于分离\"信息\"与"
+                         "\"机制\"。**不进分母缓存键**，与主组共用分母")
+    ap.add_argument("--foresight", type=int, default=None,
+                    help="观测里给出 t+K 年的机会场取值（K 年前瞻），默认 0=只看当期。"
+                         "对应\"法定图则与设施计划已公布\"的信息档。同样不入分母键")
+    ap.add_argument("--field-seed", type=int, default=None,
+                    help="机会场的抽样种子（与回合种子无关：场在所有回合里是同一张图）。"
+                         "换种子等于换一份规划安排，入分母缓存键")
+    ap.add_argument("--share-now", type=float, default=None,
+                    help="\"现在就好、以后不变\"型地块的占比，默认 0.30")
+    ap.add_argument("--share-ramp", type=float, default=None,
+                    help="\"现在一般、若干年后变好\"型的占比，默认 0.40。"
+                         "余量为\"一直不好\"型——这一型必须存在，否则\"一直等\""
+                         "就是最优解，退化解会冒充择时能力")
+    ap.add_argument("--onset-lo", type=float, default=None,
+                    help="爬升起始年的下界，按决策期 T 的比例给出，默认 0.15。"
+                         "用比例而非年份，使 T=15 与 T=25 两档的场在相对时序上可比")
+    ap.add_argument("--onset-hi", type=float, default=None,
+                    help="爬升起始年的上界（T 的比例），默认 0.60")
+    ap.add_argument("--ramp-years", type=float, default=None,
+                    help="逻辑斯蒂爬升的时间常数（年），默认 3。刻意不做成阶跃："
+                         "机会改善在现实中是逐渐的，硬阈值会把择时变成查表")
+    ap.add_argument("--reward-shaping", type=float, default=None,
+                    help="势函数型奖励整形的强度（PBRS，Ng et al. 1999），默认 0=关闭。"
+                         "**不改变最优策略集**，只把\"等待\"的梯度从机械扣分变成中性；"
+                         "只加在标量奖励上，不进 11 维目标的落盘值，**不入分母缓存键**。"
+                         "门槛实验里它是唯一把折现回报做到穷举最优 95%% 以上的一档"
+                         "（3/3 种子），但并未把立项年推后，故作实验因子而非既定修复")
     ap.add_argument("--gamma", type=float, default=None,
                     help="年度折现率，默认 0.95。敏感性方向 {0.90, 0.95, 0.926}；"
                          "0.926 对应财政部社会折现率 8%%")
@@ -405,4 +570,20 @@ def from_args(a):
                 # apply() 对 None 一律不改写，出厂值由 reset() 保证为 True。
                 # 传 True 会让"未指定"与"显式开启"在日志里无法区分。
                 obs_lifecycle=(False if getattr(a, "no_obs_lifecycle", False)
-                               else None))
+                               else None),
+                reward_shaping=getattr(a, "reward_shaping", None),
+                a_plan=getattr(a, "a_plan", None),
+                a_infra=getattr(a, "a_infra", None),
+                a_age=getattr(a, "a_age", None),
+                a_ready=getattr(a, "a_ready", None),
+                foresight=getattr(a, "foresight", None),
+                field_seed=getattr(a, "field_seed", None),
+                share_now=getattr(a, "share_now", None),
+                share_ramp=getattr(a, "share_ramp", None),
+                onset_lo=getattr(a, "onset_lo", None),
+                onset_hi=getattr(a, "onset_hi", None),
+                ramp_years=getattr(a, "ramp_years", None),
+                # 与 obs_lifecycle 同一处理：未加开关时传 None（不改写），
+                # 而不是传 True——那会让"未指定"与"显式开启"在日志里无法区分。
+                obs_opportunity=(False if getattr(a, "no_obs_opportunity", False)
+                                 else None))

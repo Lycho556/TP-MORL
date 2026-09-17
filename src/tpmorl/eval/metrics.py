@@ -471,6 +471,98 @@ def implementation_metrics(rec: pd.DataFrame, spec: ScenarioSpec) -> dict:
 
 
 # --------------------------------------------------------------------------
+# 择时质量（v17）
+# --------------------------------------------------------------------------
+def timing_quality(rec, spec: ScenarioSpec, opp, ncell=None, farcap=None) -> dict:
+    """立项**时机**的优劣。CRH/LSR 管的是"赶不赶得上"，本组指标管"挑得准不准"。
+
+    为什么需要另立一组：CRH_T 与 LSR 都只看"能不能在期内交付"，一个把全部项目
+    尽可能早地塞进管道的策略在这两项上表现最好（v16 实测 frontload 的
+    CRH_T=0.613 高于策略的 0.301）。但那恰恰是 v16 的问题所在——早做不等于
+    做得对。机会场引入之后，"在这个地块最好的年份动手"才是要衡量的东西。
+
+    三个指标（`opp` 为 None 或机会场关闭时全部返回 NaN，不给假数）：
+
+      opp_at_init      立项时点上，该地块四个机会场的均值。越高越说明"挑在了
+                       好年份"。单独看没有尺度，须与下一项一起读。
+      opp_lift         同一批被选中的地块，在**决策期全部年份**上的场均值作为
+                       参照，`opp_at_init` 相对它的提升。>0 才说明择时有信息，
+                       =0 说明立项年与在该地块随便挑一年没有区别。
+                       参照系刻意取"同一批地块的全期均值"而不是"全部地块的
+                       全期均值"：后者把"选了哪些地块"（选址）与"选在哪一年"
+                       （择时）混在一个数里，而本项目要分开报的正是这两件事。
+      ramp_post_onset  "会变好"型地块中，立项年 >= 其爬升起始年的占比。
+                       均匀立项下的期望值约为 1 − onset/T，故该项须与
+                       `ramp_post_onset_null` 同时读。
+      timing_regret    与**单元独立最优时点**的折现价值差距（相对值）。
+                       口径：忽略配额与资金冲突，逐单元算"若只有它一个项目、
+                       在决策期内任选一年立项"的最优折现交付价值，与实际立项年
+                       的折现价值相比。这是一个**松**的下界式后悔——放松掉的
+                       约束只会让最优值更高，故真实后悔不超过本值，不可读作
+                       "策略还差这么多"，只可同口径横比（与 oracle 的读法一致）。
+    """
+    import numpy as np
+
+    keys = ("opp_at_init", "opp_lift", "ramp_post_onset",
+            "ramp_post_onset_null", "timing_regret")
+    nan = {k: float("nan") for k in keys}
+    if opp is None or not getattr(opp, "plan", None) is not None:
+        return nan
+    from tpmorl.env import opportunity as O
+    if not O.active():
+        return nan
+    one = rec[rec["unit"] >= 0] if len(rec) else rec
+    if not len(one):
+        return nan
+    T = int(spec.T)
+
+    # 四个场的逐单元 × 逐年均值场。四项等权相加是**约定**而非加权标定：
+    # 它只用于给出一个可横比的"时机好坏"标量，不进入任何奖励。
+    Fbar = (opp.plan + opp.infra + opp.necessity + opp.ready) / 4.0
+    u = one["unit"].to_numpy(int)
+    y = np.clip(one["year"].to_numpy(int), 0, Fbar.shape[1] - 1)
+    at_init = Fbar[u, y]
+    ref = Fbar[u, :T].mean(axis=1)          # 同一批地块、决策期全部年份
+    out = dict(opp_at_init=float(at_init.mean()),
+               opp_lift=float((at_init - ref).mean()))
+
+    # "会变好"型的立项是否落在爬升之后
+    kind = np.asarray(opp.kind)
+    onset = np.asarray(opp.plan_onset)
+    is_ramp = kind[u] == 1
+    if is_ramp.any():
+        out["ramp_post_onset"] = float((y[is_ramp] >= onset[u][is_ramp]).mean())
+        # 均匀立项下的零假设：该型地块的爬升起始年之后占决策期的比例
+        out["ramp_post_onset_null"] = float(
+            np.clip((T - onset[u][is_ramp]) / max(T, 1), 0.0, 1.0).mean())
+    else:
+        out["ramp_post_onset"] = out["ramp_post_onset_null"] = float("nan")
+
+    # 单元独立最优时点的后悔
+    if ncell is not None and farcap is not None:
+        eL = expected_leave_s1(spec.tau_max, spec.hazard)
+        gam = 0.95        # 与 env_gym.GAMMA 的默认一致；情景改了 γ 时由调用方传入
+        gam = float(getattr(spec, "gamma", gam) or gam)
+        got = reg = 0.0
+        for i, (uu, yy) in enumerate(zip(u, y)):
+            b = spec.build_years_of(int(one["channel"].to_numpy()[i]))
+            base = float(farcap[uu]) * float(ncell[uu])
+
+            def val(y0):
+                td = int(round(y0 + eL + 1.0 + b))
+                return (base * opp.value_mult(uu, y0, td)) * gam ** td
+
+            best = max(val(t) for t in range(T))
+            cur = val(int(yy))
+            got += cur
+            reg += best
+        out["timing_regret"] = float(1.0 - got / reg) if reg > 0 else float("nan")
+    else:
+        out["timing_regret"] = float("nan")
+    return out
+
+
+# --------------------------------------------------------------------------
 # 三层评价指标表
 # --------------------------------------------------------------------------
 _OBJ_NAMES = ("Gdp", "Eco", "Res", "Emp", "Aec", "E2r", "Cpt",

@@ -1,0 +1,4 @@
+﻿lead,seed,gamma,ent_c,lr,epochs,reward_at,iters,ramp_years,A_init,B_init,C_init,ret,opt,ratio,opt_A,opt_B,opt_C,pass_wait,pass_opt,pass_now,pass_ret,curve_last,label
+1,0,0.95,0.01,0.003,4,done,300,3.0,1,0,2,233.43821327864205,246.4801456305724,0.9470872904648565,7,0,1,False,False,True,False,258.9009302791102,ramp30
+1,1,0.95,0.01,0.003,4,done,300,3.0,1,0,2,233.43821327864205,246.4801456305724,0.9470872904648565,7,0,1,False,False,True,False,260.4092526302089,ramp30
+1,2,0.95,0.01,0.003,4,done,300,3.0,1,0,2,233.43821327864205,246.4801456305724,0.9470872904648565,7,0,1,False,False,True,False,257.14337503250545,ramp30

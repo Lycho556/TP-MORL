@@ -108,8 +108,28 @@ def one_run(job):
         build_years_eff=",".join(f"{k}:{v}" for k, v in
                                  sorted(_S.BUILD_YEARS_BY_CHANNEL.items())),
         gamma_eff=float(_EG.GAMMA),
+        reward_shaping_eff=float(_EG.REWARD_SHAPING),
         inst_tag_eff=str(_SC.inst_tag()),
     )
+    # v17：机会场的生效值。四个幅度入分母键、观测开关与前瞻不入键，故与
+    # obs_lifecycle_eff 同理——**只有这些字段能证明这一组真的开着（或关着）场**。
+    # 顺带记下三型的实际单元数：场种子 + 单元数决定它，落盘后可事后核对。
+    diag.update(env.opp.eff())
+    # 择时质量。**在 run 内算**而不是事后由 eval_metrics 重建机会场：场依赖
+    # (单元数, row/col, 场种子, 形状参数)，事后重建一旦有一处不符就会给出
+    # 看起来合理却错的数，而这里读的是真正跑过的那个场对象。
+    try:
+        from tpmorl.eval.metrics import ScenarioSpec, timing_quality
+        _spec = ScenarioSpec(T=int(env.T), T_eval=int(env.T_eval),
+                             tau_max=int(_S.TAU_VALID + _S.TAU_EXT),
+                             hazard=tuple(_S.HAZARD),
+                             build_years=dict(_S.BUILD_YEARS_BY_CHANNEL),
+                             budget=float(_EG.BUDGET), quota=int(_S.QUOTA))
+        _spec.gamma = float(_EG.GAMMA)
+        diag.update(timing_quality(R, _spec, env.opp,
+                                   ncell=env.ncell, farcap=env.farcap))
+    except Exception as e:      # 指标出错不该让一小时的训练白跑
+        diag["timing_quality_error"] = f"{type(e).__name__}: {e}"
     # 逐年记录与策略权重落盘。v6 批次只存了汇总诊断，导致三件事查不了：
     # 规划期后段（不可交付区）策略有没有乱动、反事实评估（把无增长情景训出的策略
     # 放到增长情景里评估）、以及任何事后复查。文件很小（每次几百行 + 几十 KB 权重）。

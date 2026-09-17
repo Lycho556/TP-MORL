@@ -1,0 +1,4 @@
+﻿lead,seed,gamma,ent_c,lr,epochs,reward_at,iters,A_init,B_init,C_init,ret,opt,ratio,opt_A,opt_B,opt_C,pass_wait,pass_now,pass_ret,curve_last,label
+1,0,0.95,0.2,0.003,4,done,200,0.0,2.0,1.0,205.91249999999997,281.97995,0.7302380896230387,4,0,1,False,False,False,230.0,ent20
+1,1,0.95,0.2,0.003,4,done,200,,,,0.0,281.97995,0.0,4,0,1,False,False,False,255.0,ent20
+1,2,0.95,0.2,0.003,4,done,200,2.0,0.0,1.0,209.6175,281.97995,0.7433773216854603,4,0,1,False,True,False,230.0,ent20

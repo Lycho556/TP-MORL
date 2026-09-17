@@ -20,13 +20,25 @@ import numpy as np, pandas as pd
 # `--quota 6` 更坏——不报错，但放宽的配额根本用不上，静默按 3 跑。
 # 会被情景改写的量一律**按模块属性或实例属性**在使用时取。
 from tpmorl.env.schedule import RenewalSchedule, S1, S2, S3, S4, S5
+# 按模块引用（不 from-import 幅度常量）：机会场的幅度是情景参数，
+# scenario.apply() 改写的是 opportunity 模块里的那一份。
+from tpmorl.env import opportunity as OPP
 from tpmorl.objectives.reward import Reward, FAR_CAP, OBJ_NAMES, SIGN, CELL_COST
 from tpmorl.objectives.run_reward_demo import load, pick_target, ALLOWED
 
 # v15：16 -> 22。新增 16..21 = 剩余有效年 / 剩余建设年 / 期望交付年数 / slack /
 # 期内可交付标志 / 在建管道占比。**改变网络输入维度**，v14 及更早的权重不可载入，
 # 两批结果亦不可混在一张图里比较（见 docs/建议条目审计与改动清单_v15.md 第三节）。
-N_FEAT = 22
+# v17：22 -> 30。新增
+#   22..25 机会场**当期水平**：上位规划 / 基础设施 / 更新必要性 / 实施条件
+#   26..29 同四项的**趋势**（t+FORESIGHT 与 t 之差）
+# 即四张逐年变化的机会场（tpmorl/env/opportunity.py）。趋势那四维不是冗余：
+# 门槛实验（scripts/exp_timing_gate.py）实测只给当期水平时学习器在任何超参数下
+# 都学不会等，因为"现在一般但会变好"与"一直不好"在观测上不可区分，最优解不在
+# 可表示的策略类里。推导见 opportunity.obs_block 的文档。
+# 同样**改变网络输入维度**，v16 及更早的权重不可载入，跨批次不可混在一张图里
+# 比较；v17 的结论一律由批次内 2×2 给出。
+N_FEAT = 30
 N_PAIR_FEAT = N_FEAT + 12 + 2 + 3 + 1  # +本对成本/预算, +当前可用预算/年度额度, +是否为「到此为止」, +已承诺占用/年度额度
 CH_ORDER = [1, 2, 3, 5]
 
@@ -85,6 +97,34 @@ STAGE_INIT = 0.2       # staged 口径下立项当年支付的比例（前期/�
 # 待取得深圳历年更新单元规划容积率上限的时间序列后按实测替换，不得当作实证结果报告。
 FAR_GROWTH = 0.0
 STOP = (-1, -1)        # 「今年到此为止」动作；没有它，只要付得起就必须花，等待不成为决策
+
+# ---------------------------------------------------------------- 势函数型奖励整形
+# REWARD_SHAPING = 0 关闭（默认，与 v16 逐位等价）；1 = 全量整形。
+#
+# 为什么需要：折现使"同样的收益推迟一年"一律变差，于是**局部**地看等待几乎总是
+# 净亏，梯度把动作往前推——哪怕晚做的总价值高得多。门槛实验
+# （scripts/exp_timing_gate.py）把这件事量化过：在一个最优解可穷举的三地块情景里，
+# 试过的每一档（改奖励时点、熵系数、迭代数、机会改善形状、幅度、每轮回合数）都
+# 没有把立项年推后；其中"每轮 32 个回合"这一档有 1/3 种子学会了等，但同时把三个
+# 地块全推后（退化解），"整形"这一档则是唯一把折现回报做到穷举最优 95% 以上
+# （3/3 种子）的一档。两者都只是部分有效，故本参数是**实验因子而非既定修复**。
+#
+# 整形项 F = γ·Φ(s') − Φ(s)，Φ(s) = Σ_{未立项且可立项的单元} φ_u(t)，
+#     φ_u(t) = max_{t' ∈ [t, T-1]} 交付价值(u, 立项于 t') · γ^{(t'+L_u) − t}
+# 即"这个单元留在手里、将来在它最好的年份动手，折到今天值多少"。L_u 用**期望**
+# 时滞（E[离开S1] + 开工1年 + 该单元建设年限），与 slack 特征同一口径。
+#
+# 三条必须守住的性质：
+#   1) **不改变最优策略集**。势函数型整形对任意 Φ 都保持最优策略不变
+#      （Ng, Harada & Russell 1999），前提是终止态 Φ=0——这里由"t >= T 后
+#      立项掩码全关、φ 的取值范围为空、Φ 自然为 0"保证，不需要额外分支。
+#      这是它可以写进论文的前提：不是把答案喂给策略，而是把同一个最优解的
+#      梯度变得可跟随。
+#   2) **只进标量奖励，不进 vec**。vec 是 11 维目标的落盘口径，整形是学习手段
+#      而非目标；混进去报出来的目标值就不再是目标值。
+#   3) **不入分母缓存键**。参考策略不读整形项，可达的目标上界按构造不变，
+#      故整形组与主组共用分母、标量化回报可直接相减（与 OBS_LIFECYCLE 同理）。
+REWARD_SHAPING = 0.0
 
 
 GAMMA = 0.95      # 年度折现率。情景参数，由 scenario.apply() 改写。
@@ -174,6 +214,14 @@ class RenewalEnv:
         # 也避免将来有人往 16..21 里加东西却忘了加进消融范围。
         if not OBS_LIFECYCLE:
             F[:, 16:22] = 0.0
+
+        # ---- 机会场（v17 新增，见 tpmorl/env/opportunity.py）----
+        # 22..25 当期水平（规划/设施/必要性/实施条件），26..29 同四项的趋势。
+        # 这八维回答的是 16..21 回答不了的另一个问题：不是"现在立项还赶得上吗"，
+        # 而是"**现在**是不是这个地块的好时候、还是再等两年更好"。
+        # 消融（OBS_OPPORTUNITY=False）时整段返回全零，位宽不变
+        # （与 OBS_LIFECYCLE 同一约定）；FORESIGHT=0 时只有趋势四维为零。
+        F[:, 22:30] = self.opp.obs_block(self.t)
         return F
 
     def pair_cost(self, u, tg):
@@ -218,9 +266,18 @@ class RenewalEnv:
         # 否则"拆居住"会机械抬高 Aec。见 Reward.spatial 的口径变更说明。
         self.R = Reward(self.UUM, self.CM, self.CCM, self.road, self.water,
                         self.inside, self.LU0, gamma=self.gamma)
-        self.env = RenewalSchedule(self.ch, seed=self.seed if seed is None else seed)
+        # 机会场：**用固定的场种子构造，不跟回合种子**。它代表这一片区客观的
+        # 规划与设施安排，训练与评估的每个回合都必须是同一张图，否则策略无从利用，
+        # 也就测不出择时能力。逐年取值覆盖到 T_eval，尾部评价年也能取到。
+        self.opp = OPP.OpportunityField(
+            self.n, self.T, T_total=self.T_eval,
+            row=self.U["row"].values if "row" in self.U else None,
+            col=self.U["col"].values if "col" in self.U else None)
+        self.env = RenewalSchedule(self.ch, seed=self.seed if seed is None else seed,
+                                   opp=self.opp)
         self.t = 0
         self.plan = {}          # 单元 -> 立项时选定的目标功能
+        self.init_year = {}     # 单元 -> 立项年（机会场的价值乘子要读立项年取值）
         self.hist0 = [{k: v for k, v in
                        ((k, int((self.LU0[..., k][m] > 0).sum())) for k in range(12)) if v}
                       for m in self.cells]
@@ -262,7 +319,59 @@ class RenewalEnv:
         # 必须落盘：资金分解的闭合式里它是独立一项（承诺−释放+作废+期末余额
         # = B·(T+1)），upfront 下恒为 0，staged 下不记就无法闭合。
         self.released_hist = []
+        self._phi = self._potential_table()
         return self.obs()
+
+    def _potential_table(self):
+        """(n, T+1) 的持有价值表 φ_u(t)；REWARD_SHAPING=0 时返回 None。
+
+        φ_u(t) = max_{t' ∈ [t, T-1]} 单元 u 于第 t' 年立项的交付价值折到第 t 年。
+        交付价值与 step() 里真正计入 Floor 的那一式**同构**（FAR 上限 × 格数 ×
+        (1+FAR_GROWTH)^t' × 机会场时机乘子），并按 Floor 的权重与分母折算成
+        标量奖励的量纲——否则整形项与奖励不同量纲，`REWARD_SHAPING=1` 的含义
+        就无从解释。
+
+        第 T 列恒为 0：t >= T 后立项掩码全关，取值范围为空。这正是势函数型整形
+        要求的"终止态 Φ=0"，故最优策略集不变这一性质在此处成立，无需额外分支。
+        """
+        if not REWARD_SHAPING:
+            return None
+        j = OBJ_NAMES.index("Floor")
+        w = self.weights / self.weights.sum()
+        k = float(w[j]) * SIGN["Floor"] / float(self.scale[j])
+        L = (self.env._exp_leave[0] + 1.0
+             + self.env.build_years.astype(float))          # 期望时滞，逐单元
+        V = np.zeros((self.n, self.T + 1))
+        for u in range(self.n):
+            if not self.env.eligible[u]:
+                continue
+            base = self.R.floor_area(self.ch[u], self.ncell[u]) * k
+            for tp in range(self.T):
+                td = tp + L[u]
+                V[u, tp] = (base * (1.0 + FAR_GROWTH) ** tp
+                            * self.opp.value_mult(u, tp, int(round(td)))
+                            * self.gamma ** td)
+        # 后缀最大值 → φ_u(t) = max_{t' >= t}，再把"折到第 t 年"的 γ^{-t} 补上
+        P = np.zeros((self.n, self.T + 1))
+        for t in range(self.T - 1, -1, -1):
+            P[:, t] = np.maximum(P[:, t + 1], V[:, t])
+        for t in range(self.T):
+            P[:, t] /= self.gamma ** t
+        return P
+
+    def potential(self):
+        """Φ(s) = 所有**尚未立项且本期仍可立项**的单元的持有价值之和。
+
+        判据用 σ==S0 且通道可更新，而**不用** mask_initiate()：后者在决策期末
+        被强制清空，会让 Φ 在 t=T-1→T 之间凭空掉一大块，制造一个与择时无关的
+        虚假整形信号。σ==S0 的集合不受掩码开关影响，而 φ 的第 T 列本就是 0，
+        终止态 Φ=0 依然成立。
+        """
+        if self._phi is None:
+            return 0.0
+        m = (self.env.sigma == 0) & self.env.eligible
+        t = int(min(self.t, self.T))
+        return float(self._phi[m, t].sum())
 
     def step(self, actions):
         """actions: [(单元, 目标功能), ...]，至多 QUOTA 个；STOP 项被忽略。"""
@@ -275,10 +384,16 @@ class RenewalEnv:
         spent = sum(self.pair_cost(u, tg) for u, tg in actions)
         if spent > self.budget + 1e-6:   # 显式 raise：裸 assert 在 python -O 下整体失效
             raise AssertionError(f"超预算 {spent:.0f} > {self.budget:.0f}")
+        # Φ(s) 必须在动作生效**之前**取。写在 env.step 之后会把本年立项的单元
+        # 从 Φ(s) 与 Φ(s') 里同时剔除，整形项退化成一个与择时无关的近似常数，
+        # 看起来"开了整形"而实际上没有任何时序信号。门槛实验的第一版就是这么
+        # 写错的，三个种子跑出与未整形档逐位相同的结果。
+        phi0 = self.potential()
         self.budget_hist.append(self.budget); self.spent_hist.append(spent)
         self.committed_hist.append(self.committed)
         for u, tg in actions:
             self.plan[int(u)] = int(tg)
+            self.init_year[int(u)] = int(self.t)
         prev = self.env.sigma.copy()
         ma = self.env.mask_advance()
         _, ev = self.env.step(initiate=[u for u, _ in actions], advance=np.where(ma)[0])
@@ -328,8 +443,16 @@ class RenewalEnv:
             tgt = self.plan.get(int(u))
             if tgt is None:      # 保险：无记录时退回 myopic 规则
                 tgt = pick_target(self.R, self.ch[u], hist, self.ncell[u])
-            # 交付建面按**建成年**的容积率上限计（FAR_GROWTH>0 时推迟立项可换更高上限）
-            floor += self.R.floor_area(self.ch[u], self.ncell[u]) * (1.0 + FAR_GROWTH) ** self.t
+            # 交付建面按**建成年**的容积率上限计（FAR_GROWTH>0 时推迟立项可换更高上限），
+            # 再乘机会场的时机乘子 M（v17 新增）。幅度全 0 时 M 恒为精确的 1.0，
+            # 与 v16 逐位等价。
+            #
+            # **口径声明**：M>1 的档下，Floor 不再是纯粹的"计容建筑面积"，而是
+            # "按时机加权的交付价值（以建面计量）"。这是情景构造，论文必须写明，
+            # 不得把加权后的数值当作实测建面报告。
+            mult = self.opp.value_mult(u, self.init_year.get(int(u), self.t), self.t)
+            floor += (self.R.floor_area(self.ch[u], self.ncell[u])
+                      * (1.0 + FAR_GROWTH) ** self.t * mult)
             cost += sum(self.R.convert_cost(f, tgt, c) for f, c in hist.items())
             self.LU[m] = 0.0
             self.LU[..., tgt][m] = 1.0
@@ -346,6 +469,10 @@ class RenewalEnv:
         r = float((self.weights / self.weights.sum() * vec).sum())
 
         self.t += 1
+        # 整形项只加在**标量奖励**上，vec（11 维目标的落盘口径）保持不变。
+        # REWARD_SHAPING=0 时整条跳过，与 v16 逐位等价。
+        if REWARD_SHAPING:
+            r += REWARD_SHAPING * (self.gamma * self.potential() - phi0)
         # 决策期结束后立项掩码强制全关：pairs() 因此只剩 STOP 行，
         # 采样器与随机基线都无需改动即可在尾部自然「无动作」。
         self.mask_init = (self.env.mask_initiate() if self.t < self.T
