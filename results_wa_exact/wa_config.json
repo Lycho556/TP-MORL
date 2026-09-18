@@ -1,0 +1,11 @@
+{
+ "dataset": "data/processed/gm_dataset_v1",
+ "out": "results_wa_exact",
+ "horizons": [
+  15,
+  25
+ ],
+ "foresight": 0,
+ "max_wait": 5,
+ "gamma": 0.95
+}

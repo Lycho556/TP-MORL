@@ -58,26 +58,14 @@ import pandas as pd
 
 from tpmorl.env import opportunity as OPP
 from tpmorl.env import schedule as S
+from tpmorl.eval import ev as EVM
 from tpmorl.rl import scenario as SC
 
 
-def delivery_profile(hazard, tau_max, ready_mult):
-    """给定逐年批准风险率与实施条件调制，返回 (获批概率, 期望获批等待年数)。
-
-    `ready_mult` 是该单元在**立项那一年**的 hazard 调制因子。这里做了一处
-    刻意的简化：审批期内逐年的调制都按立项年那一年算，而不是逐年重取。
-    理由是本诊断要的是"立项时点好不好"这一个自变量，逐年重取会把"审批期间
-    条件继续改善"这第二个效应混进来，两者无法分离。真实环境里是逐年重取的，
-    故本式给出的是**保守**估计（条件改善时低估获批概率）。
-    """
-    p_alive, p_ok, ew = 1.0, 0.0, 0.0
-    for k in range(int(tau_max)):
-        h = min(float(hazard[min(k, len(hazard) - 1)]) * float(ready_mult), 1.0)
-        p_ok += p_alive * h
-        ew += p_alive * h * (k + 1)
-        p_alive *= (1.0 - h)
-    return float(p_ok), float(ew / p_ok) if p_ok > 0 else float("nan")
-
+# 期望折现的精确算法集中在 tpmorl/eval/ev.py：
+# 第一版在这里用 `p_ok · γ^{E[交付年]}` 近似，而 E[γ^K] ≠ γ^{E[K]}，
+# 在 γ=0.95、tau_max=5 下偏差约 0.6%，与一年等待优势本身同一数量级，
+# 足以在临界状态改变 WA 的符号。现改为逐条审批路径分别折现再求和。
 
 def build(dataset, T, amps, foresight, field_seed=None):
     """构造机会场（与环境同一构造路径，避免事后重建产生口径差）。"""
@@ -96,43 +84,24 @@ def build(dataset, T, amps, foresight, field_seed=None):
 def waiting_advantage(U, opp, T, T_eval, gamma=0.95, build_years=5, max_wait=5):
     """逐单元逐年算 EV 与一年等待优势。返回长表。"""
     n = len(U)
-    tau_max = int(S.TAU_VALID + S.TAU_EXT)
     farcap = U["farcap"].values if "farcap" in U else np.ones(n)
     ncell = U["n_cells"].values if "n_cells" in U else np.ones(n)
     base = np.asarray(farcap, float) * np.asarray(ncell, float)
-
-    # EV[i, t]：第 t 年立项的期望折现交付价值
-    EV = np.zeros((n, T))
-    for t in range(T):
-        hm = opp.hazard_mult(t)
-        hm = np.full(n, 1.0) if np.ndim(hm) == 0 else np.asarray(hm, float)
-        adm = opp.admit_prob(t)
-        adm = np.full(n, 1.0) if np.ndim(adm) == 0 else np.asarray(adm, float)
-        for i in range(n):
-            p_ok, ew = delivery_profile(S.HAZARD, tau_max, hm[i])
-            if not np.isfinite(ew):
-                continue
-            t_done = t + ew + 1.0 + build_years        # 获批 + 次年开工 + 建设
-            if t_done > T_eval - 1:                    # 期内交付不了 = 没有交付
-                continue
-            # 准入概率乘进来：报不上去就不可能交付（v18 的规划通道）
-            EV[i, t] = (adm[i] * p_ok * base[i] * opp.value_mult(i, t, int(round(t_done)))
-                        * gamma ** t_done)
+    EV = EVM.ev_matrix(opp, base, T, T_eval, build_years,
+                       S.HAZARD, int(S.TAU_VALID + S.TAU_EXT), gamma=gamma)
+    WA, BW = EVM.waiting_advantage(EV, max_wait=max_wait)
 
     rows = []
     for t in range(T - 1):
-        cur = EV[:, t]
-        nxt = EV[:, t + 1]
-        with np.errstate(divide="ignore", invalid="ignore"):
-            wa = np.where(cur > 0, nxt / cur - 1.0, np.nan)
-        # 最优等待年数：在 [t, t+max_wait] 里 EV 最大的那一年减 t
         hi = min(t + max_wait, T - 1)
         seg = EV[:, t:hi + 1]
-        best_k = np.argmax(seg, axis=1)
+        cur = EV[:, t]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            gb = np.where(cur > 0, seg.max(axis=1) / cur - 1.0, np.nan)
         rows.append(pd.DataFrame(dict(
             year=t, unit=np.arange(n), kind=opp.kind,
-            ev_now=cur, ev_next=nxt, wa=wa, best_wait=best_k,
-            gain_best=np.where(cur > 0, seg.max(axis=1) / cur - 1.0, np.nan))))
+            ev_now=cur, ev_next=EV[:, t + 1], wa=WA[:, t],
+            best_wait=BW[:, t], gain_best=gb)))
     return pd.concat(rows, ignore_index=True)
 
 
