@@ -223,10 +223,41 @@ def gae(r, v, gamma=0.95, lam=0.95):
 def train(env, iters=60, eps_per_iter=4, epochs=4, lr=3e-3, clip=0.2,
           stop_context=False,
           ent_c=0.01, vf_c=0.5, seed=0, drop_no_choice=False,
-          advantage="gae"):
+          advantage="gae", init_actor=None, actor_lr_scale=1.0,
+          freeze_actor_iters=0):
     torch.manual_seed(seed)
     net = Pointer(stop_context=stop_context).to(DEV)
-    opt = torch.optim.Adam(net.parameters(), lr=lr)
+    if init_actor is not None:
+        # **唯一的改动点：actor 的初始化。** 环境、奖励、动作空间、特征、
+        # PPO 超参一律不动 —— 这样若结果变好，可以干净地归因到初始化。
+        #
+        # 只加载 enc + score（actor），**不加载 val（critic）**：critic 的目标
+        # 依赖策略本身，用监督预训练的表示去初始化它没有意义，而且会把
+        # "actor 变好"与"critic 变好"两件事混在一起。
+        sd = (init_actor if isinstance(init_actor, dict)
+              else torch.load(init_actor, weights_only=False))
+        sd = sd.get("state", sd)
+        keep = {k: v for k, v in sd.items()
+                if k.startswith("enc.") or k.startswith("score.")}
+        missing = net.load_state_dict(keep, strict=False)
+        if any(k.startswith(("enc.", "score.")) for k in missing.missing_keys):
+            raise ValueError(f"actor 权重未能完整加载：{missing.missing_keys}")
+        print(f"    [init] 已载入预训练 actor（{len(keep)} 个张量），critic 保持随机")
+    if actor_lr_scale == 1.0:
+        opt = torch.optim.Adam(net.parameters(), lr=lr)
+    else:
+        # 给 actor（enc + score）单独的学习率。用于预训练初始化后的情形：
+        # 实测 BC 预训练的 actor 在原学习率下会被 PPO 迅速推回近视解
+        # （小世界档 A：BC 自己 0.932、带 0.14 的停止频率；经 PPO 后精确退回
+        # 近视贪心的 0.900、停止频率 0.00）。调小 actor 步长是"保住已学到的
+        # 空间选择、只让时序部分继续动"最直接的手段。
+        act = (list(net.enc.parameters()) + list(net.score.parameters())
+               + [p for n, p in net.named_parameters()
+                  if n.startswith("score_")])
+        act_ids = {id(p) for p in act}
+        rest = [p for p in net.parameters() if id(p) not in act_ids]
+        opt = torch.optim.Adam([dict(params=act, lr=lr * float(actor_lr_scale)),
+                                dict(params=rest, lr=lr)])
     hist = []
     for it in range(iters):
         buf, RS = [], []
@@ -287,6 +318,13 @@ def train(env, iters=60, eps_per_iter=4, epochs=4, lr=3e-3, clip=0.2,
                 el = el + ent
             n = len(buf)
             ((pl + vf_c * vl - ent_c * el) / n).backward()
+            if it < int(freeze_actor_iters):
+                # 冻结 actor 的前若干迭代：只让 critic 先拟合预训练策略的回报，
+                # 避免"critic 还是随机的"时候用噪声优势去改写已学好的 actor。
+                for nm, pp in net.named_parameters():
+                    if (nm.startswith("enc.") or nm.startswith("score")) \
+                            and pp.grad is not None:
+                        pp.grad.zero_()
             nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             opt.step()
         hist.append(float(np.mean(RS)))
