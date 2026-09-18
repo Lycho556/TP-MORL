@@ -1,0 +1,12 @@
+{
+ "out": "results_cfcredit_n6",
+ "n_per_kind": 6,
+ "lead": 2,
+ "g_target": 0.4,
+ "value_at": "done",
+ "max_cands": 8,
+ "oracle": 642.9937247560163,
+ "slots": 10,
+ "n_year": 10,
+ "n_delta_pos": 0
+}

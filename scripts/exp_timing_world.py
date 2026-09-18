@@ -127,12 +127,30 @@ class TimingWorld:
     """
 
     def __init__(self, n_per_kind=2, T=12, lead=1, gamma=0.95, quota=1,
+                 value_at="init",
                  g_target=0.05, channel="value", shape="window",
                  q_lo=0.30, q_hi=0.95, base=100.0, foresight=3, shaping=False,
                  wa_feat=False, action_mode="now"):
         self.T, self.T_eval = int(T), int(T)
         self.lead, self.gamma, self.quota = int(lead), float(gamma), int(quota)
         self.channel, self.shape = str(channel), str(shape)
+        # 价值读哪一年的机会值。
+        #   "init"：读**立项年**（原实现）。此时"现在动手值多少"完全由当期
+        #           可观测量决定，近视基线拥有精确信息；实测供给一旦充足
+        #           （地块数 ≥ 名额数），近视贪心就精确等于 oracle
+        #           ——因为每年总有地块正在峰值，挑它就行，"等"永远不必要。
+        #   "done"：读**交付年**（= 立项年 + lead）。与真实环境同构：那里的
+        #           设施价值乘子读建成年，"地铁通了房子才值钱"。此时
+        #           "现在动手值多少"取决于**未来**的机会值，于是
+        #           "假设今年条件一直不变"的近视估计会系统性估错——
+        #           指南要的那个信息落差才真正存在。
+        self.value_at = str(value_at)
+        # 自证需要复制一个同参数的干净世界（不能复用自己，会污染状态）
+        self._ctor_kw = dict(n_per_kind=n_per_kind, T=T, lead=lead, gamma=gamma,
+                             quota=quota, value_at=value_at, g_target=g_target,
+                             channel=channel, shape=shape)
+        if self.value_at not in ("init", "done"):
+            raise ValueError(f"value_at 只能是 init/done，收到 {value_at!r}")
         self.q_lo, self.q_hi = float(q_lo), float(q_hi)
         self.foresight, self.shaping = int(foresight), bool(shaping)
         # 是否把**一年等待优势**直接作为特征交给策略。
@@ -177,6 +195,16 @@ class TimingWorld:
         if self.shape == "window":
             self.O = np.exp(-((yrs[None, :] - self.peak[:, None])
                               / self.width[:, None]) ** 2)
+            if self.value_at == "done":
+                # 闭式窗宽 window_width() 是在"价值读**立项年**"下推的：
+                # 那时一年等待优势只取决于 opp(t+1)/opp(t) 与 γ。改成读**交付年**
+                # 之后，实测优势变成 opp(t+1+lead)/opp(t+lead)·γ 决定，
+                # 闭式解不再成立（实测 +0.195 对目标 +0.400，被 validate() 抓到）。
+                #
+                # 不重新推导，而是**数值反解**：窗宽是单调影响优势的单参数，
+                # 直接二分到实测优势等于目标。这样 g_target 在两种口径下都是
+                # 真正的"实测一年等待优势"，扫描横轴才可比。
+                self._solve_width_numerically()
         elif self.shape == "rising":
             # 对照：单调上升（v17 的世界）。没有峰值，"越晚越好"。
             self.O = 1.0 / (1.0 + np.exp(-(yrs[None, :] - self.peak[:, None])
@@ -189,6 +217,46 @@ class TimingWorld:
         self.O = np.clip(self.O, 1e-6, 1.0)
 
     # ---- 价值与概率 ----
+    def _measured_g(self):
+        """晚峰型地块的实测一年等待优势（与 validate() 的定义逐字相同）。"""
+        i = self.kind.index("late")
+        d0 = self.dvalue(i, 0)
+        return (self.dvalue(i, 1) / d0 - 1.0) if d0 > 0 else float("nan")
+
+    def _solve_width_numerically(self, lo=0.2, hi=40.0, tol=1e-4, iters=80):
+        """二分窗宽，使实测一年等待优势等于 self.g_target。
+
+        窗越窄，峰值附近越陡、"再等一年"的增益越大；故实测优势随窗宽单调递减。
+        二分前先确认区间确实跨过目标，跨不过就报错——宁可失败，
+        也不要静悄悄给出一根与标称值不符的横轴。
+        """
+        yrs = np.arange(self.T + 1, dtype=float)
+
+        def set_w(wv):
+            self.width = np.full(self.n, float(wv))
+            self.O = np.exp(-((yrs[None, :] - self.peak[:, None])
+                              / self.width[:, None]) ** 2)
+            return self._measured_g()
+
+        g_lo, g_hi = set_w(lo), set_w(hi)
+        if not (min(g_lo, g_hi) - 1e-9 <= self.g_target <= max(g_lo, g_hi) + 1e-9):
+            set_w(0.5 * (lo + hi))
+            raise AssertionError(
+                f"窗宽在 [{lo}, {hi}] 内无法实现目标等待优势 {self.g_target:+.4f}"
+                f"（该区间只能给出 {min(g_lo, g_hi):+.4f}~{max(g_lo, g_hi):+.4f}）。"
+                f"当前 lead={self.lead}、γ={self.gamma}、价值读交付年")
+        for _ in range(iters):
+            mid = 0.5 * (lo + hi)
+            g_mid = set_w(mid)
+            if abs(g_mid - self.g_target) < tol:
+                break
+            # 优势随窗宽单调递减
+            if (g_mid > self.g_target) == (g_lo > self.g_target):
+                lo, g_lo = mid, g_mid
+            else:
+                hi = mid
+        return float(self.width[0])
+
     def opp(self, u, t):
         return float(self.O[int(u), int(np.clip(t, 0, self.T))])
 
@@ -198,6 +266,17 @@ class TimingWorld:
     def pay_year(self, t_init):
         return int(t_init) + self.lead
 
+    def value_year(self, t_init):
+        """价值读哪一年的机会值。**奖励与 oracle 必须共用这一个函数。**
+
+        v18 第六轮的教训：加 value_at="done" 时只改了 evalue/dvalue/oracle，
+        漏改 step() 里的结算，于是世界按立项年付钱、oracle 按交付年计价，
+        两套口径打架 —— 那一轮"所有臂都精确等于 0.780"其实是这个不一致的产物，
+        而不是算法结论。与 eval/ev.py 同一类错误，处理方式也相同：
+        把定义收进一个函数，两边都调它。
+        """
+        return int(t_init) if self.value_at == "init" else self.pay_year(t_init)
+
     def evalue(self, u, t_init):
         """第 t_init 年立项的**期望**收益（未折现）。
 
@@ -206,13 +285,34 @@ class TimingWorld:
         """
         if t_init + self.lead > self.T - 1:
             return 0.0                       # 期内交付不了，等于没做
+        t_read = self.value_year(t_init)
         if self.channel == "prob":
-            return float(self.base[u] * self.q(u, t_init))
-        return float(self.base[u] * self.opp(u, t_init))
+            return float(self.base[u] * self.q(u, t_read))
+        return float(self.base[u] * self.opp(u, t_read))
 
     def dvalue(self, u, t_init):
         """折现到第 0 年的期望价值。oracle 与全部判据都用这一式。"""
         return self.evalue(u, t_init) * self.gamma ** self.pay_year(t_init)
+
+    def dvalue_frozen(self, u, t_init, t_now=None):
+        """**冻结场**估计：假设"今天看到的机会条件将保持不变"。
+
+        即把交付年的机会值替换为**当年**的机会值：
+
+            V̂_i(t | s_t) = base_i · opp_i(t_now) · γ^(t+lead)
+
+        这是"没有前瞻的能干策略"该有的样子——它会按当期条件正确排序，
+        但不知道条件会变。与真实环境的近视基线同口径
+        （见 exp_temporal_gate.ev_tables 的 Frozen 包装器）。
+
+        value_at="init" 时本式与 dvalue 恒等（价值本就只由立项年决定），
+        故那一档的"冻结"是空操作——这正是原小世界近视基线过强的原因。
+        """
+        t_now = t_init if t_now is None else int(t_now)
+        if t_init + self.lead > self.T - 1:
+            return 0.0
+        o = self.q(u, t_now) if self.channel == "prob" else self.opp(u, t_now)
+        return float(self.base[u] * o) * self.gamma ** self.pay_year(t_init)
 
     # ---- oracle：指派问题的精确最优 ----
     def oracle(self):
@@ -278,6 +378,33 @@ class TimingWorld:
             raise AssertionError(
                 f"实测一年等待优势 {g:+.4f} 与目标 {self.g_target:+.4f} 相差超过 {tol}："
                 "窗宽反解与实现不一致，扫描的横轴就不可信")
+
+        # (b2) **奖励与计价的一致性**：单地块单动作走一遍，世界实付的折现
+        # 奖励流必须等于 dvalue。这一条是第六轮那次口径打架的直接防线。
+        for u_probe, t_probe in ((i, 0), (i, 2)):
+            probe = self.__class__(**self._ctor_kw)
+            probe.reset(seed=0)
+            paid = 0.0
+            for tt in range(probe.T_eval):
+                X, meta, cost, units = probe.pairs()
+                act = []
+                if tt == t_probe:
+                    hit = [m for m in meta if m[0] == u_probe]
+                    if not hit:
+                        break
+                    act = [hit[0]]
+                _, rr, dd, _ = probe.step(act)
+                paid += (probe.gamma ** tt) * float(rr)
+                if dd:
+                    break
+            want = self.dvalue(u_probe, t_probe)
+            if abs(paid - want) > max(1e-6, 1e-3 * abs(want)):
+                raise AssertionError(
+                    f"奖励与计价不一致：地块 {u_probe} 第 {t_probe} 年立项，"
+                    f"世界实付折现 {paid:.4f}，而 dvalue 给出 {want:.4f}。"
+                    f"（value_at={self.value_at}）—— step() 与 evalue() "
+                    "必须共用 value_year()")
+        out["reward_matches_value"] = True
 
         # (c) 名额是否紧张：地块数 vs 可用名额。宽松时贪心本就接近最优，判别力低
         slots = max(self.T - self.lead, 0) * self.quota
@@ -386,9 +513,12 @@ class TimingWorld:
                 continue
             y0 = self.init_year[u]
             if self.channel == "prob":
+                # prob 档：批准与否在**立项年**抽签（审批发生在立项时），
+                # 这一条不随 value_at 变；变的只有 value 档的价值读取年。
                 gain += self.base[u] if self.approved.get(u, True) else 0.0
             else:
-                gain += self.base[u] * self.opp(u, y0)
+                # 与 evalue() 共用 value_year()：奖励与 oracle 不允许各读一年
+                gain += self.base[u] * self.opp(u, self.value_year(y0))
         vec = np.zeros(len(OBJ_NAMES))
         vec[FLOOR_IDX] = gain
         self.t += 1

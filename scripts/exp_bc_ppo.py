@@ -64,8 +64,19 @@ from tpmorl.rl import train_ppo as TP                 # noqa: E402
 
 
 def ev_table(w):
-    """小世界的 EV 表：EV[u, t] = 此刻立项的期望折现交付价值（教师与计价同源）。"""
+    """真实 EV 表：EV[u, t] = 第 t 年立项的期望折现交付价值。计价与 oracle 用它。"""
     return np.array([[w.dvalue(u, t) for t in range(w.T)] for u in range(w.n)])
+
+
+def ev_table_frozen(w):
+    """**冻结场** EV 表：假设"今天看到的条件保持不变"。
+
+    价值读交付年（value_at="done"）时，真实 EV 依赖 t+lead 年的机会值，
+    而冻结估计只用当年的 —— 于是"没有前瞻的能干策略"会系统性错排。
+    这是 BC 教师与 Myopic-Frozen 基线的唯一信息来源，**不含任何未来信息**。
+    """
+    return np.array([[w.dvalue_frozen(u, t) for t in range(w.T)]
+                     for u in range(w.n)])
 
 
 def assign_best(EV, quota, rows=None):
@@ -222,6 +233,23 @@ def main():
     ap.add_argument("--seeds", type=int, nargs="+", default=[0])
     ap.add_argument("--g-target", type=float, default=0.20)
     ap.add_argument("--n-per-kind", type=int, default=2)
+    ap.add_argument("--lead", type=int, default=1,
+                    help="建设期（年）。价值读交付年时，lead 越长冻结场估计越错，"
+                         "可学的前瞻内容越多")
+    ap.add_argument("--value-at", default="init", choices=["init", "done"],
+                    help="价值读立项年还是交付年。done 与真实环境同构"
+                         "（设施乘子读建成年），且是冻结场基线有意义的前提")
+    ap.add_argument("--foresight", type=int, default=0,
+                    help="观测里给出 t+K 年的机会值（对应「法定图则与设施计划"
+                         "已公布」的信息档）。Gate 4 的结论预测：价值读交付年时"
+                         "这一项才是真正的杠杆")
+    ap.add_argument("--teacher", default="frozen", choices=["frozen", "exact"],
+                    help="BC 教师的信息档。frozen=只用当年可见条件（默认，"
+                         "指南要求）；exact=读真实交付年价值（仅作上界参照，"
+                         "**不可写进方法**）")
+    ap.add_argument("--advantage", default="gae", choices=["gae", "mc"],
+                    help="优势估计。mc=精确蒙特卡洛回报、不用 critic 做基线"
+                         "（指南 Gate 5-A 的 critic 诊断）")
     ap.add_argument("--bc-episodes", type=int, default=40)
     ap.add_argument("--bc-iters", type=int, default=600)
     ap.add_argument("--remedies", action="store_true",
@@ -230,15 +258,21 @@ def main():
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
 
-    w = TimingWorld(g_target=a.g_target, n_per_kind=a.n_per_kind)
+    wkw = dict(g_target=a.g_target, n_per_kind=a.n_per_kind, lead=a.lead,
+               value_at=a.value_at, foresight=a.foresight)
+    w = TimingWorld(**wkw)
     diag = w.validate()
     EV = ev_table(w)
+    EVf = ev_table_frozen(w)
+    # 教师只能用当年可见信息。value_at="done" 时冻结表与真实表不同，
+    # 教师必须用冻结表 —— 用真实表等于把 lead 年后的机会值直接告诉它。
+    EV_teach = EVf if a.teacher == "frozen" else EV
     v_orc, oplan = assign_best(EV, w.quota)
     print(f"小世界：{w.n} 地块 / T={w.T} / 每年 {w.quota} 个名额 / lead={w.lead}")
     print(f"oracle {v_orc:.1f}，其计划 {dict(sorted(oplan.items()))}")
 
     # ---- Phase A：BC ----
-    Xb, yb, yrb = collect_bc_data(w, EV, n_ep=a.bc_episodes, seed=0)
+    Xb, yb, yrb = collect_bc_data(w, EV_teach, n_ep=a.bc_episodes, seed=0)
     sd, bcm = train_bc(Xb, yb, yrb, nf=Xb.shape[1], iters=a.bc_iters, seed=0)
     torch.save(dict(state=sd, **bcm), os.path.join(a.out, "bc_actor.pt"))
     print(f"\n[A] BC：样本 {len(Xb)}（特征 {Xb.shape[1]} 维，已排除 STOP 行）  "
@@ -271,10 +305,10 @@ def main():
             arms += [("BC→PPO(actor 学习率 ÷10)", sd, 0.1, 0),
                      ("BC→PPO(先冻结 actor 50 迭代)", sd, 1.0, 50)]
         for tag, init, als, frz in arms:
-            ww = TimingWorld(g_target=a.g_target, n_per_kind=a.n_per_kind)
+            ww = TimingWorld(**wkw)
             net, hist = TP.train(ww, iters=a.iters, eps_per_iter=a.eps, seed=seed,
                                  init_actor=init, actor_lr_scale=als,
-                                 freeze_actor_iters=frz)
+                                 freeze_actor_iters=frz, advantage=a.advantage)
             iv, sf = rollout(ww, net=net, kind="ppo")
             d = decompose(EV, iv, ww.quota, v_orc)
             rows.append(dict(seed=seed, method=tag, stop_freq=sf,
@@ -287,11 +321,12 @@ def main():
                   f"停止频率 {sf:.2f}  立项年 {dict(sorted(iv.items()))}")
 
     # 参照：BC 自己（不经 PPO）与近视贪心、随机
-    for tag, kind, net in (("BC(不经 PPO)", "ppo", bc_net),
-                           ("近视贪心", "myopic", None),
-                           ("随机", "random", None)):
-        ww = TimingWorld(g_target=a.g_target, n_per_kind=a.n_per_kind)
-        iv, sf = rollout(ww, net=net, kind=kind, EV=EV,
+    for tag, kind, net, rk in (("BC(不经 PPO)", "ppo", bc_net, None),
+                               ("近视-冻结场", "myopic", None, EVf),
+                               ("近视-有前瞻(精确当期价值)", "myopic", None, EV),
+                               ("随机", "random", None, None)):
+        ww = TimingWorld(**wkw)
+        iv, sf = rollout(ww, net=net, kind=kind, EV=rk if rk is not None else EV,
                          rng=np.random.default_rng(0))
         d = decompose(EV, iv, ww.quota, v_orc)
         rows.append(dict(seed=-1, method=tag, stop_freq=sf,

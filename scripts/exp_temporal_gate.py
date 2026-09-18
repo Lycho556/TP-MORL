@@ -93,7 +93,7 @@ def gate_weights(objective, alpha):
 
 
 def build_env(dataset, T, alpha, seed, budget, objective="floor",
-              unit_only=False, static_field=False, prescreen=0):
+              unit_only=False, static_field=False, prescreen=0, foresight=0):
     env = RenewalEnv(dataset, T=T, T_eval=SC.horizon_eval(),
                      weights=gate_weights(objective, alpha),
                      scale=np.ones(len(OBJ_NAMES)))
@@ -369,7 +369,11 @@ def main():
                     help="预算上限。默认极大 = 不咬：本闸只测时序选择，"
                          "把资金约束一并打开会让任何负结果无法归因")
     ap.add_argument("--gamma", type=float, default=0.95)
-    ap.add_argument("--foresight", type=int, default=0)
+    ap.add_argument("--foresight", type=int, default=0,
+                    help="观测里给出 t+K 年的机会场取值（对应「法定图则与设施"
+                         "计划已公布」的信息档）。小世界实测：交付年计价下这是"
+                         "**载荷变量** —— 无前瞻时 0.780 是信息上界而非学习失败，"
+                         "给了前瞻后 PPO 从随机初始化即达 0.994")
     ap.add_argument("--amps", type=float, nargs=4, default=[2.4, 1.8, 0.9, 1.0],
                     metavar=("PLAN", "INFRA", "AGE", "READY"))
     a = ap.parse_args()
@@ -382,7 +386,8 @@ def main():
              budget=a.budget)
 
     env0 = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
-                     a.unit_only, a.static_field, a.prescreen)
+                     a.unit_only, a.static_field, a.prescreen,
+                     a.foresight)
     EV, EVm = ev_tables(env0, a.gamma)
     elig = np.asarray(env0.env.eligible, bool)
     v_orc, oplan = oracle_plan(EV, a.quota, elig)
@@ -393,15 +398,18 @@ def main():
     for seed in a.seeds:
         # 随机与近视：与 PPO 用同一张场、同一套掩码、同一套计价
         e = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
-                     a.unit_only, a.static_field, a.prescreen)
+                     a.unit_only, a.static_field, a.prescreen,
+                     a.foresight)
         i_rnd, v_rnd = run_policy(e, EV, EVm, "random",
                                   rng=np.random.default_rng(seed), quota=a.quota)
         e = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
-                     a.unit_only, a.static_field, a.prescreen)
+                     a.unit_only, a.static_field, a.prescreen,
+                     a.foresight)
         i_myo, v_myo = run_policy(e, EV, EVm, "myopic", quota=a.quota)
 
         e = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
-                     a.unit_only, a.static_field, a.prescreen)
+                     a.unit_only, a.static_field, a.prescreen,
+                     a.foresight)
         ck = os.path.join(a.out, f"net_seed{seed}.pt")
         if a.load_net and os.path.exists(ck):
             # 直接加载已训网络，跳过训练。事后分析（分解、等待指标、逐年优势）
@@ -427,7 +435,8 @@ def main():
                             prescreen=a.prescreen),
                        ck)
         e2 = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
-                     a.unit_only, a.static_field, a.prescreen)
+                     a.unit_only, a.static_field, a.prescreen,
+                     a.foresight)
         i_ppo, v_ppo = run_policy(e2, EV, EVm, "ppo", net=net, quota=a.quota)
 
         gap = ((v_ppo - v_myo) / (v_orc - v_myo)) if v_orc > v_myo else np.nan

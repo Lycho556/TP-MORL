@@ -1,0 +1,27 @@
+{
+ "dataset": "data/processed/gm_dataset_v1",
+ "out": "results_tgate_fs4",
+ "horizon": 25,
+ "iters": 400,
+ "eps": 8,
+ "seeds": [
+  0
+ ],
+ "alpha": 0.5,
+ "objective": "floor",
+ "prescreen": 0,
+ "load_net": false,
+ "unit_only": true,
+ "static_field": false,
+ "quota": 3,
+ "budget": 1000000000000.0,
+ "gamma": 0.95,
+ "foresight": 4,
+ "amps": [
+  2.4,
+  1.8,
+  0.9,
+  1.0
+ ],
+ "oracle_value": 6876.246054424286
+}

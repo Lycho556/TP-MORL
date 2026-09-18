@@ -1,0 +1,76 @@
+{
+ "out": "results_g5b_anticip",
+ "iters": 200,
+ "eps": 16,
+ "seeds": [
+  0,
+  1,
+  2
+ ],
+ "g_target": 0.4,
+ "n_per_kind": 6,
+ "lead": 2,
+ "value_at": "done",
+ "foresight": 2,
+ "teacher": "exact",
+ "advantage": "gae",
+ "bc_episodes": 40,
+ "bc_iters": 600,
+ "remedies": false,
+ "oracle": 642.9937247560163,
+ "oracle_plan": {
+  "0": 0,
+  "1": 1,
+  "6": 2,
+  "7": 3,
+  "8": 4,
+  "9": 5,
+  "12": 6,
+  "13": 7,
+  "14": 8,
+  "15": 9
+ },
+ "world": {
+  "late_peak_opt_year": 3,
+  "late_peak_profile": [
+   41.67,
+   58.33,
+   71.45,
+   76.55,
+   71.76,
+   58.85,
+   42.22,
+   26.5,
+   14.55,
+   6.99
+  ],
+  "g_measured": 0.40000231059133395,
+  "reward_matches_value": true,
+  "n_units": 18,
+  "slots": 10,
+  "oracle_value": 642.9937247560163,
+  "greedy_value": 501.4151608270652,
+  "greedy_ratio": 0.7798134593262587,
+  "discriminative": true,
+  "oracle_years": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9
+  ],
+  "oracle_idle_years": 0
+ },
+ "bc": {
+  "bc_rho": 1.0,
+  "bc_value_ratio": 1.0,
+  "bc_value_ratio_random": 0.419588565826416,
+  "n_train": 4384,
+  "n_test": 1434
+ }
+}
