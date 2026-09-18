@@ -2,7 +2,7 @@
  "dataset": "data/processed/gm_dataset_v1",
  "out": "results_tgate_k20_s2",
  "horizon": 25,
- "iters": 400,
+ "iters": 150,
  "eps": 8,
  "seeds": [
   2
@@ -10,7 +10,7 @@
  "alpha": 0.5,
  "objective": "floor",
  "prescreen": 20,
- "load_net": false,
+ "load_net": true,
  "unit_only": true,
  "static_field": false,
  "quota": 3,

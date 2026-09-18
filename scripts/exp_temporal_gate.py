@@ -241,6 +241,72 @@ def decompose(EV, init, quota, eligible, v_oracle):
                 share_timing=float(l_t / tot) if tot > 0 else np.nan)
 
 
+def bc_actor(env_fn, rank, nf, n_ep=6, iters=800, lr=3e-3, seed=0):
+    """监督初始化：用同一批候选行特征回归"这个候选此刻值多少"，只训 enc+score。
+
+    为什么在 717 单元这一侧必须有它（小世界里反而无用）：
+    上一轮实测，同样的 50 维特征、同样大小的两层网络，改用监督目标时
+    秩相关 0.970、当年首选的价值比 1.00（随机 0.39）；而同一网络在 PPO 下
+    训 400 迭代只到随机水平。每年 595 个候选选 3 个，一个标量回合回报要摊到
+    上万次候选评分上，单个候选拿到的梯度信号极弱 —— 这正是监督能补的那一段。
+    小世界只有 18~24 个候选，所以那里 PPO 自己就能学会，BC 无用；
+    **不能据此否定 717 单元这一侧。**
+
+    只训 actor（enc + score），critic 保持随机：critic 的目标依赖策略本身。
+    教师 rank 由调用方给定 —— 传近视表则是"只看当期"，传真实 EV 则是
+    "按已公布的规划与设施计划前瞻"，后者是一个需要声明的信息档。
+    """
+    rng = np.random.default_rng(seed)
+    Xs, ys = [], []
+    for ep in range(n_ep):
+        env = env_fn()
+        for t in range(env.T):
+            X, meta, cost, units = env.pairs()
+            real = [(i, m[0]) for i, m in enumerate(meta) if m[0] >= 0]
+            if not real:
+                if env.step([])[2]:
+                    break
+                continue
+            for i, u in real:
+                Xs.append(X[i]); ys.append(rank[u, min(t, rank.shape[1] - 1)])
+            # **必须把末行「今年到此为止」也作为监督样本，目标取 0。**
+            #
+            # 指南建议"BC 不学 STOP"（把时序留给 RL），在 18~24 个候选的小世界
+            # 里无害；但在 717 单元这一侧实测会直接崩掉：只训真实候选行时，
+            # STOP 的打分完全未经校准，初始化后它压过所有真实候选，
+            # 一年只立项几个 —— seed 0 实测 0.147（比随机 0.716 还低），
+            # 挑错单元损失 3926，立项数 40 而非 75。
+            #
+            # 取 0 是有道理的而不是调参：EV 全为正，"今年不做"的当期价值就是 0，
+            # 故 BC 学到的序是"任何正价值的候选都优于停"，这恰好是配额未用满时
+            # 该有的行为；**何时真的该停仍然由 RL 决定**（初始化只给出一个不
+            # 病态的起点，不锁定行为）。
+            Xs.append(X[-1]); ys.append(0.0)
+            # 随机推进，覆盖 PPO 训练初期实际会遇到的状态分布
+            pick = [meta[i] for i, _ in
+                    [real[j] for j in rng.permutation(len(real))[:env.quota]]]
+            if env.step(pick)[2]:
+                break
+    X = np.asarray(Xs, np.float32); y = np.asarray(ys, np.float32)
+    ym, ysd = y.mean(), y.std() + 1e-8
+    torch.manual_seed(seed)
+    net = TP.Pointer()
+    params = list(net.enc.parameters()) + list(net.score.parameters())
+    opt = torch.optim.Adam(params, lr=lr)
+    Xt = torch.as_tensor(X); yt = torch.as_tensor((y - ym) / ysd)
+    for _ in range(iters):
+        idx = torch.randint(0, len(Xt), (min(2048, len(Xt)),))
+        loss = ((net.score(net.enc(Xt[idx])).squeeze(-1) - yt[idx]) ** 2).mean()
+        opt.zero_grad(); loss.backward(); opt.step()
+    with torch.no_grad():
+        pr = net.score(net.enc(Xt)).squeeze(-1).numpy()
+    from scipy.stats import spearmanr
+    rho = float(spearmanr(pr, y).statistic)
+    sd = {k: v for k, v in net.state_dict().items()
+          if k.startswith("enc.") or k.startswith("score.")}
+    return sd, dict(bc_n=len(X), bc_rho=rho)
+
+
 def run_policy(env, EV, EVm, kind, net=None, rng=None, quota=None):
     """走一遍决策期，返回 {单元: 立项年} 与按 EV 计价的折现总价值。
 
@@ -259,6 +325,21 @@ def run_policy(env, EV, EVm, kind, net=None, rng=None, quota=None):
         elif kind == "myopic":
             # **只看当期**：按"假设今年条件不变"的 EV 排序，不用任何未来信息
             order = sorted(avail, key=lambda p: -EVm[p[1], t])
+            pick_rows, used = [], set()
+            for i, u in order:
+                if len(pick_rows) >= quota:
+                    break
+                if u in used:
+                    continue
+                pick_rows.append(i); used.add(u)
+        elif kind == "forecast":
+            # **时间感知贪心**（v19 表里的 Model B）：按**真实** EV 排序，
+            # 即"知道交付时的条件"但仍然逐年贪心、不跨年协调。
+            #
+            # 它与近视贪心的差 = 前瞻信息值多少；它与 oracle 的差 =
+            # 跨年协调值多少。这两个量把总缺口分成可解释的两段，
+            # 正是论文表里"Temporal heuristic"那一行的意义。
+            order = sorted(avail, key=lambda p: -EV[p[1], t])
             pick_rows, used = [], set()
             for i, u in order:
                 if len(pick_rows) >= quota:
@@ -353,6 +434,15 @@ def main():
                          "筛选分数只用当年可观测量（当期机会指数 × 基准交付量），"
                          "与近视贪心同信息——故结果只能读作「近视初筛之上的 RL」，"
                          "不能读作「RL 自己学会了空间选择」")
+    ap.add_argument("--bc-init", default="off",
+                    choices=["off", "myopic", "forecast"],
+                    help="actor 的监督初始化。myopic=教师只用当期条件；"
+                         "forecast=教师按已公布的规划与设施计划前瞻"
+                         "（需在论文里声明为一个信息档）。唯一改动是初始化，"
+                         "环境/奖励/动作空间/超参不变")
+    ap.add_argument("--bc-only", action="store_true",
+                    help="只做监督初始化、跳过 PPO。给出表里\"监督时空打分器\""
+                         "那一行，用于分离 PPO 的净效应")
     ap.add_argument("--load-net", action="store_true",
                     help="若 --out 目录下已有 net_seed*.pt 则直接加载、跳过训练。"
                          "事后分析与训练无关，而一个种子 400 迭代要 25 分钟")
@@ -406,6 +496,9 @@ def main():
                      a.unit_only, a.static_field, a.prescreen,
                      a.foresight)
         i_myo, v_myo = run_policy(e, EV, EVm, "myopic", quota=a.quota)
+        e_fc = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
+                        a.unit_only, a.static_field, a.prescreen, a.foresight)
+        i_fc, v_fc = run_policy(e_fc, EV, EVm, "forecast", quota=a.quota)
 
         e = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
                      a.unit_only, a.static_field, a.prescreen,
@@ -425,7 +518,28 @@ def main():
             print(f"  seed={seed} 加载已训网络（{d.get('iters')} 迭代 × "
                   f"{d.get('eps')} 回合）")
         else:
-            net, hist = TP.train(e, iters=a.iters, eps_per_iter=a.eps, seed=seed)
+            init_sd, bcm = (None, {})
+            if a.bc_init != "off":
+                rk = EV if a.bc_init == "forecast" else EVm
+                init_sd, bcm = bc_actor(
+                    lambda: build_env(a.dataset, a.horizon, a.alpha, 7, a.budget,
+                                      a.objective, a.unit_only, a.static_field,
+                                      a.prescreen, a.foresight),
+                    rk, None, seed=seed)
+                print(f"  seed={seed} 监督初始化（教师={a.bc_init}）"
+                      f"样本 {bcm['bc_n']} 秩相关 {bcm['bc_rho']:.3f}")
+            if a.bc_only:
+                # **只做监督初始化、不经 PPO**。这是论文表里一行独立的模型
+                # （"监督时空打分器"），不是诊断：它回答"把前瞻信息用监督方式
+                # 学进打分器，能到哪里"。与 BC→PPO 并列才能看出 PPO 的净效应。
+                if init_sd is None:
+                    raise SystemExit("--bc-only 需要同时给 --bc-init")
+                net = TP.Pointer().to(TP.DEV)
+                net.load_state_dict(init_sd, strict=False)
+                hist = [float("nan")]
+            else:
+                net, hist = TP.train(e, iters=a.iters, eps_per_iter=a.eps,
+                                     seed=seed, init_actor=init_sd)
         # 存盘训练好的网络：后续所有事后分析（分解、等待指标、逐年优势诊断）
         # 都不必重训 —— 400 迭代一个种子要 25 分钟，重训是最贵的浪费。
         if not (a.load_net and os.path.exists(ck)):
@@ -441,6 +555,7 @@ def main():
 
         gap = ((v_ppo - v_myo) / (v_orc - v_myo)) if v_orc > v_myo else np.nan
         for tag, iv, vv in (("随机", i_rnd, v_rnd), ("近视贪心", i_myo, v_myo),
+                            ("时间感知贪心", i_fc, v_fc),
                             ("PPO", i_ppo, v_ppo)):
             plans.extend(dict(seed=seed, policy=tag, unit=u, year=y)
                          for u, y in iv.items())

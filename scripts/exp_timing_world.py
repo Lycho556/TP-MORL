@@ -127,7 +127,7 @@ class TimingWorld:
     """
 
     def __init__(self, n_per_kind=2, T=12, lead=1, gamma=0.95, quota=1,
-                 value_at="init",
+                 value_at="init", alpha=1.0, suit=None, width=None,
                  g_target=0.05, channel="value", shape="window",
                  q_lo=0.30, q_hi=0.95, base=100.0, foresight=3, shaping=False,
                  wa_feat=False, action_mode="now"):
@@ -148,7 +148,8 @@ class TimingWorld:
         # 自证需要复制一个同参数的干净世界（不能复用自己，会污染状态）
         self._ctor_kw = dict(n_per_kind=n_per_kind, T=T, lead=lead, gamma=gamma,
                              quota=quota, value_at=value_at, g_target=g_target,
-                             channel=channel, shape=shape)
+                             channel=channel, shape=shape, alpha=alpha,
+                             suit=suit, width=width)
         if self.value_at not in ("init", "done"):
             raise ValueError(f"value_at 只能是 init/done，收到 {value_at!r}")
         self.q_lo, self.q_hi = float(q_lo), float(q_hi)
@@ -178,7 +179,37 @@ class TimingWorld:
                 peaks.append(frac * self.T)
         self.n = len(self.names)
         self.peak = np.array(peaks, float)
-        self.base = np.full(self.n, float(base))
+        # ---- 空间适宜性 S_i 与时间机会 T_{i,t} 的分离（v19 简化框架）----
+        #
+        # 论文主线只需要一句话：**同样的空间吸引力、不同的时间机会**，
+        # 于是纯空间排序无法复现最优时空分配。
+        #
+        # suit=None 时所有地块 S 相同（旧行为）。但那样"纯空间排序"退化为
+        # 在并列项里随机挑，它就不再是一个有意义的基线了。给出 suit 后，
+        # 每个峰值型内部再分若干个适宜性档，于是：
+        #   * 档与档之间 —— 纯空间排序有真实信号（高 S 的确更值钱）；
+        #   * 同一档内部 —— S 完全并列，**只有时间能区分**，这正是"when"。
+        self.suit = None if suit is None else [float(x) for x in suit]
+        if self.suit is None:
+            self.base = np.full(self.n, float(base))
+        else:
+            # 在每个峰值型内部循环分配适宜性档，保证每个档都同时含有
+            # 早峰/晚峰/很晚峰 —— 否则"高 S 的恰好都该早做"会让纯空间排序
+            # 白捡一个正确的时序，实验就失去判别力。
+            per = int(n_per_kind)
+            b = []
+            for _k in range(len(KINDS)):
+                for i in range(per):
+                    b.append(float(base) * self.suit[i % len(self.suit)])
+            self.base = np.array(b, float)
+
+        # 时间变化强度。T_eff = (1−α)·1 + α·T，故
+        #   α=0  机会在时间上完全不变 → 纯空间排序应当已经最优
+        #   α=1  完整的机会窗
+        # 这是消融实验唯一变动的量。
+        self.alpha = float(alpha)
+        if not 0.0 <= self.alpha <= 1.0:
+            raise ValueError(f"alpha 必须在 [0,1]，收到 {self.alpha}")
         self.cost = np.zeros(self.n)          # 资金刻意不咬：把"等"的理由留给机会场
         self.scale = np.ones(len(OBJ_NAMES))
         self.ch = np.ones(self.n, int)
@@ -188,8 +219,15 @@ class TimingWorld:
         # 差别只在峰值年）；平坦型给一个很宽的窗，近似"什么时候做都差不多"。
         # 三型共用同一个窗宽：差别只在峰值年，故"哪一型该等多久"完全由峰值
         # 决定，不掺入宽度差异这个第二变量。
-        w_late = window_width(KINDS[1][2] * self.T, self.g_target, self.gamma)
+        # 窗宽：给了 width 就直接用（简化框架下峰值陡缓只是一个设计参数，
+        # 不必再从"一年等待优势"反解 —— 等待已不在故事线里）；
+        # 没给则沿用按 g_target 的闭式反解。
+        if width is not None:
+            w_late = float(width)
+        else:
+            w_late = window_width(KINDS[1][2] * self.T, self.g_target, self.gamma)
         self.width = np.full(self.n, w_late, float)
+        self._width_given = width is not None
 
         yrs = np.arange(self.T + 1, dtype=float)
         if self.shape == "window":
@@ -258,7 +296,10 @@ class TimingWorld:
         return float(self.width[0])
 
     def opp(self, u, t):
-        return float(self.O[int(u), int(np.clip(t, 0, self.T))])
+        """时间机会 T_{i,t}，已按 α 混合。**所有下游（奖励、oracle、观测、
+        批准概率）都经由这一个函数**，故 α 不可能只影响其中一部分。"""
+        o = float(self.O[int(u), int(np.clip(t, 0, self.T))])
+        return (1.0 - self.alpha) + self.alpha * o
 
     def q(self, u, t):
         return self.q_lo + (self.q_hi - self.q_lo) * self.opp(u, t)
@@ -361,7 +402,9 @@ class TimingWorld:
         i = self.kind.index("late")
         v = np.array([self.dvalue(i, y) for y in range(self.T - self.lead)])
         k = int(np.argmax(v))
-        if self.shape == "window":
+        # α=0 时机会在时间上不变，最优时点必然是最早年（只由折现决定），
+        # "内点峰值"本就不该存在 —— 这是消融的对照端，不是失败。
+        if self.shape == "window" and self.alpha > 0 and not self._width_given:
             if not 0 < k < len(v) - 1:
                 raise AssertionError(
                     f"晚峰型地块的折现最优时点在边界（第 {k} 年，共 {len(v)} 个可选年）："
@@ -374,7 +417,8 @@ class TimingWorld:
         # (b) 实测一年等待优势必须与 --g-target 吻合
         g = self.dvalue(i, 1) / max(self.dvalue(i, 0), 1e-12) - 1.0
         out["g_measured"] = float(g)
-        if self.shape == "window" and abs(g - self.g_target) > tol:
+        if (self.shape == "window" and self.alpha > 0
+                and not self._width_given and abs(g - self.g_target) > tol):
             raise AssertionError(
                 f"实测一年等待优势 {g:+.4f} 与目标 {self.g_target:+.4f} 相差超过 {tol}："
                 "窗宽反解与实现不一致，扫描的横轴就不可信")
@@ -416,6 +460,8 @@ class TimingWorld:
         out["oracle_value"], out["greedy_value"] = opt, gre
         out["greedy_ratio"] = float(gre / opt) if opt else float("nan")
         out["discriminative"] = bool(out["greedy_ratio"] <= 0.90)
+        out["alpha"], out["width"] = self.alpha, float(self.width[0])
+        out["suit_levels"] = sorted(set(np.round(self.base, 3).tolist()))
         # (d) 最优计划是否要求**留空年**——"主动留空等窗口"正是要测的行为
         used = sorted(v for v in oplan.values() if v is not None)
         out["oracle_years"] = used

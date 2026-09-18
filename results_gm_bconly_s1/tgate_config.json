@@ -1,16 +1,18 @@
 {
  "dataset": "data/processed/gm_dataset_v1",
- "out": "results_tgate_k20",
+ "out": "results_gm_bconly_s1",
  "horizon": 25,
  "iters": 150,
  "eps": 8,
  "seeds": [
-  0
+  1
  ],
  "alpha": 0.5,
  "objective": "floor",
  "prescreen": 20,
- "load_net": true,
+ "bc_init": "forecast",
+ "bc_only": true,
+ "load_net": false,
  "unit_only": true,
  "static_field": false,
  "quota": 3,
