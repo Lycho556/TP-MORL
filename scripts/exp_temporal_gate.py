@@ -92,13 +92,58 @@ def gate_weights(objective, alpha):
     return TP.weight_vector(alpha)
 
 
-def build_env(dataset, T, alpha, seed, budget, objective="floor"):
+def build_env(dataset, T, alpha, seed, budget, objective="floor",
+              unit_only=False, static_field=False, prescreen=0):
     env = RenewalEnv(dataset, T=T, T_eval=SC.horizon_eval(),
                      weights=gate_weights(objective, alpha),
                      scale=np.ones(len(OBJ_NAMES)))
     env.reset(seed=seed)
     env.budget = float(budget)          # 预算不咬：本闸只测时序选择
+    if unit_only:
+        # 空间闸的诊断档：**每个单元只保留一个目标功能**，动作空间由约 1985 个
+        # (单元,目标) 配对降到 717 个单元。
+        #
+        # 为什么要有这一档：oracle 与近视贪心的计价口径是 EV(u, t)，只关心
+        # "哪个单元、哪一年"；而 PPO 面对的是 (单元,目标) 配对的自回归选择，
+        # 一年之内还要连选 3 次。两边其实不是同一个问题，PPO 额外承担了
+        # 目标功能选择的难度。固定目标后两边口径一致，才能干净地问一句
+        # "PPO 能不能在 717 个单元里做好当期选择"。
+        #
+        # **这是诊断档，不是论文最终模型**——最终模型必须保留目标功能选择。
+        # 选哪个目标：按该单元 FAR 上限最高的那个（与 EV 的 base 定义一致），
+        # 这样固定动作不会顺带改变计价口径。
+        env.fix_one_target_per_unit()
+    if prescreen:
+        env.set_prescreen(int(prescreen))
+    if static_field:
+        # 把机会场冻结在第 0 年：admit/hazard/value 三个查询一律返回第 0 年取值。
+        # 此时环境里**不存在任何时序优势**，oracle 与近视贪心应当几乎相等，
+        # 问题退化为纯空间选择。这一档用来单独考核"挑谁"的能力。
+        env.opp = _FrozenField(env.opp, 0)
     return env
+
+
+class _FrozenField:
+    """把机会场冻结在第 t0 年的包装器（诊断用，见 build_env 的 static_field）。"""
+
+    def __init__(self, opp, t0=0):
+        self._o, self.t0 = opp, int(t0)
+        self.kind = opp.kind
+
+    def admit_prob(self, t):
+        return self._o.admit_prob(self.t0)
+
+    def hazard_mult(self, t):
+        return self._o.hazard_mult(self.t0)
+
+    def value_mult(self, u, t_init, t_done):
+        return self._o.value_mult(u, self.t0, self.t0)
+
+    def obs_block(self, *a, **k):
+        return self._o.obs_block(*a, **k)
+
+    def __getattr__(self, k):
+        return getattr(self._o, k)
 
 
 def ev_tables(env, gamma):
@@ -157,6 +202,43 @@ def oracle_plan(EV, quota, eligible):
         plan[int(rows[r])] = years[c]
         tot += float(M[r, c])
     return tot, plan
+
+
+def decompose(EV, init, quota, eligible, v_oracle):
+    """反事实价值分解：把 PPO 的缺口拆成"挑错单元"与"放错年份"两份。
+
+    做法是对**同一批被选中的单元**重解一次配额约束下的最优时间分配：
+
+        V_实际      = Σ EV[u, 策略给的年份]
+        V_单元_最优时 = restricted assignment(仅这批单元) 的最优值
+        V_oracle    = 全体合规单元上的最优值
+
+        放错年份的损失 = V_单元_最优时 − V_实际
+        挑错单元的损失 = V_oracle    − V_单元_最优时
+
+    两项按构造相加等于总缺口。**这是反事实分解，不是严格可加的因果分解**
+    （选谁与何时本来是耦合的，重新计时也会改变彼此的竞争关系）；论文里应当
+    称作 counterfactual decomposition，不要写成 causal decomposition。
+
+    与"直接把年份换成 oracle 指派年"相比，这里重解一次指派是必要的：
+    直接换年份会让多个单元挤到同一年、突破每年的名额，得到的是一个**不可行**
+    的上界；重解指派给出的是"这批单元在名额约束下能达到的最好时序"，可行且可比。
+    """
+    if not init:
+        return dict(v_actual=0.0, v_best_timing=0.0, loss_timing=np.nan,
+                    loss_selection=np.nan, share_timing=np.nan)
+    units = np.array(sorted(init))
+    mask = np.zeros(EV.shape[0], bool)
+    mask[units] = True
+    mask &= np.asarray(eligible, bool)
+    v_best, _ = oracle_plan(EV, quota, mask)
+    v_act = float(sum(EV[u, y] for u, y in init.items()))
+    l_t = v_best - v_act
+    l_s = v_oracle - v_best
+    tot = l_t + l_s
+    return dict(v_actual=v_act, v_best_timing=float(v_best),
+                loss_timing=float(l_t), loss_selection=float(l_s),
+                share_timing=float(l_t / tot) if tot > 0 else np.nan)
 
 
 def run_policy(env, EV, EVm, kind, net=None, rng=None, quota=None):
@@ -266,6 +348,22 @@ def main():
                     help="学习器的目标。floor=只押 Floor，与本闸的计价口径一致"
                          "（判定用这一档）；mix=沿用多目标权重（目标与计价不一致，"
                          "其低分不能归因到时序能力）")
+    ap.add_argument("--prescreen", type=int, default=0,
+                    help="每年只把当期分数最高的 K 个候选送进动作空间（0=不筛）。"
+                         "筛选分数只用当年可观测量（当期机会指数 × 基准交付量），"
+                         "与近视贪心同信息——故结果只能读作「近视初筛之上的 RL」，"
+                         "不能读作「RL 自己学会了空间选择」")
+    ap.add_argument("--load-net", action="store_true",
+                    help="若 --out 目录下已有 net_seed*.pt 则直接加载、跳过训练。"
+                         "事后分析与训练无关，而一个种子 400 迭代要 25 分钟")
+    ap.add_argument("--unit-only", action="store_true",
+                    help="诊断档：每单元只留一个目标功能，动作空间 ~1985 → 717。"
+                         "使 PPO 与 oracle/近视贪心面对同一个问题（只挑单元与年份）")
+    ap.add_argument("--static-field", action="store_true",
+                    help="诊断档：把机会场冻结在第 0 年，**去掉全部时序优势**。"
+                         "此时 oracle 与近视贪心应当几乎相等，问题退化为纯空间选择："
+                         "判据改为 (V_PPO − V_随机)/(V_近视 − V_随机)，即恢复了多少"
+                         "空间选择能力")
     ap.add_argument("--quota", type=int, default=3)
     ap.add_argument("--budget", type=float, default=1e12,
                     help="预算上限。默认极大 = 不咬：本闸只测时序选择，"
@@ -283,7 +381,8 @@ def main():
              a_ready=a.amps[3], foresight=a.foresight, quota=a.quota,
              budget=a.budget)
 
-    env0 = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective)
+    env0 = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
+                     a.unit_only, a.static_field, a.prescreen)
     EV, EVm = ev_tables(env0, a.gamma)
     elig = np.asarray(env0.env.eligible, bool)
     v_orc, oplan = oracle_plan(EV, a.quota, elig)
@@ -293,15 +392,42 @@ def main():
     rows, plans = [], []
     for seed in a.seeds:
         # 随机与近视：与 PPO 用同一张场、同一套掩码、同一套计价
-        e = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective)
+        e = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
+                     a.unit_only, a.static_field, a.prescreen)
         i_rnd, v_rnd = run_policy(e, EV, EVm, "random",
                                   rng=np.random.default_rng(seed), quota=a.quota)
-        e = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective)
+        e = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
+                     a.unit_only, a.static_field, a.prescreen)
         i_myo, v_myo = run_policy(e, EV, EVm, "myopic", quota=a.quota)
 
-        e = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective)
-        net, hist = TP.train(e, iters=a.iters, eps_per_iter=a.eps, seed=seed)
-        e2 = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective)
+        e = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
+                     a.unit_only, a.static_field, a.prescreen)
+        ck = os.path.join(a.out, f"net_seed{seed}.pt")
+        if a.load_net and os.path.exists(ck):
+            # 直接加载已训网络，跳过训练。事后分析（分解、等待指标、逐年优势）
+            # 与训练无关，而 400 迭代一个种子要 25 分钟——存盘复用是必须的。
+            d = torch.load(ck, weights_only=False)
+            for k in ("objective", "unit_only", "static_field"):
+                if bool(d.get(k)) != bool(getattr(a, k)) and k != "objective":
+                    raise SystemExit(f"存盘网络的 {k}={d.get(k)} 与本次 "
+                                     f"--{k.replace('_','-')} 不一致，拒绝混用")
+            net = TP.Pointer().to(TP.DEV)
+            net.load_state_dict(d["state"])
+            hist = [float("nan")]
+            print(f"  seed={seed} 加载已训网络（{d.get('iters')} 迭代 × "
+                  f"{d.get('eps')} 回合）")
+        else:
+            net, hist = TP.train(e, iters=a.iters, eps_per_iter=a.eps, seed=seed)
+        # 存盘训练好的网络：后续所有事后分析（分解、等待指标、逐年优势诊断）
+        # 都不必重训 —— 400 迭代一个种子要 25 分钟，重训是最贵的浪费。
+        if not (a.load_net and os.path.exists(ck)):
+            torch.save(dict(state=net.state_dict(), iters=a.iters, eps=a.eps,
+                            seed=seed, objective=a.objective,
+                            unit_only=a.unit_only, static_field=a.static_field,
+                            prescreen=a.prescreen),
+                       ck)
+        e2 = build_env(a.dataset, a.horizon, a.alpha, 7, a.budget, a.objective,
+                     a.unit_only, a.static_field, a.prescreen)
         i_ppo, v_ppo = run_policy(e2, EV, EVm, "ppo", net=net, quota=a.quota)
 
         gap = ((v_ppo - v_myo) / (v_orc - v_myo)) if v_orc > v_myo else np.nan
@@ -309,10 +435,11 @@ def main():
                             ("PPO", i_ppo, v_ppo)):
             plans.extend(dict(seed=seed, policy=tag, unit=u, year=y)
                          for u, y in iv.items())
+            dec = decompose(EV, iv, a.quota, elig, v_orc)
             (pk_mae, pk_med, pk_hit), (or_mae, or_med, or_hit) = peak_distance(
                 EV, iv, oplan)
             p_up, p_dn, n_up, n_dn = wait_when_beneficial(env0, EV, iv)
-            rows.append(dict(seed=seed, policy=tag, value=vv,
+            rows.append(dict(seed=seed, policy=tag, value=vv, **dec,
                              ratio_oracle=vv / v_orc if v_orc else np.nan,
                              gap_closure=(gap if tag == "PPO" else
                                           (0.0 if tag == "近视贪心" else np.nan)),
@@ -343,6 +470,10 @@ def main():
         立项数=("n_init", "mean"), 立项重心=("init_mean", "mean"),
         距峰值年MAE=("peak_mae", "mean"), 距峰值1年内=("peak_hit1", "mean"),
         距oracle年MAE=("oracle_mae", "mean"), 距oracle1年内=("oracle_hit1", "mean"),
+        单元最优时序价值=("v_best_timing", "mean"),
+        放错年份损失=("loss_timing", "mean"),
+        挑错单元损失=("loss_selection", "mean"),
+        时序损失占比=("share_timing", "mean"),
         P等待_明年更值=("p_wait_up", "mean"),
         P等待_明年更差=("p_wait_dn", "mean"),
         等待对比度=("wait_contrast", "mean")).reset_index())

@@ -229,6 +229,66 @@ class RenewalEnv:
         F[:, 22:32] = self.opp.obs_block(self.t)
         return F
 
+    def set_prescreen(self, k=0, score=None):
+        """**诊断用**：每年只把当期分数最高的 k 个候选送进动作空间。
+
+        为什么值得试：监督探针显示，用同一批特征、同样大小的网络做**监督**回归，
+        挑出的 3 个能拿到真前 3 的 100%（随机 39%）；而同一网络在 PPO 下训 400
+        迭代只到随机水平。也就是说信息与容量都够，卡住的是信用分配——
+        每年 595 个候选里选 3 个，一个标量回合回报要摊到上万次候选评分上，
+        单个候选拿到的梯度信号极弱。先筛到几十个，直接检验这一解释。
+
+        **口径声明（必须写进论文）**：筛选分数只用**当年可观测**的量
+        （当期机会指数 × 基准交付量），与近视贪心用的是同一批信息。
+        因此开了这一档之后的结果只能读作"在近视初筛之上的 RL"，
+        **不能**读作"RL 自己学会了空间选择"。要证明后者，筛选必须关掉。
+        """
+        self.prescreen_k = int(k)
+        self._prescreen_score = score
+        return self.prescreen_k
+
+    def _prescreen_rows(self, pu, pt, cost):
+        """按当期分数取前 k 个候选行（k<=0 时不筛）。"""
+        k = int(getattr(self, "prescreen_k", 0))
+        if k <= 0 or pu.size <= k:
+            return np.arange(pu.size)
+        if self._prescreen_score is not None:
+            sc = np.asarray(self._prescreen_score(self, pu, pt), float)
+        else:
+            oi = self.opp.opportunity_index(self.t)
+            oi = (np.full(self.n, 1.0) if np.ndim(oi) == 0
+                  else np.asarray(oi, float))
+            sc = oi[pu] * self.farcap[pu] * self.ncell[pu]
+        return np.argsort(-sc, kind="stable")[:k]
+
+    def fix_one_target_per_unit(self):
+        """**诊断用**：每个单元只保留一个目标功能，候选配对数降为单元数。
+
+        为什么需要这一档：oracle 与近视贪心的计价口径是 EV(u, t)，只关心
+        "哪个单元、哪一年"；而策略面对的是 (单元, 目标) 配对的自回归选择，
+        一年之内还要连选 QUOTA 次。两边其实不是同一个问题——策略额外承担了
+        目标功能选择的难度。固定目标后口径一致，才能干净地问
+        "能不能在 717 个单元里做好当期选择"。
+
+        **这是诊断档，论文最终模型必须保留目标功能选择。**
+
+        保留哪一个：成本最低的那个。EV 的 base 是 FAR 上限 × 格数，与目标功能
+        无关，故这个选择不改变计价口径；取最低成本是为了不顺带引入资金约束的
+        干扰（本闸预算已放松，但保持中性更稳）。
+        """
+        keep, seen = [], set()
+        for i in np.argsort(self._cost_all, kind="stable"):
+            u = int(self._pu_all[i])
+            if u in seen:
+                continue
+            seen.add(u)
+            keep.append(int(i))
+        keep = np.sort(np.asarray(keep, dtype=np.int64))
+        self._pu_all = self._pu_all[keep]
+        self._pt_all = self._pt_all[keep]
+        self._cost_all = self._cost_all[keep]
+        return len(keep)
+
     def pair_cost(self, u, tg):
         """立项该 (单元, 目标) 需占用的资金，与奖励里的 Cost 目标同口径。"""
         return float(self.PC[int(u), int(tg)])
@@ -243,6 +303,9 @@ class RenewalEnv:
         sel = self.mask_init[self._pu_all]
         pu, pt = self._pu_all[sel], self._pt_all[sel]
         cost = self._cost_all[sel]
+        keep = self._prescreen_rows(pu, pt, cost)
+        if keep.size != pu.size:
+            pu, pt, cost = pu[keep], pt[keep], cost[keep]
         n = pu.size
         rows = np.zeros((n + 1, N_PAIR_FEAT), dtype=np.float32)
         rows[:n, :N_FEAT] = F[pu]

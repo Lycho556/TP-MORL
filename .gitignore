@@ -9,3 +9,4 @@ __pycache__/
 # macOS
 .DS_Store
 data/processed/**/rl_v0_sel/
+*.pt

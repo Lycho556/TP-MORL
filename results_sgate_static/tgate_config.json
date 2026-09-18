@@ -1,0 +1,26 @@
+{
+ "dataset": "data/processed/gm_dataset_v1",
+ "out": "results_sgate_static",
+ "horizon": 25,
+ "iters": 150,
+ "eps": 8,
+ "seeds": [
+  0
+ ],
+ "alpha": 0.5,
+ "objective": "floor",
+ "load_net": true,
+ "unit_only": true,
+ "static_field": true,
+ "quota": 3,
+ "budget": 1000000000000.0,
+ "gamma": 0.95,
+ "foresight": 0,
+ "amps": [
+  2.4,
+  1.8,
+  0.9,
+  1.0
+ ],
+ "oracle_value": 2310.153798240228
+}
