@@ -169,6 +169,18 @@ def run_real(a, seed):
                        n_ep_each=a.ep_each, seed=seed)
     qa, qb, log = fqi.fit_double(data, a.gamma, make_trees(seed=seed),
                                  n_iter=a.n_iter)
+    if getattr(a, "dump_model", False):
+        # 落盘 Q 与训练数据的特征/即时回报，供 S3-B 的 Q 诊断复用 ——
+        # 那一步不需要重训，重训反而会引入与主结果不同的模型。
+        import joblib
+        joblib.dump(dict(qa=qa, qb=qb,
+                         X=np.vstack([d["X"] for d in data]),
+                         r=np.concatenate([d["r"] for d in data]),
+                         year=np.concatenate([np.full(len(d["r"]), d["t"])
+                                              for d in data]),
+                         gamma=a.gamma, seed=seed),
+                    os.path.join(a.out, f"fqi_model_seed{seed}.joblib"),
+                    compress=3)
     init, R, diag = fqi.rollout(env_fn, qa, qb, None, collect_q=True)
     v = float(sum(EV[u, min(t, EV.shape[1] - 1)] for u, t in init.items()))
     dec = G.decompose(EV, init, a.quota, elig, v_orc)
@@ -178,6 +190,23 @@ def run_real(a, seed):
                  q_vs_value_rho=fqi.q_vs_value_corr(data, qa, qb, None),
                  q_gap=float(np.nanmean([x["q_gap"] for x in diag])),
                  n_samples=sum(len(d["r"]) for d in data), n_init=len(init))]
+    if getattr(a, "with_bc", False):
+        # BC（v19 的监督时空打分器）：论文主表的 M3 行。
+        # 教师用真实 EV（"按已公布的规划与设施计划前瞻"这一信息档），
+        # 与 v19 的 --bc-init forecast --bc-only 完全同配置，故数值可比。
+        init_sd, bcm = G.bc_actor(env_fn, EV, None, seed=seed)
+        bcnet = G.TP.Pointer(); bcnet.load_state_dict(init_sd, strict=False)
+        e_bc = env_fn()
+        iv_bc, v_bc = G.run_policy(e_bc, EV, EVm, "ppo", net=bcnet,
+                                   quota=a.quota)
+        d_bc = G.decompose(EV, iv_bc, a.quota, elig, v_orc)
+        rows.append(dict(seed=seed, method="BC", value=v_bc, ratio=v_bc / v_orc,
+                         oracle_value=v_orc, actual_reward=np.nan,
+                         where_wrong=d_bc["loss_selection"],
+                         when_error=d_bc["loss_timing"],
+                         q_vs_value_rho=np.nan, q_gap=np.nan,
+                         n_samples=bcm["bc_n"], n_init=len(iv_bc)))
+
     # 三条既有基线：同一 EV 计价、同一掩码，故可直接相减
     for tag, kind, rk in (("随机", "random", None), ("静态/近视贪心", "myopic", None),
                           ("时间感知贪心", "forecast", None)):
@@ -214,6 +243,11 @@ def main():
     ap.add_argument("--prescreen", type=int, default=20)
     ap.add_argument("--foresight", type=int, default=0)
     ap.add_argument("--gamma", type=float, default=0.95)
+    ap.add_argument("--with-bc", action="store_true",
+                    help="主表加入 BC 行（v19 监督时空打分器，教师=真实 EV，"
+                         "与 v19 的 --bc-init forecast --bc-only 同配置）")
+    ap.add_argument("--dump-model", action="store_true",
+                    help="落盘 Q 模型与训练特征，供 S3-B 的 Q 诊断复用，不必重训")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
 

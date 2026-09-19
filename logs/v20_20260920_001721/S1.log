@@ -1,0 +1,17 @@
+L0  奖励=计价机械自证 True  |  同一计划：Σ EV 892.5997  环境实付折现奖励 892.5997  差 1.14e-13
+  α=0 seed=0 FQI 相对oracle 1.000
+  α=1 seed=0 FQI 相对oracle 0.941
+
+ alpha     method  n  相对oracle  标准差  Where召回  When_MAE  Q与价值秩相关
+   0.0         随机  1     0.857  NaN    0.778     3.000      NaN
+   0.0      纯空间排序  1     1.000  NaN    1.000     0.111      NaN
+   0.0     时间感知贪心  1     1.000  NaN    1.000     0.111      NaN
+   0.0     oracle  1     1.000  NaN    1.000     0.000      NaN
+   0.0 Double-FQI  1     1.000  NaN    1.000     0.556    0.678
+   1.0         随机  1     0.371  NaN    0.722     2.538      NaN
+   1.0      纯空间排序  1     0.453  NaN    0.889     2.750      NaN
+   1.0     时间感知贪心  1     0.941  NaN    0.889     0.750      NaN
+   1.0     oracle  1     1.000  NaN    1.000     0.000      NaN
+   1.0 Double-FQI  1     0.941  NaN    0.889     0.750   -0.027
+
+判据：Gate A FQI > 纯空间排序；Gate B ≈ 时间感知贪心；Gate C > 时间感知贪心（强结果）
