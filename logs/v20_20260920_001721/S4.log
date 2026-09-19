@@ -1,0 +1,3 @@
+S4 = BLOCKED（数据不足）：
+  非零年份 [2010.0, 2018.0]，事件 34 个，单元表有街道字段 False，项目表有 uid False
+  详见 results_srv_s4/S4_STATUS.md
