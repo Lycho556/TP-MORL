@@ -1,0 +1,18 @@
+{
+ "alpha": 0.5,
+ "seed": 0,
+ "method": "Double-FQI",
+ "value": 892.5996804066406,
+ "ratio": 0.8803875708155429,
+ "oracle_value": 1013.8712880507674,
+ "actual_reward": 892.5996804066407,
+ "q_vs_value_rho": 0.4741669487509905,
+ "n_samples": 8640,
+ "q_gap": 22.75654038104283,
+ "where_recall": 0.8888888888888888,
+ "where_jaccard": 0.8,
+ "when_mae": 1.25,
+ "when_hit1": 0.625,
+ "n_init": 18,
+ "n_overlap": 16
+}
