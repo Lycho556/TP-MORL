@@ -10,3 +10,6 @@ __pycache__/
 .DS_Store
 data/processed/**/rl_v0_sel/
 *.pt
+
+# v20 服务器实验：本地冒烟产物不入库（服务器上的正式结果由启动脚本逐段提交）
+logs/
