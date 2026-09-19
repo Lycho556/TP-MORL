@@ -224,7 +224,7 @@ def train(env, iters=60, eps_per_iter=4, epochs=4, lr=3e-3, clip=0.2,
           stop_context=False,
           ent_c=0.01, vf_c=0.5, seed=0, drop_no_choice=False,
           advantage="gae", init_actor=None, actor_lr_scale=1.0,
-          freeze_actor_iters=0):
+          freeze_actor_iters=0, callback=None):
     torch.manual_seed(seed)
     net = Pointer(stop_context=stop_context).to(DEV)
     if init_actor is not None:
@@ -243,6 +243,10 @@ def train(env, iters=60, eps_per_iter=4, epochs=4, lr=3e-3, clip=0.2,
         if any(k.startswith(("enc.", "score.")) for k in missing.missing_keys):
             raise ValueError(f"actor 权重未能完整加载：{missing.missing_keys}")
         print(f"    [init] 已载入预训练 actor（{len(keep)} 个张量），critic 保持随机")
+    if callback is not None:
+        # 第 0 点 = 初始化本身。**必须在加载 init_actor 之后**，
+        # 否则第 0 点求到的是随机网络，整条曲线的基准线就错了。
+        callback(0, net)
     if actor_lr_scale == 1.0:
         opt = torch.optim.Adam(net.parameters(), lr=lr)
     else:
@@ -328,6 +332,10 @@ def train(env, iters=60, eps_per_iter=4, epochs=4, lr=3e-3, clip=0.2,
             nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             opt.step()
         hist.append(float(np.mean(RS)))
+        if callback is not None:
+            # 沿途求值用。一次训到最长迭代数、在检查点上求值，
+            # 与"每个检查点各训一次"是同一条轨迹，但只付一次训练成本。
+            callback(it + 1, net)
     return net, hist
 
 

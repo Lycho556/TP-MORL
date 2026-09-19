@@ -307,6 +307,87 @@ def bc_actor(env_fn, rank, nf, n_ep=6, iters=800, lr=3e-3, seed=0):
     return sd, dict(bc_n=len(X), bc_rho=rho)
 
 
+def eval_checkpoint(env_fn, net, EV, EVm, quota, v_orc, elig, gamma,
+                    ref_states=None, ref_scores=None):
+    """一个检查点只求指南要的那几个数，不再产生一堆指标。
+
+        oracle_ratio   相对 oracle 的折现价值（EV 计价）
+        where_wrong    挑错单元损失
+        when_error     放错年份损失
+        stop_rate      配额未用满的比例（"今年到此为止"被选中的频率）
+        actual_reward  **环境自身**的折现奖励流 —— 用来确认评价指标与
+                       环境奖励没有再次出现口径打架（上一轮就吃过这个亏）
+        rank_corr_bc   与 BC 初始打分在同一批固定状态上的秩相关；
+                       它回答"PPO 是不是很快就改掉了候选排序"
+    """
+    env = env_fn()
+    init, n_stop_slot, n_slot = {}, 0, 0
+    R = 0.0
+    for t in range(env.T):
+        X, meta, cost, units = env.pairs()
+        avail = [(i, m[0]) for i, m in enumerate(meta) if m[0] >= 0]
+        if not avail:
+            _, r, done, _ = env.step([])
+            R += (gamma ** t) * float(np.sum(r))
+            if done:
+                break
+            continue
+        with torch.no_grad():
+            lg = net(torch.as_tensor(X))[0].numpy()
+        order = np.argsort(-lg)
+        act, used = [], set()
+        stop_row = len(meta) - 1
+        for i in order:
+            if len(act) >= quota:
+                break
+            if i == stop_row:
+                break                      # 选中「到此为止」：本年结束
+            u = meta[i][0]
+            if u < 0 or u in used:
+                continue
+            act.append(meta[i]); used.add(u); init.setdefault(u, t)
+        n_slot += quota
+        n_stop_slot += quota - len(act)
+        _, r, done, _ = env.step(act)
+        R += (gamma ** t) * float(np.sum(r))
+        if done:
+            break
+    v = float(sum(EV[u, min(t2, EV.shape[1] - 1)] for u, t2 in init.items()))
+    d = decompose(EV, init, quota, elig, v_orc)
+    out = dict(oracle_ratio=v / v_orc, value=v,
+               where_wrong=d["loss_selection"], when_error=d["loss_timing"],
+               stop_rate=n_stop_slot / max(n_slot, 1), actual_reward=R,
+               n_init=len(init))
+    if ref_states is not None:
+        from scipy.stats import spearmanr
+        with torch.no_grad():
+            cur = np.concatenate([net(torch.as_tensor(X))[0].numpy()
+                                  for X in ref_states])
+        out["rank_corr_bc"] = float(spearmanr(cur, ref_scores).statistic)
+    return out
+
+
+def ref_state_batch(env_fn, net, n_year=6):
+    """固定一批状态与 BC 在其上的打分，供后续检查点比较候选排序的变化。"""
+    env = env_fn()
+    Xs, rng = [], np.random.default_rng(0)
+    for t in range(n_year):
+        X, meta, cost, units = env.pairs()
+        avail = [(i, m[0]) for i, m in enumerate(meta) if m[0] >= 0]
+        if not avail:
+            if env.step([])[2]:
+                break
+            continue
+        Xs.append(X)
+        pick = [meta[i] for i, _ in
+                [avail[j] for j in rng.permutation(len(avail))[:env.quota]]]
+        if env.step(pick)[2]:
+            break
+    with torch.no_grad():
+        sc = np.concatenate([net(torch.as_tensor(X))[0].numpy() for X in Xs])
+    return Xs, sc
+
+
 def run_policy(env, EV, EVm, kind, net=None, rng=None, quota=None):
     """走一遍决策期，返回 {单元: 立项年} 与按 EV 计价的折现总价值。
 
@@ -416,6 +497,69 @@ def peak_distance(EV, init, oplan):
     return f(d_peak), f(d_orc)
 
 
+def run_curve(a):
+    """BC → PPO 训练长度曲线：一次训到最长迭代数，沿途在检查点求值。
+
+    与"每个检查点各训一次"是同一条轨迹（同种子、同数据流），
+    但只付一次训练成本 —— 400 迭代一个种子约 20 分钟，分开跑要 3 倍以上。
+    """
+    SC.reset()
+    SC.apply(horizon=a.horizon, horizon_eval="auto", opp_shape="window",
+             a_plan=a.amps[0], a_infra=a.amps[1], a_age=a.amps[2],
+             a_ready=a.amps[3], foresight=a.foresight, quota=a.quota,
+             budget=a.budget)
+    env_fn = lambda: build_env(a.dataset, a.horizon, a.alpha, 7, a.budget,
+                               a.objective, a.unit_only, a.static_field,
+                               a.prescreen, a.foresight)
+    e0 = env_fn()
+    EV, EVm = ev_tables(e0, a.gamma)
+    elig = np.asarray(e0.env.eligible, bool) if hasattr(e0, "env") \
+        else np.ones(EV.shape[0], bool)
+    v_orc, oplan = oracle_plan(EV, a.quota, elig)
+    ckpts = sorted(set(int(x) for x in a.curve))
+    rows = []
+    for seed in a.seeds:
+        init_sd, bcm = bc_actor(env_fn, EV if a.bc_init == "forecast" else EVm,
+                                None, seed=seed)
+        print(f"seed={seed} 监督初始化秩相关 {bcm['bc_rho']:.3f}")
+        bc_net = TP.Pointer(); bc_net.load_state_dict(init_sd, strict=False)
+        ref_X, ref_sc = ref_state_batch(env_fn, bc_net)
+
+        def cb(it, net, seed=seed):
+            if it not in ckpts:
+                return
+            m = eval_checkpoint(env_fn, net, EV, EVm, a.quota, v_orc, elig,
+                                a.gamma, ref_X, ref_sc)
+            rows.append(dict(seed=seed, iters=it, **m))
+            print(f"  iter={it:>4}  相对oracle {m['oracle_ratio']:.3f}  "
+                  f"挑错单元 {m['where_wrong']:>7.0f}  "
+                  f"放错年份 {m['when_error']:>7.0f}  "
+                  f"停用名额 {m['stop_rate']:.3f}  "
+                  f"环境奖励 {m['actual_reward']:.3g}  "
+                  f"与BC秩相关 {m.get('rank_corr_bc', float('nan')):.3f}")
+
+        TP.train(env_fn(), iters=max(ckpts), eps_per_iter=a.eps, seed=seed,
+                 init_actor=init_sd, callback=cb)
+
+    D = pd.DataFrame(rows)
+    os.makedirs(a.out, exist_ok=True)
+    D.to_csv(os.path.join(a.out, "curve_runs.csv"), index=False,
+             encoding="utf-8-sig")
+    Sm = (D.groupby("iters").agg(
+        n=("oracle_ratio", "size"), 相对oracle=("oracle_ratio", "mean"),
+        标准差=("oracle_ratio", "std"), 最低=("oracle_ratio", "min"),
+        挑错单元=("where_wrong", "mean"), 放错年份=("when_error", "mean"),
+        停用名额=("stop_rate", "mean"), 环境奖励=("actual_reward", "mean"),
+        与BC秩相关=("rank_corr_bc", "mean")).reset_index())
+    Sm.to_csv(os.path.join(a.out, "curve_summary.csv"), index=False,
+              encoding="utf-8-sig")
+    print("\n" + Sm.round(4).to_string(index=False))
+    print("\n判读：第 0 行就是 BC 本身。若某个中间迭代数稳定 ≥ 第 0 行，"
+          "则存在短期微调窗口；若一路下降，则直接以 BC 作为主模型，"
+          "论文里诚实写 RL 微调未能稳定改善监督初始化。")
+    return D
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", default="data/processed/gm_dataset_v1")
@@ -440,6 +584,9 @@ def main():
                          "forecast=教师按已公布的规划与设施计划前瞻"
                          "（需在论文里声明为一个信息档）。唯一改动是初始化，"
                          "环境/奖励/动作空间/超参不变")
+    ap.add_argument("--curve", type=int, nargs="+", default=None,
+                    help="BC→PPO 训练长度曲线的检查点，例如 0 2 10 50 150 400。"
+                         "第 0 点 = BC 本身（基准线）。一次训到最大值、沿途求值")
     ap.add_argument("--bc-only", action="store_true",
                     help="只做监督初始化、跳过 PPO。给出表里\"监督时空打分器\""
                          "那一行，用于分离 PPO 的净效应")
@@ -468,6 +615,10 @@ def main():
                     metavar=("PLAN", "INFRA", "AGE", "READY"))
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
+    if a.curve:
+        # 唯一重点：BC→PPO 训练长度曲线。其余分支保持原样不动。
+        run_curve(a)
+        return
 
     SC.reset()
     SC.apply(horizon=a.horizon, horizon_eval="auto", opp_shape="window",
