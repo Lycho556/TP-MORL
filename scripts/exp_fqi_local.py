@@ -56,8 +56,12 @@ def make_trees(n_estimators=200, seed=0):
 
     def f():
         box["k"] += 1
+        # n_jobs 默认 1：并行 predict 的求和顺序不固定，差异约 1e-15，经 FQI
+        # 的 argmax 与多轮迭代放大后同一种子可差到 0.01 量级（见附录 B）。
+        # 需要提速时可设环境变量 TPMORL_NJOBS=-1，但结果不再逐位可复现。
         return ExtraTreesRegressor(
-            n_estimators=n_estimators, min_samples_leaf=2, n_jobs=-1,
+            n_estimators=n_estimators, min_samples_leaf=2,
+            n_jobs=int(os.environ.get("TPMORL_NJOBS", "1")),
             random_state=seed * 1000 + box["k"])
     return f
 

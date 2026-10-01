@@ -1,0 +1,1588 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-10-01T13:08:56Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "relation",
+  "id": 11583141,
+  "members": [
+    {
+      "type": "node",
+      "ref": 6503565378,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617131435,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617696930,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617121285,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617121273,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617131452,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617121270,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617121271,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617131446,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617131430,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617131524,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 7490905994,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 7490905987,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617121279,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 3617131393,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8010738791,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8010738714,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8008654766,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 8008654626,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 7822253164,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9062180169,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9062180219,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9062180209,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9062180204,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9062180193,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9062180190,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9062180187,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 356235240,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 356597035,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 356597032,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1157039529,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 356597034,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1446458035,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1301779095,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1301779094,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1182393145,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1182393147,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 356597033,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 940417495,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1161620081,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1424923840,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 356597030,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1156994562,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1158898147,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 838104570,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1167768778,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1167768780,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 859155801,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 860764627,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 859400647,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1077695731,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1077695729,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 979550858,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 979550859,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "alt_name": "地铁 光明线：松岗 → 科学馆",
+    "colour": "#3ABCA8",
+    "fee": "yes",
+    "from": "松岗",
+    "name": "地铁 6号线：松岗 → 科学馆",
+    "name:en": "Subway Line 6: Songgang → Science Museum",
+    "network": "深圳地铁",
+    "network:en": "Shenzhen Metro",
+    "network:wikidata": "Q867680",
+    "network:wikipedia": "zh:深圳地铁",
+    "network:zh": "深圳地铁",
+    "operator": "深圳市地铁集团有限公司",
+    "public_transport:version": "2",
+    "ref": "6",
+    "route": "subway",
+    "to": "科学馆",
+    "type": "route",
+    "wikidata": "Q6119435",
+    "wikipedia": "zh:深圳地铁6号线"
+  }
+},
+{
+  "type": "relation",
+  "id": 14953715,
+  "members": [
+    {
+      "type": "node",
+      "ref": 9863294202,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9863294211,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9863299221,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9833816475,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 11842947075,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 11842947073,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 11892348334,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 1075458839,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1071653672,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1433702238,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1157030953,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "colour": "#428D89",
+    "fee": "yes",
+    "from": "深理工",
+    "name": "地铁 6号线支线：深理工 -> 光明城",
+    "name:en": "Subway Line 6 Branch: SIAT -> Guangmingcheng",
+    "name:zh": "地铁 6号线支线：深理工 -> 光明城",
+    "network": "深圳地铁",
+    "network:en": "Shenzhen Metro",
+    "network:wikidata": "Q867680",
+    "network:wikipedia": "zh:深圳地铁",
+    "network:zh": "深圳地铁",
+    "operator": "深圳市地铁集团",
+    "public_transport:version": "2",
+    "ref": "6B",
+    "route": "subway",
+    "to": "光明城",
+    "type": "route",
+    "wikidata": "Q114025973",
+    "wikipedia": "zh:深圳地铁6号线支线"
+  }
+},
+{
+  "type": "relation",
+  "id": 18470804,
+  "members": [
+    {
+      "type": "node",
+      "ref": 6533296575,
+      "role": "stop"
+    },
+    {
+      "type": "relation",
+      "ref": 21188854,
+      "role": "platform_entry_only"
+    },
+    {
+      "type": "node",
+      "ref": 12338850926,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 11639219898,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12338850928,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12338850930,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12456016671,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12338850931,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 11639219910,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 11639219918,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12338850932,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 11639219944,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 11639219955,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 6533296546,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 6533296553,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 6533296549,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 11842947079,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 9032685857,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 13971105447,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 1533327029,
+      "role": "platform"
+    },
+    {
+      "type": "node",
+      "ref": 11842947082,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 11842947085,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12282455603,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12282455606,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12282455609,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12282455612,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 12282455615,
+      "role": "stop"
+    },
+    {
+      "type": "node",
+      "ref": 13971100282,
+      "role": "stop"
+    },
+    {
+      "type": "way",
+      "ref": 1533082133,
+      "role": "platform_exit_only"
+    },
+    {
+      "type": "way",
+      "ref": 1533587475,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1346998597,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1252157490,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1533587472,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1347936352,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1346638499,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1252157491,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1272877572,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1362309956,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1445330972,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 1533587473,
+      "role": ""
+    },
+    {
+      "type": "way",
+      "ref": 976059185,
+      "role": ""
+    }
+  ],
+  "tags": {
+    "alt_name": "深圳地铁石岩线: 深圳湾口岸 → 李松蓢",
+    "colour": "#DE7C00",
+    "fee": "yes",
+    "from": "深圳湾口岸",
+    "from:en": "Shenzhen Bay Checkpoint",
+    "from:zh": "深圳湾口岸",
+    "name": "深圳地铁13号线: 深圳湾口岸 → 李松蓢",
+    "name:en": "Subway Line 13: Shenzhen Bay Checkpoint → Lisonglang",
+    "name:zh": "深圳地铁13号线: 深圳湾口岸 → 李松蓢",
+    "name:zh-Hant": "深圳地鐵13號綫: 深圳灣口岸 → 李松蓢",
+    "network": "深圳地铁",
+    "network:en": "Shenzhen Metro",
+    "network:wikidata": "Q867680",
+    "network:wikipedia": "zh:深圳地铁",
+    "network:zh": "深圳地铁",
+    "operator": "港铁中铁电化轨道交通（深圳）有限公司",
+    "operator:en": "MTR CREC Metro (Shenzhen) Company Limited",
+    "operator:wikidata": "Q131596927",
+    "operator:zh": "港铁中铁电化轨道交通（深圳）有限公司",
+    "public_transport:version": "2",
+    "ref": "13",
+    "route": "subway",
+    "to": "李松蓢",
+    "to:en": "Lisonglang",
+    "to:zh": "李松蓢",
+    "type": "route",
+    "website": "https://www.mtrsz.com.cn/frontend/default/src/channel/line_introduce_13Line.html",
+    "wikidata": "Q28415004",
+    "wikipedia": "zh:深圳地鐵13號線"
+  }
+},
+{
+  "type": "node",
+  "id": 3617121270,
+  "lat": 22.7808035,
+  "lon": 113.9017902,
+  "tags": {
+    "name": "红花山",
+    "name:en": "Honghuashan",
+    "name:zh": "红花山",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q96279547"
+  }
+},
+{
+  "type": "node",
+  "id": 3617121271,
+  "lat": 22.7789083,
+  "lon": 113.9185448,
+  "tags": {
+    "name": "楼村",
+    "name:en": "Loucun",
+    "name:zh": "楼村",
+    "name:zh-Hans": "楼村",
+    "name:zh-Hant": "樓村",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q96279562"
+  }
+},
+{
+  "type": "node",
+  "id": 3617121273,
+  "lat": 22.7846209,
+  "lon": 113.8760838,
+  "tags": {
+    "name": "合水口",
+    "name:en": "Heshuikou",
+    "name:zh": "合水口",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q96278443",
+    "wikimedia_commons": "Category:Heshuikou Station",
+    "wikipedia": "en:Heshuikou station"
+  }
+},
+{
+  "type": "node",
+  "id": 3617121279,
+  "lat": 22.6920548,
+  "lon": 113.9336171,
+  "tags": {
+    "name": "上屋",
+    "name:en": "Shangwu",
+    "name:zh": "上屋",
+    "name:zh-Hans": "上屋",
+    "name:zh-Hant": "上屋",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q95951814"
+  }
+},
+{
+  "type": "node",
+  "id": 3617121285,
+  "lat": 22.7840276,
+  "lon": 113.8630643,
+  "tags": {
+    "name": "薯田埔",
+    "name:en": "Shutianpu",
+    "name:zh": "薯田埔",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q96278493",
+    "wikimedia_commons": "Category:Shutianpu Station",
+    "wikipedia": "en:Shutianpu station"
+  }
+},
+{
+  "type": "node",
+  "id": 3617131393,
+  "lat": 22.6861891,
+  "lon": 113.9448231,
+  "tags": {
+    "name": "官田",
+    "name:en": "Guantian",
+    "name:zh": "官田",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q95951813"
+  }
+},
+{
+  "type": "node",
+  "id": 3617131430,
+  "lat": 22.7747882,
+  "lon": 113.9401495,
+  "tags": {
+    "name": "光明",
+    "name:en": "Guangming",
+    "name:zh": "光明",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 3617131435,
+  "lat": 22.7773587,
+  "lon": 113.8320011,
+  "tags": {
+    "name": "溪头",
+    "name:en": "Xitou",
+    "name:zh": "溪头",
+    "name:zh-Hans": "溪头",
+    "name:zh-Hant": "溪頭",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q96338882",
+    "wikimedia_commons": "Category:Xitou Station",
+    "wikipedia": "en:Xitou station"
+  }
+},
+{
+  "type": "node",
+  "id": 3617131446,
+  "lat": 22.7804517,
+  "lon": 113.9292455,
+  "tags": {
+    "name": "科学公园",
+    "name:en": "Science Park",
+    "name:zh": "科学公园",
+    "name:zh-Hans": "科学公园",
+    "name:zh-Hant": "科學公園",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q96279552"
+  }
+},
+{
+  "type": "node",
+  "id": 3617131452,
+  "lat": 22.7808753,
+  "lon": 113.8861012,
+  "tags": {
+    "name": "公明广场",
+    "name:en": "Gongming Square",
+    "name:zh": "公明广场",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q96278341",
+    "wikimedia_commons": "Category:Gongming Square Station",
+    "wikipedia": "en:Gongming Square station"
+  }
+},
+{
+  "type": "node",
+  "id": 3617131524,
+  "lat": 22.7650689,
+  "lon": 113.9378903,
+  "tags": {
+    "name": "光明大街",
+    "name:en": "Guangming St",
+    "name:zh": "光明大街",
+    "name:zh-Hans": "光明大街",
+    "name:zh-Hant": "光明大街",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q96279606",
+    "wikimedia_commons": "Category:Guangming Street Station",
+    "wikipedia": "en:Guangming Street station"
+  }
+},
+{
+  "type": "node",
+  "id": 3617696930,
+  "lat": 22.7812660,
+  "lon": 113.8446611,
+  "tags": {
+    "name": "松岗公园",
+    "name:en": "Songgang Park",
+    "name:zh": "松岗公园",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "wikidata": "Q96278952",
+    "wikimedia_commons": "Category:Songgang Park Station",
+    "wikipedia": "en:Songgang Park station"
+  }
+},
+{
+  "type": "node",
+  "id": 6503565378,
+  "lat": 22.7752168,
+  "lon": 113.8248035,
+  "tags": {
+    "name": "松岗",
+    "name:en": "Songgang",
+    "name:zh": "松岗",
+    "name:zh-Hans": "松岗",
+    "name:zh-Hant": "松崗",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6533296546,
+  "lat": 22.6709287,
+  "lon": 113.9288673,
+  "tags": {
+    "name": "罗租",
+    "name:en": "Luozu",
+    "name:zh": "罗租",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6533296549,
+  "lat": 22.6914109,
+  "lon": 113.9348943,
+  "tags": {
+    "name": "上屋",
+    "name:en": "Shangwu",
+    "name:zh": "上屋",
+    "name:zh-Hans": "上屋",
+    "name:zh-Hant": "上屋",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6533296553,
+  "lat": 22.6831503,
+  "lon": 113.9335218,
+  "tags": {
+    "name": "石岩",
+    "name:en": "Shiyan",
+    "name:zh": "石岩",
+    "name:zh-Hans": "石岩",
+    "name:zh-Hant": "石岩",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 6533296575,
+  "lat": 22.5059678,
+  "lon": 113.9453264,
+  "tags": {
+    "name": "深圳湾口岸",
+    "name:en": "Shenzhen Bay Checkpoint",
+    "name:zh": "深圳湾口岸",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7490905987,
+  "lat": 22.7293157,
+  "lon": 113.9260388,
+  "tags": {
+    "name": "长圳",
+    "name:en": "Changzhen",
+    "name:zh": "长圳",
+    "name:zh-Hans": "长圳",
+    "name:zh-Hant": "長圳",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "train": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7490905994,
+  "lat": 22.7504885,
+  "lon": 113.9279768,
+  "tags": {
+    "name": "凤凰城",
+    "name:en": "Fenghuang Town",
+    "name:zh": "凤凰城",
+    "name:zh-Hans": "凤凰城",
+    "name:zh-Hant": "鳳凰城",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 7822253164,
+  "lat": 22.6129359,
+  "lon": 114.0250290,
+  "tags": {
+    "name": "深圳北站",
+    "name:en": "Shenzhen North Railway Station",
+    "name:zh": "深圳北站",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8008654626,
+  "lat": 22.6244538,
+  "lon": 114.0181601,
+  "tags": {
+    "name": "红山",
+    "name:en": "Hongshan",
+    "name:zh": "红山",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8008654766,
+  "lat": 22.6432404,
+  "lon": 114.0115168,
+  "tags": {
+    "name": "上芬",
+    "name:en": "Shangfen",
+    "name:zh": "上芬",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8010738714,
+  "lat": 22.6590745,
+  "lon": 114.0001234,
+  "tags": {
+    "name": "元芬",
+    "name:en": "Yuanfen",
+    "name:zh": "元芬",
+    "name:zh-Hans": "元芬",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 8010738791,
+  "lat": 22.6706859,
+  "lon": 113.9865653,
+  "tags": {
+    "name": "阳台山东",
+    "name:en": "Yangtai Mountain East",
+    "name:zh": "阳台山东",
+    "name:zh-Hans": "阳台山东",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9032685857,
+  "lat": 22.7357312,
+  "lon": 113.9488787,
+  "tags": {
+    "name": "光明城",
+    "name:en": "Guangmingcheng",
+    "name:zh": "光明城",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9062180169,
+  "lat": 22.5971824,
+  "lon": 114.0479899,
+  "tags": {
+    "name": "梅林关",
+    "name:en": "Meilinguan",
+    "name:zh": "梅林关",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9062180187,
+  "lat": 22.5421271,
+  "lon": 114.0911857,
+  "tags": {
+    "name": "科学馆",
+    "name:en": "Science Museum",
+    "name:ru": "Музей науки",
+    "name:zh": "科学馆",
+    "name:zh-Hans": "科学馆",
+    "name:zh-Hant": "科學館",
+    "operator": "SZMC",
+    "platforms": "2",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9062180190,
+  "lat": 22.5513102,
+  "lon": 114.0910064,
+  "tags": {
+    "name": "通新岭",
+    "name:en": "Tongxinling",
+    "name:zh": "通新岭",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "station": "subway",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9062180193,
+  "lat": 22.5573374,
+  "lon": 114.0905994,
+  "tags": {
+    "name": "体育中心",
+    "name:en": "Sports Center",
+    "name:zh": "体育中心",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "station": "subway",
+    "subway": "yes",
+    "wikidata": "Q96288617"
+  }
+},
+{
+  "type": "node",
+  "id": 9062180204,
+  "lat": 22.5633758,
+  "lon": 114.0887947,
+  "tags": {
+    "name": "八卦岭",
+    "name:en": "Bagualing",
+    "name:zh": "八卦岭",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "station": "subway",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9062180209,
+  "lat": 22.5713151,
+  "lon": 114.0842659,
+  "tags": {
+    "name": "银湖",
+    "name:en": "Yinhu",
+    "name:zh": "银湖",
+    "network": "深圳地铁",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9062180219,
+  "lat": 22.5768845,
+  "lon": 114.0637614,
+  "tags": {
+    "name": "翰岭",
+    "name:en": "Hanling",
+    "name:zh": "翰岭",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9833816475,
+  "lat": 22.7747906,
+  "lon": 113.9403385,
+  "tags": {
+    "name": "光明",
+    "name:en": "Guangming",
+    "name:zh": "光明",
+    "operator": "深圳地铁运营集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9863294202,
+  "lat": 22.8097853,
+  "lon": 113.9643044,
+  "tags": {
+    "name": "深理工",
+    "name:en": "SUAT",
+    "name:zh": "深理工",
+    "old_name:en": "SIAT",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "start_date": "2022-11-28",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9863294211,
+  "lat": 22.7993935,
+  "lon": 113.9484794,
+  "tags": {
+    "name": "中大",
+    "name:en": "Sun Yat-sen University",
+    "name:zh": "中大",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "start_date": "2022-11-28",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 9863299221,
+  "lat": 22.7911897,
+  "lon": 113.9442228,
+  "tags": {
+    "name": "圳美",
+    "name:en": "Zhenmei",
+    "name:zh": "圳美",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "start_date": "2022-11-28",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11639219898,
+  "lat": 22.5206392,
+  "lon": 113.9385735,
+  "tags": {
+    "name": "后海",
+    "name:en": "Houhai",
+    "name:zh": "后海",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11639219910,
+  "lat": 22.5597700,
+  "lon": 113.9407068,
+  "tags": {
+    "name": "高新北",
+    "name:en": "Hi-Tech North",
+    "name:zh": "高新北",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "was:name": "松坪"
+  }
+},
+{
+  "type": "node",
+  "id": 11639219918,
+  "lat": 22.5777390,
+  "lon": 113.9392418,
+  "tags": {
+    "name": "石鼓",
+    "name:en": "Shigu",
+    "name:zh": "石鼓",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11639219944,
+  "lat": 22.6252427,
+  "lon": 113.9342355,
+  "tags": {
+    "name": "百旺",
+    "name:en": "Baiwang",
+    "name:zh": "百旺",
+    "name:zh-Hans": "百旺",
+    "name:zh-Hant": "百旺",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "was:name": "百旺港大"
+  }
+},
+{
+  "type": "node",
+  "id": 11639219955,
+  "lat": 22.6470599,
+  "lon": 113.9216703,
+  "tags": {
+    "name": "应人石",
+    "name:en": "Yingrenshi",
+    "name:zh": "应人石",
+    "name:zh-Hans": "应人石",
+    "name:zh-Hant": "應人石",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11842947073,
+  "lat": 22.7531957,
+  "lon": 113.9451853,
+  "tags": {
+    "name": "虹桥公园",
+    "name:en": "Hongqiao Park",
+    "name:zh": "虹桥公园",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "was:name": "华夏"
+  }
+},
+{
+  "type": "node",
+  "id": 11842947075,
+  "lat": 22.7617107,
+  "lon": 113.9461684,
+  "tags": {
+    "name": "碧眼",
+    "name:en": "Biyan",
+    "name:zh": "碧眼",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "start_date": "2025-09-28",
+    "subway": "yes",
+    "was:name": "光明小镇"
+  }
+},
+{
+  "type": "node",
+  "id": 11842947079,
+  "lat": 22.7263404,
+  "lon": 113.9413129,
+  "tags": {
+    "name": "红坳公园",
+    "name:en": "Hong'ao Park",
+    "name:zh": "红坳公园",
+    "old_name": "光明中医院",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "was:name": "市中医院"
+  }
+},
+{
+  "type": "node",
+  "id": 11842947082,
+  "lat": 22.7514797,
+  "lon": 113.9289519,
+  "tags": {
+    "name": "凤凰城",
+    "name:en": "Fenghuang Town",
+    "name:zh": "凤凰城",
+    "name:zh-Hans": "凤凰城",
+    "name:zh-Hant": "鳳凰城",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11842947085,
+  "lat": 22.7495627,
+  "lon": 113.9060744,
+  "tags": {
+    "name": "月亮路",
+    "name:en": "Yueliang Rd",
+    "name:zh": "月亮路",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 11892348334,
+  "lat": 22.7357456,
+  "lon": 113.9486447,
+  "tags": {
+    "name": "光明城",
+    "name:en": "Guangmingcheng",
+    "name:zh": "光明城",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "start_date": "2025-09-28",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12282455603,
+  "lat": 22.7597895,
+  "lon": 113.9011325,
+  "tags": {
+    "name": "将围",
+    "name:en": "Jiangwei",
+    "name:zh-Hans": "将围",
+    "name:zh-Hant": "將圍",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12282455606,
+  "lat": 22.7691732,
+  "lon": 113.8979022,
+  "tags": {
+    "name": "新庄",
+    "name:en": "Xinzhuang",
+    "name:zh-Hans": "新庄",
+    "name:zh-Hant": "新莊",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12282455609,
+  "lat": 22.7793572,
+  "lon": 113.8881867,
+  "tags": {
+    "name": "公明广场",
+    "name:en": "Gongming Square",
+    "name:zh-Hans": "公明广场",
+    "name:zh-Hant": "公明廣場",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12282455612,
+  "lat": 22.7876855,
+  "lon": 113.8895288,
+  "tags": {
+    "name": "上村",
+    "name:en": "Shangcun",
+    "name:zh": "上村",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12282455615,
+  "lat": 22.7963852,
+  "lon": 113.8897635,
+  "tags": {
+    "name": "下村",
+    "name:en": "Xiacun",
+    "name:zh": "下村",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12338850926,
+  "lat": 22.5149091,
+  "lon": 113.9383905,
+  "tags": {
+    "name": "人才公园",
+    "name:en": "Talent Park",
+    "name:zh": "人才公园",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "was:name": "登良东",
+    "was:name:en": "Dengliang East",
+    "was:name:zh": "登良东"
+  }
+},
+{
+  "type": "node",
+  "id": 12338850928,
+  "lat": 22.5293667,
+  "lon": 113.9410536,
+  "tags": {
+    "name": "科苑",
+    "name:en": "Keyuan",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12338850930,
+  "lat": 22.5352227,
+  "lon": 113.9408194,
+  "tags": {
+    "name": "粤海门",
+    "name:en": "Yuehaimen",
+    "name:zh": "粤海门",
+    "name:zh-Hans": "粤海门",
+    "name:zh-Hant": "粵海門",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "station": "subway",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12338850931,
+  "lat": 22.5499656,
+  "lon": 113.9405157,
+  "tags": {
+    "name": "高新中",
+    "name:en": "Hi-Tech Central",
+    "name:zh": "高新中",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "was:name": "科兴"
+  }
+},
+{
+  "type": "node",
+  "id": 12338850932,
+  "lat": 22.5847808,
+  "lon": 113.9391063,
+  "tags": {
+    "name": "留仙洞",
+    "name:en": "Liuxiandong",
+    "name:zh": "留仙洞",
+    "network": "深圳市轨道交通",
+    "operator": "深圳市地铁集团有限公司",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 12456016671,
+  "lat": 22.5405202,
+  "lon": 113.9407263,
+  "tags": {
+    "name": "深大",
+    "name:en": "Shenzhen University",
+    "name:zh": "深大",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 13971100282,
+  "lat": 22.8074925,
+  "lon": 113.8894863,
+  "tags": {
+    "name": "李松蓢",
+    "name:en": "Lisonglang",
+    "name:zh": "李松蓢",
+    "operator": "港铁中铁电化轨道交通（深圳）有限公司",
+    "public_transport": "stop_position",
+    "subway": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 13971105447,
+  "lat": 22.7417179,
+  "lon": 113.9423399,
+  "tags": {
+    "name": "德雅路",
+    "name:en": "Deya Road",
+    "name:zh": "德雅路",
+    "public_transport": "stop_position",
+    "railway": "stop",
+    "subway": "yes",
+    "was:name": "同观路"
+  }
+}
+
+  ]
+}

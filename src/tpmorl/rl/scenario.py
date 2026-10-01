@@ -37,6 +37,8 @@ def _snapshot():
                 RAMP_YEARS=O.RAMP_YEARS, OPP_SHAPE=O.OPP_SHAPE,
                 WINDOW_YEARS_LO=O.WINDOW_YEARS_LO,
                 WINDOW_YEARS_HI=O.WINDOW_YEARS_HI,
+                INFRA_MODE=O.INFRA_MODE, METRO_YEAR0=O.METRO_YEAR0,
+                METRO_R_FULL=O.METRO_R_FULL, METRO_R_ZERO=O.METRO_R_ZERO,
                 BUDGET=env_gym.BUDGET, CARRY_CAP=env_gym.CARRY_CAP,
                 FAR_GROWTH=env_gym.FAR_GROWTH, GAMMA=env_gym.GAMMA,
                 BUDGET_MODE=env_gym.BUDGET_MODE, STAGE_INIT=env_gym.STAGE_INIT,
@@ -91,6 +93,8 @@ def reset():
     O.OPP_SHAPE = d["OPP_SHAPE"]
     O.WINDOW_YEARS_LO = d["WINDOW_YEARS_LO"]
     O.WINDOW_YEARS_HI = d["WINDOW_YEARS_HI"]
+    O.INFRA_MODE, O.METRO_YEAR0 = d["INFRA_MODE"], d["METRO_YEAR0"]
+    O.METRO_R_FULL, O.METRO_R_ZERO = d["METRO_R_FULL"], d["METRO_R_ZERO"]
     _HORIZON = _HORIZON_EVAL = None
 
 
@@ -104,7 +108,7 @@ def apply(budget=None, carry=None, growth=None,
           obs_opportunity=None, foresight=None, field_seed=None,
           share_now=None, share_ramp=None, onset_lo=None, onset_hi=None,
           ramp_years=None, reward_shaping=None, opp_shape=None,
-          window_years=None):
+          window_years=None, infra_mode=None):
     """把情景参数写回模块常量。None 表示沿用模块默认值，不改写。
 
     `horizon` 不改写任何常量，只登记进 `inst_tag()`：规划期长度改变可达上界，
@@ -250,6 +254,10 @@ def apply(budget=None, carry=None, growth=None,
         if not 0 < lo <= hi:
             raise ValueError(f"window_years 须 0 < lo <= hi，收到 {window_years}")
         O.WINDOW_YEARS_LO, O.WINDOW_YEARS_HI = lo, hi
+    if infra_mode is not None:
+        if str(infra_mode) not in ("cluster", "metro"):
+            raise ValueError(f"infra_mode 只能是 cluster/metro，收到 {infra_mode!r}")
+        O.INFRA_MODE = str(infra_mode)
     if ramp_years is not None:
         ry = float(ramp_years)
         if ry <= 0:

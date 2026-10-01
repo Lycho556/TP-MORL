@@ -1,0 +1,22 @@
+{
+ "source": "OpenStreetMap via Overpass API, queried 2026-10-01 (ODbL)",
+ "route_relations": {
+  "L6": 11583141,
+  "L6B": 14953715,
+  "L13": 18470804
+ },
+ "opening_dates": {
+  "L6": "2020-08-18",
+  "L6B_I": "2022-11-28",
+  "L6B_II": "2025-09-28",
+  "L13N": "2026-06-28"
+ },
+ "announce": {
+  "L6": "2015 (preliminary works 2014-12-30)",
+  "L6B_I": "2018-01-10 construction start",
+  "L6B_II": "not found; assumed opening minus 4 years",
+  "L13N": "construction started end of 2020"
+ },
+ "crs": "EPSG:2383 via pyproj from WGS84",
+ "model_year0": 2019
+}

@@ -194,6 +194,19 @@ P_ADMIT_LO = 0.35
 READY_BASE = 0.5      # 基期水平。取 0.5 使 A_READY 的调制在 hazard 上近似中性：
                       # hazard_mult = 1 + A_READY·(2·ready − 1)，ready=0.5 时恰为 1。
 
+# ---- 实测基础设施场（P1）----
+# INFRA_MODE = "cluster"：情景场（默认，逐位复现既有结果）。
+# INFRA_MODE = "metro"：用实测地铁站位置与开通年替换基础设施场，其他三个场不变
+#   （同一 rng 序列照常抽取，保证规划/老化/实施条件场与主配置逐位相同）。
+#   站点：OpenStreetMap；开通日期：官方公告（见 data/.../metro/README.json）。
+#   单元-站点距离 d：<= METRO_R_FULL 权重 1，线性降到 METRO_R_ZERO 处为 0。
+#   时间形状沿用 window 档：峰值在开通年、宽度 0.75×窗宽；公布层峰值在开工年。
+INFRA_MODE = "cluster"
+METRO_DIR = None          # 指向 metro/ 目录；None 时按数据集默认位置查找
+METRO_YEAR0 = 2019.0      # 模型第 1 年（t=0）对应的日历年
+METRO_R_FULL = 800.0
+METRO_R_ZERO = 1500.0
+
 FIELD_SEED = 20260917  # 场的抽样种子。**与回合种子无关**：场代表这一片区客观的
                        # 规划与设施安排，在训练与评估的所有回合里必须是同一张图，
                        # 否则策略无法利用它，也就测不出择时能力。
@@ -214,7 +227,8 @@ class OpportunityField:
     形状均为 (n, T_total+1)，`T_total` 取评价期 T_eval，使尾部评价年也能取到值。
     """
 
-    def __init__(self, n, T, T_total=None, row=None, col=None, seed=None):
+    def __init__(self, n, T, T_total=None, row=None, col=None, seed=None,
+                 uid=None):
         self.n = int(n)
         self.T = int(T)
         self.T_total = int(T if T_total is None else T_total)
@@ -272,6 +286,11 @@ class OpportunityField:
                              - (self.infra_onset[:, None] - INFRA_ANNOUNCE_LEAD))
                             / RAMP_YEARS), 0.0, 1.0)
 
+        if INFRA_MODE == "metro":
+            self._apply_metro(uid)
+        elif INFRA_MODE != "cluster":
+            raise ValueError(f"INFRA_MODE 只能是 cluster/metro，收到 {INFRA_MODE!r}")
+
         # ---- 建筑老化 -> 更新必要性 ----
         self.age0 = np.clip(rng.normal(AGE0_MEAN, AGE0_SD, self.n), 0.0, 80.0)
         self.age = self.age0[:, None] + self.years[None, :]
@@ -283,6 +302,40 @@ class OpportunityField:
                              * _logistic((self.years[None, :]
                                           - self.ready_onset[:, None]) / RAMP_YEARS),
                              0.0, 1.0)
+
+    def _apply_metro(self, uid):
+        """用实测地铁站替换 self.infra / self.infra_plan（只在 INFRA_MODE="metro" 时调用）。
+
+        I(i,t) = LOW + (HIGH-LOW) · max_s w(d_is) · g((t - open_s) / width_i)
+        g 在 window 档为高斯峰（开通年最高，之后溢价被吸收而回落），rising 档为
+        逻辑斯蒂爬升。公布层把 open_s 换成开工年 announce_s。不消耗 rng。
+        """
+        import os
+        import pandas as pd
+        if uid is None:
+            raise ValueError("metro 档需要单元 uid 以对齐站点距离表")
+        d = METRO_DIR or os.path.join(os.path.dirname(__file__), "..", "..", "..",
+                                      "data", "processed", "gm_dataset_v1", "metro")
+        st = pd.read_csv(os.path.join(d, "stations.csv"))
+        ud = pd.read_csv(os.path.join(d, "unit_station_distance.csv")).set_index("uid")
+        D = ud.loc[np.asarray(uid), [f"d_{x}" for x in st["station"]]].to_numpy(float)
+        w = np.clip((METRO_R_ZERO - D) / (METRO_R_ZERO - METRO_R_FULL), 0.0, 1.0)
+        t_open = st["open"].to_numpy(float) - METRO_YEAR0
+        t_ann = st["announce"].to_numpy(float) - METRO_YEAR0
+        width = np.maximum(self.window * 0.75, 1e-6)[:, None, None]
+
+        def layer(t_s):
+            x = (self.years[None, None, :] - t_s[None, :, None]) / width
+            if OPP_SHAPE == "window":
+                g = np.exp(-x ** 2)
+            else:
+                g = _logistic(x * width / RAMP_YEARS)
+            return np.clip(LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW)
+                           * (w[:, :, None] * g).max(1), 0.0, 1.0)
+
+        self.infra = layer(t_open)
+        self.infra_plan = layer(t_ann)
+        self.metro_w = w.max(1)
 
     # ---- 场的构造 ----
     def _field(self, onset):

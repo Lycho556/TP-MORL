@@ -340,7 +340,8 @@ class RenewalEnv:
         self.opp = OPP.OpportunityField(
             self.n, self.T, T_total=self.T_eval,
             row=self.U["row"].values if "row" in self.U else None,
-            col=self.U["col"].values if "col" in self.U else None)
+            col=self.U["col"].values if "col" in self.U else None,
+            uid=self.U["uid"].values if "uid" in self.U else None)
         self.env = RenewalSchedule(self.ch, seed=self.seed if seed is None else seed,
                                    opp=self.opp)
         self.t = 0
