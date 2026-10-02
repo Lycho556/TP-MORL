@@ -54,3 +54,4 @@
 | variant-onset_early_M20_s1 | OK | 622 秒 | 2026-10-02 09:08:28 |
 | variant-onset_early_M20_s0 | OK | 642 秒 | 2026-10-02 09:08:32 |
 | variant-onset_late_M20_s1 | OK | 640 秒 | 2026-10-02 09:09:16 |
+| variant-onset_early_M20_s2 | OK | 658 秒 | 2026-10-02 09:09:19 |
