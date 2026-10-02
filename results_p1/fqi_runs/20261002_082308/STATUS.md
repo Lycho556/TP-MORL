@@ -39,3 +39,4 @@
 | variant-amp_high_M20_s3 | OK | 736 秒 | 2026-10-02 08:58:23 |
 | variant-amp_high_M20_s1 | OK | 751 秒 | 2026-10-02 08:58:30 |
 | variant-amp_low_M20_s3 | OK | 777 秒 | 2026-10-02 08:58:33 |
+| variant-amp_low_M20_s4 | OK | 782 秒 | 2026-10-02 08:58:41 |
