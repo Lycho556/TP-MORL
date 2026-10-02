@@ -189,7 +189,7 @@ export -f run_one push_main publish_job
 export PY OUT LOGDIR STAMP RUNDIR STATUS_MD FAILDIR GIT_LOCK CODE_SHA PUSH_EACH NO_PUSH NJOBS_TOTAL
 # 先单独跑复现作业（main M20 s0）：失败即中止，避免整批白跑
 if grep -q '^main_M20_s0|' "$JOBS"; then
-  say "复现作业 main_M20_s0（必须逐位得到 0.9095038725980372）"
+  say "复现作业 main_M20_s0（基准 0.9095038725980372；跨平台容差 ${P1_REPRO_TOL:-0.01}，逐位相同记 PASS，容差内记 PASS_TOL）"
   run_one "$(grep '^main_M20_s0|' "$JOBS")"
   grep -q "^OK   main_M20_s0" "$LOGDIR/STATUS.txt" || { echo "[中止] 复现失败"; exit 1; }
   grep -v '^main_M20_s0|' "$JOBS" > "$JOBS.rest"; mv "$JOBS.rest" "$JOBS"
