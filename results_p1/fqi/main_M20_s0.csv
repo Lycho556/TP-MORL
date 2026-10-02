@@ -1,0 +1,2 @@
+mode,prescreen,rule,eval_field,seed,ratio,value,reference,loss_selection,loss_timing,n_init,seconds,train_field,train_seconds,n_samples,q_vs_value_rho,repro_check,peak_rss_mb,job_seconds
+main,20,value_based,main,0,0.9091809875451883,6251.752178365176,6876.246054424286,125.97311082605665,498.52076523305277,75,622.7,main,621.6,15000,0.8815005735987042,FAIL,752.4,635.9
