@@ -50,3 +50,4 @@
 | variant-onset_early_M20_s4 | OK | 569 秒 | 2026-10-02 09:07:55 |
 | variant-win_broad_M20_s4 | OK | 613 秒 | 2026-10-02 09:07:58 |
 | variant-win_broad_M20_s3 | OK | 627 秒 | 2026-10-02 09:08:02 |
+| variant-onset_late_M20_s2 | OK | 579 秒 | 2026-10-02 09:08:23 |
