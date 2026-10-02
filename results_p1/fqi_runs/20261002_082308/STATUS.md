@@ -59,3 +59,4 @@
 | variant-onset_late_M20_s0 | OK | 680 秒 | 2026-10-02 09:09:53 |
 | variant-onset_late_M20_s3 | OK | 675 秒 | 2026-10-02 09:10:11 |
 | variant-onset_late_M20_s4 | OK | 630 秒 | 2026-10-02 09:15:51 |
+| oos_M20_s0 | OK | 3746 秒 | 2026-10-02 09:45:24 |
