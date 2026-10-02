@@ -42,3 +42,4 @@
 | variant-amp_low_M20_s4 | OK | 782 秒 | 2026-10-02 08:58:41 |
 | variant-win_narrow_M20_s0 | OK | 750 秒 | 2026-10-02 08:58:53 |
 | variant-win_narrow_M20_s3 | OK | 587 秒 | 2026-10-02 09:05:17 |
+| variant-win_broad_M20_s0 | OK | 567 秒 | 2026-10-02 09:05:30 |
