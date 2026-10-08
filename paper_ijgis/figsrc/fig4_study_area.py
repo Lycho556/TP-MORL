@@ -75,7 +75,9 @@ def overlaps(fig):
 
 
 # ── constants ─────────────────────────────────────────────────────────────────
-R = "/Users/user/Desktop/TP-MORL/"
+import os as _os
+_ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..")) + "/"  # repository root
+R = _ROOT + ""
 FD = R + "results_figures/"
 COL = {"random": "#8a8a8a", "static": "#E69F00", "supervised": "#CC79A7",
        "temporal": "#0072B2", "value": "#56B4E9", "optimum": "black"}

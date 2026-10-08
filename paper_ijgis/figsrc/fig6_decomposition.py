@@ -5,7 +5,9 @@ import json
 import os
 
 # Setup from figs_common.py
-FD = "/Users/user/Desktop/TP-MORL/results_figures/"
+import os as _os
+_ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..")) + "/"  # repository root
+FD = _ROOT + "results_figures/"
 META_GREY = "#888888"
 COL = {"random": META_GREY, "static": "#E69F00", "supervised": "#CC79A7",
        "temporal": "#0072B2", "value": "#56B4E9", "optimum": "black"}
@@ -44,7 +46,7 @@ apply_figure_style(sizes=(8, 7, 6))
 import pandas as pd
 # P1: means over six listing draws (learned rules: x five training seeds), M = 20.
 # Built by scripts/p1_build_tables.py from results_p1/rolling and results_p1/fqi.
-T = pd.read_csv("/Users/user/Desktop/TP-MORL/results_p1/tables/main_M20.csv", index_col=0)
+T = pd.read_csv(_ROOT + "results_p1/tables/main_M20.csv", index_col=0)
 COL.update({"rh_announced": "#F0A875", "rh_full": "#D55E00"})
 name = {"random": "Random", "persistence": "Persistence greedy", "supervised": "Supervised scorer",
         "rh_announced": "Rolling horizon, announced",

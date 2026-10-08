@@ -1,0 +1,19 @@
+# Environment used for the manuscript experiments (local runs).
+# Server runs of the value-based policy used scikit-learn 1.7.2 (Table B1).
+# Create with:  conda env create -f environment.yml && conda activate tpmorl
+name: tpmorl
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy=2.4.6
+  - scipy=1.17.1
+  - pandas=3.0.5
+  - scikit-learn=1.9.1
+  - joblib=1.6.0
+  - matplotlib=3.11.1
+  # optional:
+  # - requests      # paper_ijgis/figsrc/fig4_study_area.py (district boundary download)
+  # - python-docx   # paper_ijgis/word/make_refdoc.py (Word reference document)
+  # - pdfplumber    # src/tpmorl/data/renewal_unit_ingest.py (raw record ingestion)
+  # - pytorch       # archived policy-gradient experiments only; not used in the manuscript

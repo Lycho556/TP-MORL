@@ -45,9 +45,12 @@ _archive/2026-10-02/      过期内容归档（旧版本结果、脚本、文档
 
 ## 快速开始
 
+论文结果的复现步骤（环境、种子、每张表和图对应的脚本）见 **[REPRODUCE.md](REPRODUCE.md)**（English）。
+
 ```bash
-bash scripts/fetch_raw.sh                          # 拉取 pSO 原始栅格
-python -m tpmorl.data.build_zones                  # 重建 zones_v0
+conda env create -f environment.yml && conda activate tpmorl
+export PYTHONPATH=src
+python scripts/audit_manuscript_numbers.py        # 核对稿件中的全部数字
 ```
 
 ## 核心设计决策（详见 docs/）
@@ -67,9 +70,7 @@ python -m tpmorl.data.build_zones                  # 重建 zones_v0
 
 ## 状态
 
-- [x] 空间底图（t=0）完整，投影已补齐
-- [x] 制度通道分区 v0 与候选更新单元
-- [ ] 时序状态机与年度动作掩码
-- [ ] 52 个光明区更新单元的边界落格
-- [ ] MDP 环境与多目标奖励
-- [ ] 策略训练与行动日程表输出
+- [x] 空间底图、制度通道分区与 717 个候选更新单元
+- [x] 时序机会场、审批管线与年度容量
+- [x] 排期规则（贪心、滚动规划、价值学习策略）与参照排期
+- [x] IJGIS 稿件对应的全部实验、表格与图（见 REPRODUCE.md）

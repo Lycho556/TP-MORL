@@ -5,9 +5,22 @@
 # Run inside a kernel where apply_figure_style() (figure-style skill) is defined.
 import numpy as np, pandas as pd, matplotlib as mpl, matplotlib.pyplot as plt
 
-R = "/Users/user/Desktop/TP-MORL/"
+import os as _os
+_ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..")) + "/"  # repository root
+R = _ROOT + ""
 OUT = R + "paper_ijgis/figures/"
-apply_figure_style(sizes=(8, 7, 6))
+# Publication rcParams (explicit, so the script runs standalone)
+mpl.rcParams.update({
+    "font.family": "sans-serif", "font.size": 8, "axes.labelsize": 8, "axes.titlesize": 8,
+    "legend.fontsize": 7, "xtick.labelsize": 6, "ytick.labelsize": 6,
+    "axes.linewidth": 0.6, "xtick.direction": "out", "ytick.direction": "out",
+    "xtick.major.size": 3, "ytick.major.size": 3, "xtick.major.width": 0.6, "ytick.major.width": 0.6,
+    "axes.spines.top": False, "axes.spines.right": False, "axes.spines.left": True, "axes.spines.bottom": True,
+    "axes.grid": False, "legend.frameon": False, "figure.dpi": 200, "savefig.dpi": 300,
+    "savefig.bbox": "tight", "axes.titleweight": "normal", "axes.titlelocation": "left",
+    "axes.labelweight": "normal", "lines.linewidth": 1.2, "patch.linewidth": 0.6,
+    "pdf.fonttype": 42, "ps.fonttype": 42,
+})
 RH = pd.read_csv(R + "results_p1/rolling/rolling_results.csv")
 rh = RH[(RH.infra_mode == "cluster") & (RH.conformity) & (RH.variant == "base") & (RH.M == 20)] \
     .pivot_table(index="listing_seed", columns="rule", values="ratio")
@@ -38,7 +51,7 @@ axa.plot(1.0, yr, "D", ms=5, color="black", zorder=3)
 axa.text(0.992, yr, "1.000", ha="right", va="center", fontsize=6.5)
 axa.text(-0.02, yr + 0.12, "Reference schedule", transform=mpl.transforms.blended_transform_factory(axa.transAxes, axa.transData),
          ha="right", va="center", fontsize=7)
-axa.text(-0.02, yr - 0.2, "exact optimum of the table", transform=mpl.transforms.blended_transform_factory(axa.transAxes, axa.transData),
+axa.text(-0.02, yr - 0.2, "exact maximum of the table", transform=mpl.transforms.blended_transform_factory(axa.transAxes, axa.transData),
          ha="right", va="center", fontsize=6, color="#555555")
 m = {k: rh[k].mean() for k, *_ in LEV}
 steps = [(0, 1, m["rh_announced"] - m["persistence"], "announced\ninformation"),

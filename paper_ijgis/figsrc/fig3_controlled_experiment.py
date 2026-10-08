@@ -4,7 +4,9 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-R = "/Users/user/Desktop/TP-MORL/"
+import os as _os
+_ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..")) + "/"  # repository root
+R = _ROOT + ""
 FD = R + "results_figures/"
 
 sys.path.insert(0, R + "scripts")

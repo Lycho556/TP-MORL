@@ -9,7 +9,9 @@ Tables D1-D2 from the simulation results.
 import glob, json, math, re
 import numpy as np, pandas as pd
 
-R = "/Users/user/Desktop/TP-MORL/"
+import os as _os
+_ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..")) + "/"  # repository root
+R = _ROOT + ""
 tex = open(R + "paper_ijgis/IJGIS_manuscript_EN.tex", encoding="utf-8").read()
 TEXN = " ".join(tex.split())
 checks = []

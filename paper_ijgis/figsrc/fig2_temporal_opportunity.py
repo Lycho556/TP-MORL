@@ -44,7 +44,9 @@ def overlaps(fig):
 
 apply_figure_style(sizes=(8, 7, 6))
 
-FD = "/Users/user/Desktop/TP-MORL/results_figures/"
+import os as _os
+_ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..")) + "/"  # repository root
+FD = _ROOT + "results_figures/"
 F = json.load(open(FD + "gm_field_curves.json"))
 T = 25
 yrs = np.arange(1, T + 1)

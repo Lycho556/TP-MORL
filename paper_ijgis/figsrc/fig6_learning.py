@@ -7,9 +7,22 @@
 import glob
 import numpy as np, pandas as pd, matplotlib as mpl, matplotlib.pyplot as plt
 
-R = "/Users/user/Desktop/TP-MORL/"
+import os as _os
+_ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..")) + "/"  # repository root
+R = _ROOT + ""
 OUT = R + "paper_ijgis/figures/"
-apply_figure_style(sizes=(8, 7, 6))
+# Publication rcParams (explicit, so the script runs standalone)
+mpl.rcParams.update({
+    "font.family": "sans-serif", "font.size": 8, "axes.labelsize": 8, "axes.titlesize": 8,
+    "legend.fontsize": 7, "xtick.labelsize": 6, "ytick.labelsize": 6,
+    "axes.linewidth": 0.6, "xtick.direction": "out", "ytick.direction": "out",
+    "xtick.major.size": 3, "ytick.major.size": 3, "xtick.major.width": 0.6, "ytick.major.width": 0.6,
+    "axes.spines.top": False, "axes.spines.right": False, "axes.spines.left": True, "axes.spines.bottom": True,
+    "axes.grid": False, "legend.frameon": False, "figure.dpi": 200, "savefig.dpi": 300,
+    "savefig.bbox": "tight", "axes.titleweight": "normal", "axes.titlelocation": "left",
+    "axes.labelweight": "normal", "lines.linewidth": 1.2, "patch.linewidth": 0.6,
+    "pdf.fonttype": 42, "ps.fonttype": 42,
+})
 C = dict(persistence="#E69F00", announced="#F0A875", supervised="#CC79A7",
          trajectory="#0072B2", value="#56B4E9")
 rng = np.random.default_rng(1)
@@ -62,8 +75,8 @@ axa.text(-0.17, 1.06, "Scenario it was trained on", transform=axa.transAxes, fon
 # (b)
 cb = [("Announ-\nced", base.loc[test, "rh_announced"].values, C["announced"], True),
       ("Trajec-\ntory", base.loc[test, "trajectory"].values, C["trajectory"], True),
-      ("Value-\nbased,\n1 field", one.mean(1).values, C["value"], False),
-      ("Value-\nbased,\n20 fields", twenty[0].mean(1).values, C["value"], True)]
+      ("Value-\nbased,\n1 field", one.mean(axis=1).values, C["value"], False),
+      ("Value-\nbased,\n20 fields", twenty[0].mean(axis=1).values, C["value"], True)]
 for i, (lab, v, c, f) in enumerate(cb):
     strip(axb, i, v, c, filled=f)
 for i in (0, 3):
@@ -76,7 +89,7 @@ axb.text(-0.02, 1.06, "Ten scenarios it had not seen", transform=axb.transAxes, 
 # (c)
 Hs = [0, 1, 2, 3, 5]
 mean = [twenty[h].values.mean() for h in Hs]
-lo = [twenty[h].mean(0).min() for h in Hs]; hi = [twenty[h].mean(0).max() for h in Hs]
+lo = [twenty[h].mean(axis=0).min() for h in Hs]; hi = [twenty[h].mean(axis=0).max() for h in Hs]
 annm = base.loc[test, "rh_announced"].mean(); perm = base.loc[test, "persistence"].mean()
 trm = base.loc[test, "trajectory"].mean()
 for yv, c, lab, ls in ((trm, C["trajectory"], "trajectory-informed", "--"),

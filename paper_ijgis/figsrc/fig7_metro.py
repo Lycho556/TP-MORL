@@ -13,7 +13,9 @@ import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-R = "/Users/user/Desktop/TP-MORL/"
+import os as _os
+_ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..")) + "/"  # repository root
+R = _ROOT + ""
 G = R + "data/processed/gm_dataset_v1/"
 mpl.rcParams.update({"font.family": "sans-serif", "font.size": 6, "axes.titlesize": 7,
                      "axes.labelsize": 7, "xtick.labelsize": 6, "ytick.labelsize": 6,
