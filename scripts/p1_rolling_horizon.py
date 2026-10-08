@@ -82,12 +82,12 @@ def variant_overrides(name):
 JOBS = {
     "cluster": ("cluster", True, "base", [10, 20, 50, 0], [0, 1, 2, 3, 4]),
     "metro":   ("metro", True, "base", [10, 20, 50, 0], [0, 1, 2, 3, 4]),
-    "noconf":  ("cluster", False, "base", [20], []),
+    "noconf":  ("cluster", False, "base", [20], [0, 1, 2, 3, 4]),
 }
 for _v in FS_CONFIGS:
     if _v != "base":
         JOBS[_v] = ("cluster", True, _v, [20], [])
-SEED_M = (20, 0)          # prescreen sizes that also get listing seeds 0-4
+SEED_M = (10, 20, 50, 0)  # prescreen sizes that also get listing seeds 0-4
 
 
 # ---------------------------------------------------------------- forecasts

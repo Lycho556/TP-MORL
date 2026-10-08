@@ -13,3 +13,22 @@ data/processed/**/rl_v0_sel/
 
 # v20 服务器实验：本地冒烟产物不入库（服务器上的正式结果由启动脚本逐段提交）
 logs/
+.tex_bundle/
+
+# 大日志与 LaTeX 中间文件
+*.log
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+**/rl_v0_sel/
+_fig5_preview*.png
+# 双盲审稿期间：稿件正文、标题页与备份不入公开仓库
+paper_ijgis/*.tex
+paper_ijgis/*.pdf
+paper_ijgis/*.md
+paper_ijgis/_C_parts/
+paper_ijgis/word/ms*
+paper_ijgis/word/IJGIS_manuscript_EN.docx

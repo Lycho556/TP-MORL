@@ -1,0 +1,134 @@
+
+== main  M=0
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.7415     NaN   0.7415   0.7415      1      0.7359    0.0081        6
+     random    0.4147  0.0321   0.3691   0.4455      5      0.4303    0.0235       30
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000    0.0000        6
+ supervised    0.8205  0.0084   0.8110   0.8308      5      0.8268    0.0109       30
+ trajectory    0.9123     NaN   0.9123   0.9123      1      0.9259    0.0078        6
+value_based    0.9092  0.0065   0.9010   0.9154      5      0.9041    0.0099       30
+   margin value_based - trajectory: ls7 -0.0032   all listing seeds -0.0218
+
+== main  M=10
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.8024     NaN   0.8024   0.8024      1      0.7910    0.0095        6
+     random    0.8112  0.0354   0.7830   0.8713      5      0.8093    0.0282       30
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000    0.0000        6
+ supervised    0.8538  0.0023   0.8511   0.8569      5      0.8544    0.0065       30
+ trajectory    0.9041     NaN   0.9041   0.9041      1      0.8990    0.0055        6
+value_based    0.9038  0.0013   0.9019   0.9053      5      0.8989    0.0061       30
+   margin value_based - trajectory: ls7 -0.0004   all listing seeds -0.0001
+
+== main  M=20
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.7745     NaN   0.7745   0.7745      1      0.7704    0.0068        6
+     random    0.7501  0.0441   0.7165   0.8271      5      0.7549    0.0361       30
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000    0.0000        6
+ supervised    0.8463  0.0179   0.8189   0.8634      5      0.8548    0.0143       30
+ trajectory    0.8936     NaN   0.8936   0.8936      1      0.9015    0.0095        6
+value_based    0.9091  0.0043   0.9044   0.9160      5      0.9038    0.0084       30
+   margin value_based - trajectory: ls7 +0.0156   all listing seeds +0.0023
+
+== main  M=50
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.7545     NaN   0.7545   0.7545      1      0.7464    0.0080        6
+     random    0.6620  0.0344   0.6216   0.7067      5      0.6627    0.0355       30
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000    0.0000        6
+ supervised    0.8521  0.0080   0.8403   0.8611      5      0.8598    0.0108       30
+ trajectory    0.9177     NaN   0.9177   0.9177      1      0.9297    0.0061        6
+value_based    0.9144  0.0052   0.9083   0.9225      5      0.9068    0.0105       30
+   margin value_based - trajectory: ls7 -0.0033   all listing seeds -0.0229
+
+== metro  M=0
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.8814     NaN   0.8814   0.8814      1      0.8801    0.0020        6
+     random    0.4467  0.0294   0.4013   0.4753      5      0.4678    0.0268       30
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000    0.0000        6
+ supervised    0.9365  0.0058   0.9276   0.9438      5      0.9366    0.0059       30
+ trajectory    0.9355     NaN   0.9355   0.9355      1      0.9341    0.0045        6
+value_based    0.9227  0.0195   0.8985   0.9444      5      0.9222    0.0136       30
+   margin value_based - trajectory: ls7 -0.0128   all listing seeds -0.0119
+
+== metro  M=20
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.9016     NaN   0.9016   0.9016      1      0.8989    0.0053        6
+     random    0.8019  0.0193   0.7888   0.8353      5      0.8044    0.0189       30
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000    0.0000        6
+ supervised    0.9520  0.0007   0.9508   0.9527      5      0.9483    0.0042       30
+ trajectory    0.9498     NaN   0.9498   0.9498      1      0.9486    0.0041        6
+value_based    0.9409  0.0040   0.9366   0.9461      5      0.9406    0.0046       30
+   margin value_based - trajectory: ls7 -0.0088   all listing seeds -0.0080
+
+== noconf  M=20
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.7762     NaN   0.7762   0.7762      1      0.7724    0.0048        6
+     random    0.7426  0.0405   0.7171   0.8142      5      0.7453    0.0354       30
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000    0.0000        6
+ supervised    0.8598  0.0097   0.8481   0.8682      5      0.8604    0.0082       30
+ trajectory    0.9059     NaN   0.9059   0.9059      1      0.9042    0.0017        6
+value_based    0.8915  0.0073   0.8820   0.8997      5      0.8938    0.0062       30
+   margin value_based - trajectory: ls7 -0.0144   all listing seeds -0.0104
+
+== variant-amp_high  M=20
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.7441     NaN   0.7441   0.7441      1      0.7441       NaN        1
+     random    0.7167  0.0205   0.6947   0.7466      5      0.7167    0.0205        5
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000       NaN        1
+ trajectory    0.9290     NaN   0.9290   0.9290      1      0.9290       NaN        1
+value_based    0.9060  0.0138   0.8900   0.9202      5      0.9060    0.0138        5
+   margin value_based - trajectory: ls7 -0.0231   all listing seeds -0.0231
+
+== variant-amp_low  M=20
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.8721     NaN   0.8721   0.8721      1      0.8721       NaN        1
+     random    0.8196  0.0157   0.8066   0.8462      5      0.8196    0.0157        5
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000       NaN        1
+ trajectory    0.9299     NaN   0.9299   0.9299      1      0.9299       NaN        1
+value_based    0.9272  0.0039   0.9238   0.9324      5      0.9272    0.0039        5
+   margin value_based - trajectory: ls7 -0.0027   all listing seeds -0.0027
+
+== variant-onset_early  M=20
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.8668     NaN   0.8668   0.8668      1      0.8668       NaN        1
+     random    0.7958  0.0068   0.7875   0.8055      5      0.7958    0.0068        5
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000       NaN        1
+ trajectory    0.9464     NaN   0.9464   0.9464      1      0.9464       NaN        1
+value_based    0.9466  0.0035   0.9422   0.9514      5      0.9466    0.0035        5
+   margin value_based - trajectory: ls7 +0.0002   all listing seeds +0.0002
+
+== variant-onset_late  M=20
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.7835     NaN   0.7835   0.7835      1      0.7835       NaN        1
+     random    0.7764  0.0166   0.7606   0.7967      5      0.7764    0.0166        5
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000       NaN        1
+ trajectory    0.8742     NaN   0.8742   0.8742      1      0.8742       NaN        1
+value_based    0.8703  0.0116   0.8507   0.8784      5      0.8703    0.0116        5
+   margin value_based - trajectory: ls7 -0.0039   all listing seeds -0.0039
+
+== variant-win_broad  M=20
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.8396     NaN   0.8396   0.8396      1      0.8396       NaN        1
+     random    0.7837  0.0281   0.7496   0.8265      5      0.7837    0.0281        5
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000       NaN        1
+ trajectory    0.8979     NaN   0.8979   0.8979      1      0.8979       NaN        1
+value_based    0.8971  0.0047   0.8909   0.9041      5      0.8971    0.0047        5
+   margin value_based - trajectory: ls7 -0.0008   all listing seeds -0.0008
+
+== variant-win_narrow  M=20
+       rule  mean_ls7  sd_ls7  min_ls7  max_ls7  n_ls7  mean_allls  sd_allls  n_allls
+persistence    0.7732     NaN   0.7732   0.7732      1      0.7732       NaN        1
+     random    0.7570  0.0260   0.7237   0.7956      5      0.7570    0.0260        5
+  reference    1.0000     NaN   1.0000   1.0000      1      1.0000       NaN        1
+ trajectory    0.9051     NaN   0.9051   0.9051      1      0.9051       NaN        1
+value_based    0.9109  0.0129   0.9021   0.9335      5      0.9109    0.0129        5
+   margin value_based - trajectory: ls7 +0.0058   all listing seeds +0.0058
+
+== out-of-sample (mean over training seeds)
+kind        persistence  random  reference  sup_insample  sup_oos  trajectory  vb_insample  vb_oos
+eval_field                                                                                        
+field1           0.7523  0.7457        1.0           NaN   0.8922      0.9164       0.9208  0.8675
+field2           0.7544  0.7388        1.0           NaN   0.8164      0.9000       0.8999  0.8280
+field3           0.8075  0.7561        1.0           NaN   0.8442      0.8711       0.8864  0.8344
+field4           0.7461  0.7143        1.0           NaN   0.8228      0.8601       0.8641  0.7755
+field5           0.8265  0.7468        1.0           NaN   0.8659      0.9228       0.9207  0.8314
+main             0.7745  0.7501        1.0        0.8463      NaN      0.8936       0.9091     NaN

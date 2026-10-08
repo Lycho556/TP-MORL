@@ -1,0 +1,25 @@
+{
+ "alpha": 0.5,
+ "seeds": [
+  0,
+  1,
+  2,
+  3,
+  4
+ ],
+ "ep_each": 20,
+ "base": {
+  "T": 10,
+  "quota": 2,
+  "suit": [
+   1.0,
+   0.8,
+   0.6,
+   0.45
+  ],
+  "width": 1.8,
+  "value_at": "init"
+ },
+ "n_kinds": 3,
+ "slots_formula": "(T - lead) * quota, lead=1"
+}
