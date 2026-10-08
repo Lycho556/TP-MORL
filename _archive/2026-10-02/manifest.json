@@ -1,0 +1,1194 @@
+[
+ {
+  "path": "results_bcppo_A",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_bcppo_A"
+ },
+ {
+  "path": "results_bcppo_A_rem",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_bcppo_A_rem"
+ },
+ {
+  "path": "results_bcppo_B",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_bcppo_B"
+ },
+ {
+  "path": "results_cfcredit",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/results_cfcredit"
+ },
+ {
+  "path": "results_cfcredit_n1",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/results_cfcredit_n1"
+ },
+ {
+  "path": "results_cfcredit_n2",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/results_cfcredit_n2"
+ },
+ {
+  "path": "results_cfcredit_n3",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/results_cfcredit_n3"
+ },
+ {
+  "path": "results_cfcredit_n6",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/results_cfcredit_n6"
+ },
+ {
+  "path": "results_cfcredit_real",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_cfcredit_real"
+ },
+ {
+  "path": "results_curve",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/results_curve"
+ },
+ {
+  "path": "results_fqi_L4",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/results_fqi_L4"
+ },
+ {
+  "path": "results_g5_anticip",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_g5_anticip"
+ },
+ {
+  "path": "results_g5_fs",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_g5_fs"
+ },
+ {
+  "path": "results_g5_gae",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_g5_gae"
+ },
+ {
+  "path": "results_g5_mc",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_g5_mc"
+ },
+ {
+  "path": "results_g5b_anticip",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_g5b_anticip"
+ },
+ {
+  "path": "results_g5b_fs",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_g5b_fs"
+ },
+ {
+  "path": "results_g5b_gae",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_g5b_gae"
+ },
+ {
+  "path": "results_g5b_mc",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_g5b_mc"
+ },
+ {
+  "path": "results_gate",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 376,
+  "moved_to": "_archive/2026-10-02/results_gate"
+ },
+ {
+  "path": "results_gm_bc_s0",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 76,
+  "moved_to": "_archive/2026-10-02/results_gm_bc_s0"
+ },
+ {
+  "path": "results_gm_bc_s1",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 76,
+  "moved_to": "_archive/2026-10-02/results_gm_bc_s1"
+ },
+ {
+  "path": "results_gm_bc_s2",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 76,
+  "moved_to": "_archive/2026-10-02/results_gm_bc_s2"
+ },
+ {
+  "path": "results_gm_bconly_s0",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 76,
+  "moved_to": "_archive/2026-10-02/results_gm_bconly_s0"
+ },
+ {
+  "path": "results_gm_bconly_s1",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 76,
+  "moved_to": "_archive/2026-10-02/results_gm_bconly_s1"
+ },
+ {
+  "path": "results_gm_bconly_s2",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 76,
+  "moved_to": "_archive/2026-10-02/results_gm_bconly_s2"
+ },
+ {
+  "path": "results_sgate_static",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 72,
+  "moved_to": "_archive/2026-10-02/results_sgate_static"
+ },
+ {
+  "path": "results_sgate_unit",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 72,
+  "moved_to": "_archive/2026-10-02/results_sgate_unit"
+ },
+ {
+  "path": "results_tgate",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 12,
+  "moved_to": "_archive/2026-10-02/results_tgate"
+ },
+ {
+  "path": "results_tgate_dec",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 72,
+  "moved_to": "_archive/2026-10-02/results_tgate_dec"
+ },
+ {
+  "path": "results_tgate_floor",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 12,
+  "moved_to": "_archive/2026-10-02/results_tgate_floor"
+ },
+ {
+  "path": "results_tgate_fs4",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 72,
+  "moved_to": "_archive/2026-10-02/results_tgate_fs4"
+ },
+ {
+  "path": "results_tgate_it400",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 12,
+  "moved_to": "_archive/2026-10-02/results_tgate_it400"
+ },
+ {
+  "path": "results_tgate_k20",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 80,
+  "moved_to": "_archive/2026-10-02/results_tgate_k20"
+ },
+ {
+  "path": "results_tgate_k20_fs4",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 72,
+  "moved_to": "_archive/2026-10-02/results_tgate_k20_fs4"
+ },
+ {
+  "path": "results_tgate_k20_s1",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 76,
+  "moved_to": "_archive/2026-10-02/results_tgate_k20_s1"
+ },
+ {
+  "path": "results_tgate_k20_s2",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 76,
+  "moved_to": "_archive/2026-10-02/results_tgate_k20_s2"
+ },
+ {
+  "path": "results_v11",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 528,
+  "moved_to": "_archive/2026-10-02/results_v11"
+ },
+ {
+  "path": "results_v12",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 324,
+  "moved_to": "_archive/2026-10-02/results_v12"
+ },
+ {
+  "path": "results_v15",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 440,
+  "moved_to": "_archive/2026-10-02/results_v15"
+ },
+ {
+  "path": "results_v16",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 440,
+  "moved_to": "_archive/2026-10-02/results_v16"
+ },
+ {
+  "path": "results_v4",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/results_v4"
+ },
+ {
+  "path": "results_v6",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 272,
+  "moved_to": "_archive/2026-10-02/results_v6"
+ },
+ {
+  "path": "results_v7",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 340,
+  "moved_to": "_archive/2026-10-02/results_v7"
+ },
+ {
+  "path": "results_v8",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 300,
+  "moved_to": "_archive/2026-10-02/results_v8"
+ },
+ {
+  "path": "results_wa",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 6320,
+  "moved_to": "_archive/2026-10-02/results_wa"
+ },
+ {
+  "path": "results_wa_exact",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 6296,
+  "moved_to": "_archive/2026-10-02/results_wa_exact"
+ },
+ {
+  "path": "results_world",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 144,
+  "moved_to": "_archive/2026-10-02/results_world"
+ },
+ {
+  "path": "results_ww",
+  "cat": "results",
+  "reason": "早期版本或已被取代的实验输出，当前论文与 P1 流程不读取",
+  "tracked": true,
+  "kb": 796,
+  "moved_to": "_archive/2026-10-02/results_ww"
+ },
+ {
+  "path": "results_ablation_A1050.log",
+  "cat": "logs",
+  "reason": "顶层运行日志（对应结果已整理进各 results 目录）",
+  "tracked": false,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_ablation_A1050.log"
+ },
+ {
+  "path": "results_ablation_Aall.log",
+  "cat": "logs",
+  "reason": "顶层运行日志（对应结果已整理进各 results 目录）",
+  "tracked": false,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_ablation_Aall.log"
+ },
+ {
+  "path": "results_ablation_Aall_s12.log",
+  "cat": "logs",
+  "reason": "顶层运行日志（对应结果已整理进各 results 目录）",
+  "tracked": false,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_ablation_Aall_s12.log"
+ },
+ {
+  "path": "results_ablation_B.log",
+  "cat": "logs",
+  "reason": "顶层运行日志（对应结果已整理进各 results 目录）",
+  "tracked": false,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_ablation_B.log"
+ },
+ {
+  "path": "results_figures_export.log",
+  "cat": "logs",
+  "reason": "顶层运行日志（对应结果已整理进各 results 目录）",
+  "tracked": false,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_figures_export.log"
+ },
+ {
+  "path": "results_rho_run.log",
+  "cat": "logs",
+  "reason": "顶层运行日志（对应结果已整理进各 results 目录）",
+  "tracked": false,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_rho_run.log"
+ },
+ {
+  "path": "results_p1/_rolling_resetbug",
+  "cat": "results",
+  "reason": "滚动时域首版：列表种子分支有 env.reset 缺陷，已用修正版替换",
+  "tracked": false,
+  "kb": 80,
+  "moved_to": "_archive/2026-10-02/results_p1/_rolling_resetbug"
+ },
+ {
+  "path": "results_field_sens/amp_high.log",
+  "cat": "logs",
+  "reason": "场敏感性实验逐步日志（论文数字取自同目录 *_runs.csv）",
+  "tracked": false,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_field_sens/amp_high.log"
+ },
+ {
+  "path": "results_field_sens/amp_low.log",
+  "cat": "logs",
+  "reason": "场敏感性实验逐步日志（论文数字取自同目录 *_runs.csv）",
+  "tracked": false,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_field_sens/amp_low.log"
+ },
+ {
+  "path": "results_field_sens/onset_early.log",
+  "cat": "logs",
+  "reason": "场敏感性实验逐步日志（论文数字取自同目录 *_runs.csv）",
+  "tracked": false,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_field_sens/onset_early.log"
+ },
+ {
+  "path": "results_field_sens/onset_late.log",
+  "cat": "logs",
+  "reason": "场敏感性实验逐步日志（论文数字取自同目录 *_runs.csv）",
+  "tracked": false,
+  "kb": 978708,
+  "moved_to": "_archive/2026-10-02/results_field_sens/onset_late.log"
+ },
+ {
+  "path": "results_field_sens/win_broad.log",
+  "cat": "logs",
+  "reason": "场敏感性实验逐步日志（论文数字取自同目录 *_runs.csv）",
+  "tracked": false,
+  "kb": 1545408,
+  "moved_to": "_archive/2026-10-02/results_field_sens/win_broad.log"
+ },
+ {
+  "path": "results_field_sens/win_narrow.log",
+  "cat": "logs",
+  "reason": "场敏感性实验逐步日志（论文数字取自同目录 *_runs.csv）",
+  "tracked": false,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/results_field_sens/win_narrow.log"
+ },
+ {
+  "path": "_view_001_acc_scores.png",
+  "cat": "toplevel",
+  "reason": "顶层零散预览图（早期诊断）",
+  "tracked": true,
+  "kb": 268,
+  "moved_to": "_archive/2026-10-02/_view_001_acc_scores.png"
+ },
+ {
+  "path": "_view_001_growth_no_timing_effect.png",
+  "cat": "toplevel",
+  "reason": "顶层零散预览图（早期诊断）",
+  "tracked": true,
+  "kb": 180,
+  "moved_to": "_archive/2026-10-02/_view_001_growth_no_timing_effect.png"
+ },
+ {
+  "path": "_view_001_v18_three_gates.png",
+  "cat": "toplevel",
+  "reason": "顶层零散预览图（早期诊断）",
+  "tracked": true,
+  "kb": 148,
+  "moved_to": "_archive/2026-10-02/_view_001_v18_three_gates.png"
+ },
+ {
+  "path": "_view_002_deferral_payoff.png",
+  "cat": "toplevel",
+  "reason": "顶层零散预览图（早期诊断）",
+  "tracked": true,
+  "kb": 152,
+  "moved_to": "_archive/2026-10-02/_view_002_deferral_payoff.png"
+ },
+ {
+  "path": "deferral_payoff.png",
+  "cat": "toplevel",
+  "reason": "顶层零散预览图（早期诊断）",
+  "tracked": true,
+  "kb": 160,
+  "moved_to": "_archive/2026-10-02/deferral_payoff.png"
+ },
+ {
+  "path": "v18_three_gates.png",
+  "cat": "toplevel",
+  "reason": "顶层零散预览图（早期诊断）",
+  "tracked": true,
+  "kb": 184,
+  "moved_to": "_archive/2026-10-02/v18_three_gates.png"
+ },
+ {
+  "path": "figs",
+  "cat": "toplevel",
+  "reason": "早期数据集/奖励概览图；论文图件在 paper_ijgis/figures/",
+  "tracked": true,
+  "kb": 484,
+  "moved_to": "_archive/2026-10-02/figs"
+ },
+ {
+  "path": "figures",
+  "cat": "toplevel",
+  "reason": "早期数据集/奖励概览图；论文图件在 paper_ijgis/figures/",
+  "tracked": true,
+  "kb": 1180,
+  "moved_to": "_archive/2026-10-02/figures"
+ },
+ {
+  "path": "logs",
+  "cat": "toplevel",
+  "reason": "空目录",
+  "tracked": false,
+  "kb": 0,
+  "moved_to": "_archive/2026-10-02/logs"
+ },
+ {
+  "path": "notebooks",
+  "cat": "toplevel",
+  "reason": "空目录",
+  "tracked": false,
+  "kb": 0,
+  "moved_to": "_archive/2026-10-02/notebooks"
+ },
+ {
+  "path": "启动实验_v12.sh",
+  "cat": "launchers",
+  "reason": "旧批次启动脚本（v12–v20）；当前为 启动实验_P1服务器.sh",
+  "tracked": true,
+  "kb": 16,
+  "moved_to": "_archive/2026-10-02/启动实验_v12.sh"
+ },
+ {
+  "path": "启动实验_v13.sh",
+  "cat": "launchers",
+  "reason": "旧批次启动脚本（v12–v20）；当前为 启动实验_P1服务器.sh",
+  "tracked": true,
+  "kb": 20,
+  "moved_to": "_archive/2026-10-02/启动实验_v13.sh"
+ },
+ {
+  "path": "启动实验_v14.sh",
+  "cat": "launchers",
+  "reason": "旧批次启动脚本（v12–v20）；当前为 启动实验_P1服务器.sh",
+  "tracked": true,
+  "kb": 24,
+  "moved_to": "_archive/2026-10-02/启动实验_v14.sh"
+ },
+ {
+  "path": "启动实验_v15.sh",
+  "cat": "launchers",
+  "reason": "旧批次启动脚本（v12–v20）；当前为 启动实验_P1服务器.sh",
+  "tracked": true,
+  "kb": 36,
+  "moved_to": "_archive/2026-10-02/启动实验_v15.sh"
+ },
+ {
+  "path": "启动实验_v16.sh",
+  "cat": "launchers",
+  "reason": "旧批次启动脚本（v12–v20）；当前为 启动实验_P1服务器.sh",
+  "tracked": true,
+  "kb": 40,
+  "moved_to": "_archive/2026-10-02/启动实验_v16.sh"
+ },
+ {
+  "path": "启动实验_v17.sh",
+  "cat": "launchers",
+  "reason": "旧批次启动脚本（v12–v20）；当前为 启动实验_P1服务器.sh",
+  "tracked": true,
+  "kb": 48,
+  "moved_to": "_archive/2026-10-02/启动实验_v17.sh"
+ },
+ {
+  "path": "启动实验_v20服务器.sh",
+  "cat": "launchers",
+  "reason": "旧批次启动脚本（v12–v20）；当前为 启动实验_P1服务器.sh",
+  "tracked": true,
+  "kb": 12,
+  "moved_to": "_archive/2026-10-02/启动实验_v20服务器.sh"
+ },
+ {
+  "path": "scripts/audit_dynamics.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 12,
+  "moved_to": "_archive/2026-10-02/scripts/audit_dynamics.py"
+ },
+ {
+  "path": "scripts/baselines.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 20,
+  "moved_to": "_archive/2026-10-02/scripts/baselines.py"
+ },
+ {
+  "path": "scripts/bench_cpu_vs_gpu.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/scripts/bench_cpu_vs_gpu.py"
+ },
+ {
+  "path": "scripts/check_historical_data.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/scripts/check_historical_data.py"
+ },
+ {
+  "path": "scripts/diag_horizon.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/scripts/diag_horizon.py"
+ },
+ {
+  "path": "scripts/eval_metrics.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 20,
+  "moved_to": "_archive/2026-10-02/scripts/eval_metrics.py"
+ },
+ {
+  "path": "scripts/exp_bc_ppo.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 20,
+  "moved_to": "_archive/2026-10-02/scripts/exp_bc_ppo.py"
+ },
+ {
+  "path": "scripts/exp_counterfactual.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/scripts/exp_counterfactual.py"
+ },
+ {
+  "path": "scripts/exp_counterfactual_credit.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 16,
+  "moved_to": "_archive/2026-10-02/scripts/exp_counterfactual_credit.py"
+ },
+ {
+  "path": "scripts/exp_external_temporal.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 12,
+  "moved_to": "_archive/2026-10-02/scripts/exp_external_temporal.py"
+ },
+ {
+  "path": "scripts/exp_opt_quality.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 16,
+  "moved_to": "_archive/2026-10-02/scripts/exp_opt_quality.py"
+ },
+ {
+  "path": "scripts/exp_planning_shock.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/scripts/exp_planning_shock.py"
+ },
+ {
+  "path": "scripts/exp_srv_mechanism.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/scripts/exp_srv_mechanism.py"
+ },
+ {
+  "path": "scripts/exp_srv_scenarios.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/scripts/exp_srv_scenarios.py"
+ },
+ {
+  "path": "scripts/exp_timing_gate.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 36,
+  "moved_to": "_archive/2026-10-02/scripts/exp_timing_gate.py"
+ },
+ {
+  "path": "scripts/exp_waiting_advantage.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 12,
+  "moved_to": "_archive/2026-10-02/scripts/exp_waiting_advantage.py"
+ },
+ {
+  "path": "scripts/verify_budget_identity.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/scripts/verify_budget_identity.py"
+ },
+ {
+  "path": "scripts/verify_opportunity_neutral.py",
+  "cat": "scripts",
+  "reason": "现役流程不调用（依赖图检查）；PPO/BC、v20 服务器阶段、早期诊断",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/scripts/verify_opportunity_neutral.py"
+ },
+ {
+  "path": "scripts/run_batch_v4.sh",
+  "cat": "scripts",
+  "reason": "旧批次/GPU 调度脚本",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/scripts/run_batch_v4.sh"
+ },
+ {
+  "path": "scripts/run_batch_v6.sh",
+  "cat": "scripts",
+  "reason": "旧批次/GPU 调度脚本",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/scripts/run_batch_v6.sh"
+ },
+ {
+  "path": "scripts/run_batch_v11.sh",
+  "cat": "scripts",
+  "reason": "旧批次/GPU 调度脚本",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/scripts/run_batch_v11.sh"
+ },
+ {
+  "path": "scripts/pick_gpu.sh",
+  "cat": "scripts",
+  "reason": "旧批次/GPU 调度脚本",
+  "tracked": true,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/scripts/pick_gpu.sh"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_v4",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 3428,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_v4"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_v6",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 572,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_v6"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_v7",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 8496,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_v7"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_v8",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 4928,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_v8"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_v11",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 22288,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_v11"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_v12",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 17456,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_v12"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_v15",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 40200,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_v15"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_v16",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 42708,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_v16"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_v17",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": false,
+  "kb": 0,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_v17"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_opt_v1",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 440,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_opt_v1"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/exp_smoke",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 36,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/exp_smoke"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/rl_budget_B2400",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 40,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/rl_budget_B2400"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/rl_budget_B500",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 36,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/rl_budget_B500"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/rl_budget_B900",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 32,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/rl_budget_B900"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/rl_growth_G0.05",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 36,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/rl_growth_G0.05"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/rl_growth_G0.10",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": false,
+  "kb": 0,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/rl_growth_G0.10"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/rl_v0_sel",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": false,
+  "kb": 28,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/rl_v0_sel"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/baselines_v15",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 32,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/baselines_v15"
+ },
+ {
+  "path": "data/processed/gm_dataset_v1/eval_v15",
+  "cat": "data",
+  "reason": "旧版本实验输出（v4–v17、预算/增长情景、v15 基线与评价）；src 与现役脚本不读取",
+  "tracked": true,
+  "kb": 72,
+  "moved_to": "_archive/2026-10-02/data/processed/gm_dataset_v1/eval_v15"
+ },
+ {
+  "path": "docs/honest_assessment_v0.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/honest_assessment_v0.md"
+ },
+ {
+  "path": "docs/honest_assessment_v1.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/honest_assessment_v1.md"
+ },
+ {
+  "path": "docs/honest_assessment_v2.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 12,
+  "moved_to": "_archive/2026-10-02/docs/honest_assessment_v2.md"
+ },
+ {
+  "path": "docs/honest_assessment_v3.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 16,
+  "moved_to": "_archive/2026-10-02/docs/honest_assessment_v3.md"
+ },
+ {
+  "path": "docs/rerun_v2.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/rerun_v2.md"
+ },
+ {
+  "path": "docs/reward_defect_v1.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 20,
+  "moved_to": "_archive/2026-10-02/docs/reward_defect_v1.md"
+ },
+ {
+  "path": "docs/v15环境改造_实施记录.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 16,
+  "moved_to": "_archive/2026-10-02/docs/v15环境改造_实施记录.md"
+ },
+ {
+  "path": "docs/v16改动_实施记录.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 12,
+  "moved_to": "_archive/2026-10-02/docs/v16改动_实施记录.md"
+ },
+ {
+  "path": "docs/v17改动_实施记录.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 16,
+  "moved_to": "_archive/2026-10-02/docs/v17改动_实施记录.md"
+ },
+ {
+  "path": "docs/v18三道门槛_本地结论.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 44,
+  "moved_to": "_archive/2026-10-02/docs/v18三道门槛_本地结论.md"
+ },
+ {
+  "path": "docs/v19_收口_BC微调窗口测试.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/v19_收口_BC微调窗口测试.md"
+ },
+ {
+  "path": "docs/v19简化框架_本地结论.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/v19简化框架_本地结论.md"
+ },
+ {
+  "path": "docs/v20服务器实验_说明.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/v20服务器实验_说明.md"
+ },
+ {
+  "path": "docs/大白话_v15实验与故事线.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 28,
+  "moved_to": "_archive/2026-10-02/docs/大白话_v15实验与故事线.md"
+ },
+ {
+  "path": "docs/大白话_v16实验与故事线.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 40,
+  "moved_to": "_archive/2026-10-02/docs/大白话_v16实验与故事线.md"
+ },
+ {
+  "path": "docs/大白话_v17实验与故事线.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 12,
+  "moved_to": "_archive/2026-10-02/docs/大白话_v17实验与故事线.md"
+ },
+ {
+  "path": "docs/基线与上界_v15.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 16,
+  "moved_to": "_archive/2026-10-02/docs/基线与上界_v15.md"
+ },
+ {
+  "path": "docs/实施类指标_v15.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 20,
+  "moved_to": "_archive/2026-10-02/docs/实施类指标_v15.md"
+ },
+ {
+  "path": "docs/建议条目审计与改动清单_v15.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/建议条目审计与改动清单_v15.md"
+ },
+ {
+  "path": "docs/建议条目对照审计_v15.csv",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/建议条目对照审计_v15.csv"
+ },
+ {
+  "path": "docs/批次v4_查验_v5.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/批次v4_查验_v5.md"
+ },
+ {
+  "path": "docs/服务器批次_v4.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/服务器批次_v4.md"
+ },
+ {
+  "path": "docs/服务器批次_v6.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/docs/服务器批次_v6.md"
+ },
+ {
+  "path": "docs/服务器批次_v11.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/服务器批次_v11.md"
+ },
+ {
+  "path": "docs/生态目标诊断_v4.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/生态目标诊断_v4.md"
+ },
+ {
+  "path": "docs/目标对偏好的响应强度_v12数据.csv",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 4,
+  "moved_to": "_archive/2026-10-02/docs/目标对偏好的响应强度_v12数据.csv"
+ },
+ {
+  "path": "docs/修复记录_2026-09-12.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/修复记录_2026-09-12.md"
+ },
+ {
+  "path": "docs/择时机制_诊断_v1.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/择时机制_诊断_v1.md"
+ },
+ {
+  "path": "docs/立项与记分分离_实施记录_v1.md",
+  "cat": "docs",
+  "reason": "带版本号的过程记录（v4–v20），已被后续版本取代",
+  "tracked": true,
+  "kb": 8,
+  "moved_to": "_archive/2026-10-02/docs/立项与记分分离_实施记录_v1.md"
+ }
+]

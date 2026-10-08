@@ -122,6 +122,11 @@ OBS_OPPORTUNITY = True
 # 是一个信息量更大的档，作单独敏感性臂，不作默认。
 FORESIGHT = 0
 
+# 回看年数（2026-10 增补）：HISTORY>0 时，趋势那几维改填"当期减 HISTORY 年前"，
+# 即过去几年的变化方向——只用已经发生的信息，不含任何未来值。
+# 与 FORESIGHT 互斥（FORESIGHT>0 时以 FORESIGHT 为准）。默认 0，已发表结果不变。
+HISTORY = 0
+
 # ---------------------------------------------------------------- 场的形状（情景参数）
 # 三型构成。**必须有"一直不好"这一型**：若所有地块最终都变好，"一直等"就是
 # 最优策略，门槛实验会被一个退化解通过，测不出任何择时能力。
@@ -562,6 +567,13 @@ class OpportunityField:
             B[:, 6] = self.necessity_at(t1) - B[:, 2]
             B[:, 7] = self.ready_at(t1) - B[:, 3]
             B[:, 9] = self.opportunity_index(t1) - B[:, 8]
+        elif HISTORY:
+            tp = max(t0 - int(HISTORY), 0)          # 过去的年份；第 0 年前视为不变
+            B[:, 4] = B[:, 0] - self.plan_at(tp)
+            B[:, 5] = B[:, 1] - self.infra_plan_at(tp)
+            B[:, 6] = B[:, 2] - self.necessity_at(tp)
+            B[:, 7] = B[:, 3] - self.ready_at(tp)
+            B[:, 9] = B[:, 8] - self.opportunity_index(tp)
         return B
 
     # ---- 自证 ----

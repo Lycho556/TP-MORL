@@ -27,23 +27,30 @@ data/
       grid_100m/          10 个 171×161 数组：类别 / 概率 / 动作掩码 / 地理条件
       zones_v0/           制度通道分区 + 717 个候选更新单元 + 更新压力代理
       tables/             制度事件表 + pSO 的 UUM / CM / CCM 矩阵
-docs/                     方案、评估与竞品核查文档
-src/tpmorl/
-  data/                   数据构建（build_zones.py）
-  env/                    MDP 环境（待建）
-  objectives/             多目标函数（待建，复用 pSO objs.py）
-  agents/                 策略网络与训练（待建）
-figures/                  论文级图件
-notebooks/                探索性分析
+      temporal_v0/ reward_v0/ rl_v0/ scale_v2/   时序标定、奖励与尺度（src 读取）
+      metro/              地铁 6 号线、6 号线支线、13 号线北延站点与单元距离（P1，来源 OSM）
+docs/                     方案、设计依据、数据评估文档（P1服务器说明.md 为当前服务器说明）
+src/tpmorl/               环境（env/、rl/）、目标（objectives/）、评价（eval/）
+scripts/                  现役实验脚本：exp_temporal_gate / exp_fqi_local / exp_prescreen_ablation /
+                          exp_field_sensitivity / exp_rho_sweep / exp_timing_world / export_schedules /
+                          build_table_main / check_conformity_gate / audit_manuscript_numbers / p1_*.py /
+                          p2_generalize（迁移与历史观测）/ p2_timing_space / p2_announced_greedy
+paper_ijgis/              figures/ 与 figsrc/ 作图脚本、LaTeX 与 Word 构建脚本（审稿期间稿件正文不入公开仓库）
+results_det/ results_figures/ results_fqi/ results_ablation*/ results_field_sens/
+results_rho*/ results_p1/ results_p2/ 论文用到的结果
 refs/                     参考文献与竞品材料
-scripts/                  数据拉取脚本
+启动实验_P1服务器.sh       P1 服务器作业（见 docs/P1服务器说明.md）
+_archive/2026-10-02/      过期内容归档（旧版本结果、脚本、文档、数据输出），见其中 ARCHIVE_INDEX.md
 ```
 
 ## 快速开始
 
+论文结果的复现步骤（环境、种子、每张表和图对应的脚本）见 **[REPRODUCE.md](REPRODUCE.md)**（English）。
+
 ```bash
-bash scripts/fetch_raw.sh                          # 拉取 pSO 原始栅格
-python -m tpmorl.data.build_zones                  # 重建 zones_v0
+conda env create -f environment.yml && conda activate tpmorl
+export PYTHONPATH=src
+python scripts/audit_manuscript_numbers.py        # 核对稿件中的全部数字
 ```
 
 ## 核心设计决策（详见 docs/）
@@ -63,9 +70,7 @@ python -m tpmorl.data.build_zones                  # 重建 zones_v0
 
 ## 状态
 
-- [x] 空间底图（t=0）完整，投影已补齐
-- [x] 制度通道分区 v0 与候选更新单元
-- [ ] 时序状态机与年度动作掩码
-- [ ] 52 个光明区更新单元的边界落格
-- [ ] MDP 环境与多目标奖励
-- [ ] 策略训练与行动日程表输出
+- [x] 空间底图、制度通道分区与 717 个候选更新单元
+- [x] 时序机会场、审批管线与年度容量
+- [x] 排期规则（贪心、滚动规划、价值学习策略）与参照排期
+- [x] IJGIS 稿件对应的全部实验、表格与图（见 REPRODUCE.md）
