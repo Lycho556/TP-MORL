@@ -1,0 +1,14 @@
+[s0] collected 15000 transitions / 300000 rows from 100 fields in 1120s
+[s0] fitted in 12833s, rss 4498 MB
+[s0] field1: multi 0.8835 ann 0.8869 pers 0.7523 traj 0.9164
+[s0] field2: multi 0.8338 ann 0.8550 pers 0.7544 traj 0.9000
+[s0] field3: multi 0.8634 ann 0.8566 pers 0.8075 traj 0.8711
+[s0] field4: multi 0.8614 ann 0.8597 pers 0.7461 traj 0.8601
+[s0] field5: multi 0.8912 ann 0.8722 pers 0.8265 traj 0.9228
+[s0] field6: multi 0.8566 ann 0.8777 pers 0.7119 traj 0.8945
+[s0] field7: multi 0.8404 ann 0.8363 pers 0.7662 traj 0.8777
+[s0] field8: multi 0.8863 ann 0.8832 pers 0.7751 traj 0.9160
+[s0] field9: multi 0.9042 ann 0.9133 pers 0.8159 traj 0.9356
+[s0] field10: multi 0.8756 ann 0.8653 pers 0.7290 traj 0.9100
+[s0] main: multi 0.8789 ann 0.8651 pers 0.7745 traj 0.8936
+[s0] done in 14170s, rss 4498 MB

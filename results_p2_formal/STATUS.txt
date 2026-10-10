@@ -12,3 +12,5 @@ H=2: validation mean 0.8751  (results_p2_formal/hval_h2)
 chosen H = 1 (best 0.8767; smallest H within 0.002)
 1
 self-check vs pilot D (local run, H = 1, seed 0): max |diff| = 1.84e-02 -> WARN: check code version
+[2026-10-10 23:29:42] stage 2: formal test with H = 1
+OK   results_p2_formal/test s0
