@@ -1,0 +1,5 @@
+H=0: validation mean 0.8539  (results_p2_formal/hval_h0)
+H=1: validation mean 0.8767  (results_p2_formal/hval_h1)
+H=2: validation mean 0.8751  (results_p2_formal/hval_h2)
+chosen H = 1 (best 0.8767; smallest H within 0.002)
+1
