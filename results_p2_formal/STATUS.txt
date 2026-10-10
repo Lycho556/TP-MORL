@@ -1,0 +1,3 @@
+[2026-10-10 11:39:51] start: NPROC=1 NTRAIN=100 EPEACH=2 SEEDS=[0 1 2 3 4] git=b6affc1
+[2026-10-10 11:39:51] stage 1: 3 validation jobs
+OK   results_p2_formal/hval_h0 s0
