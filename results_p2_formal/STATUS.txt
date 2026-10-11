@@ -18,3 +18,5 @@ OK   results_p2_formal/test s0
 OK   results_p2_formal/test s1
 [git] pushed cec49d1: P2 formal stage 2 (test fields 1-10 + main) H=1 seed 1: OK (234 min)
 OK   results_p2_formal/test s2
+[git] pushed 54ab2ef: P2 formal stage 2 (test fields 1-10 + main) H=1 seed 2: OK (243 min)
+OK   results_p2_formal/test s3
