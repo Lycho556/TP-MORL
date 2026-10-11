@@ -16,3 +16,5 @@ self-check vs pilot D (local run, H = 1, seed 0): max |diff| = 1.84e-02 -> WARN:
 OK   results_p2_formal/test s0
 [git] pushed 5a5c0d5: P2 formal stage 2 (test fields 1-10 + main) H=1 seed 0: OK (236 min)
 OK   results_p2_formal/test s1
+[git] pushed cec49d1: P2 formal stage 2 (test fields 1-10 + main) H=1 seed 1: OK (234 min)
+OK   results_p2_formal/test s2
