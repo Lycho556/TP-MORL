@@ -33,6 +33,10 @@
     y_A(s,u) = r(s,u) + γ · Q_B( s', argmax_{u'∈pool'} Q_A(s', u') )
     y_B(s,u) = r(s,u) + γ · Q_A( s', argmax_{u'∈pool'} Q_B(s', u') )
 
+γ here is the backup factor passed by the caller. When r is already discounted to
+year 0 (as EV[u, t] in the Guangming case), the caller must pass γ = 1
+(scripts/p1_common.BACKUP_GAMMA); otherwise later initiations are discounted twice.
+
 `pool'` = 下一年的合规候选集合**去掉 u**（因为选了 u 就不能再选）。
 两个完全独立的回归器，动作选择与动作评估分离，用于抑制 max 带来的高估。
 决策期有限，故"剩余年数"进特征（见下），迭代 N ≥ T 次即把价值沿时间传播开。

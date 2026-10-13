@@ -54,7 +54,7 @@ from exp_timing_world import TimingWorld                              # noqa: E4
 from exp_where_when import (value_matrix, spatial_matrix,              # noqa: E402
                             oracle as synth_oracle, run_rank,
                             where_when_metrics)
-from exp_fqi_local import make_trees                                   # noqa: E402
+from exp_fqi_local import make_trees, BACKUP_GAMMA                                   # noqa: E402
 
 from tpmorl.rl import fqi                                              # noqa: E402
 
@@ -152,7 +152,7 @@ def run_one(rho_target, alpha, seeds, ep_each, n_iter, nper=None, quota=None):
                            {"random": None, "myopic": Vm,
                             "temporal_greedy": V},
                            n_ep_each=ep_each, seed=s)
-        qa, qb, _ = fqi.fit_double(data, w0.gamma, make_trees(seed=s),
+        qa, qb, _ = fqi.fit_double(data, BACKUP_GAMMA, make_trees(seed=s),
                                    n_iter=n_iter, verbose=False)
         init, R, dg = fqi.rollout(env_fn, qa, qb, None, collect_q=True)
         v = float(sum(V[u, t] for u, t in init.items()))

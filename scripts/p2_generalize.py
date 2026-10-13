@@ -91,7 +91,7 @@ def main():
     t_col = time.time() - t0
     print(f"[s{a.seed}] collected {len(data)} transitions / {n_rows} rows "
           f"from {len(train)} fields in {t_col:.0f}s", flush=True)
-    qa, qb, _ = fqi.fit_double(data, P.DEFAULTS["gamma"], make_trees(seed=a.seed),
+    qa, qb, _ = fqi.fit_double(data, P.BACKUP_GAMMA, make_trees(seed=a.seed),
                                verbose=False)
     t_fit = time.time() - t0 - t_col
     print(f"[s{a.seed}] fitted in {t_fit:.0f}s, rss {peak_rss_mb():.0f} MB", flush=True)
@@ -101,7 +101,7 @@ def main():
     if a.with_single:
         s0 = time.time()
         d1 = collect_field(None, 10, seed=a.seed)       # same as the main-field job
-        q1a, q1b, _ = fqi.fit_double(d1, P.DEFAULTS["gamma"], make_trees(seed=a.seed),
+        q1a, q1b, _ = fqi.fit_double(d1, P.BACKUP_GAMMA, make_trees(seed=a.seed),
                                      verbose=False)
         single = (q1a, q1b)
         del d1

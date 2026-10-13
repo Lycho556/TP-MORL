@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from exp_fqi_local import make_trees                                   # noqa: E402
+from exp_fqi_local import make_trees, BACKUP_GAMMA                                   # noqa: E402
 
 from tpmorl.rl import fqi                                              # noqa: E402
 
@@ -92,10 +92,10 @@ def run(a, prescreen, seed, estimator):
                        {"random": None, "myopic": EVm, "temporal_greedy": EV},
                        n_ep_each=a.ep_each, seed=seed)
     if estimator == "double":
-        qa, qb, _ = fqi.fit_double(data, a.gamma, make_trees(seed=seed),
+        qa, qb, _ = fqi.fit_double(data, BACKUP_GAMMA, make_trees(seed=seed),
                                    verbose=False)
     else:
-        qa, qb = fit_single(data, a.gamma, make_trees(seed=seed))
+        qa, qb = fit_single(data, BACKUP_GAMMA, make_trees(seed=seed))
     init, R, _ = fqi.rollout(env_fn, qa, qb, None, collect_q=True)
     v = float(sum(EV[u, min(t, EV.shape[1] - 1)] for u, t in init.items()))
     dec = G.decompose(EV, init, a.quota, elig, v_orc)

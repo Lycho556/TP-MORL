@@ -101,7 +101,8 @@ def main():
         data = fqi.collect(env_fn, lambda u, t: float(EV[u, min(t, EV.shape[1] - 1)]),
                            {"random": None, "myopic": EVm, "temporal_greedy": EV},
                            n_ep_each=a.ep_each, seed=s)
-        qa, qb, _ = fqi.fit_double(data, a.gamma, make_trees(seed=s), verbose=False)
+        qa, qb, _ = fqi.fit_double(data, 1.0,  # rewards already discounted to year 0
+                               make_trees(seed=s), verbose=False)
         init, _, _ = fqi.rollout(env_fn, qa, qb, None, collect_q=True)
         v = float(sum(EV[u, min(t, EV.shape[1] - 1)] for u, t in init.items()))
         dec = G.decompose(EV, init, a.quota, elig, v_orc)

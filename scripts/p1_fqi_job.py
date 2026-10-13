@@ -47,7 +47,7 @@ from exp_fqi_local import make_trees                                   # noqa: E
 
 from tpmorl.rl import fqi                                              # noqa: E402
 
-MAIN_SEED0 = 0.9095038725980372
+MAIN_SEED0 = 0.9064785310746194   # backup gamma = P.BACKUP_GAMMA (was 0.9095038725980372 with 0.95)
 
 
 def peak_rss_mb():
@@ -159,7 +159,7 @@ def main():
     tag = (f"{a.mode}_M{a.prescreen}_s{a.seed}" if a.mode != "variant"
            else f"variant-{a.variant}_M{a.prescreen}_s{a.seed}")
     fn = os.path.join(a.out, f"{tag}.csv")
-    ep_each, gamma = P.DEFAULTS["ep_each"], P.DEFAULTS["gamma"]
+    ep_each, gamma = P.DEFAULTS["ep_each"], P.BACKUP_GAMMA
     T0 = time.time()
     rows = []
 

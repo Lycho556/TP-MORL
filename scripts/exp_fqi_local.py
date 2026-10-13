@@ -42,6 +42,12 @@ SYNTH = dict(n_per_kind=8, T=10, quota=2, suit=[1.0, 0.8, 0.6, 0.45],
              width=1.8, value_at="init")
 
 
+
+# Backup factor of fitted Q iteration. Every reward used here (TimingWorld.dvalue, EV[u, t])
+# is already discounted to year 0, so the continuation is added without a further factor.
+# (Before 2026-10-13 the backup used gamma = 0.95, which discounted later initiations twice.)
+BACKUP_GAMMA = 1.0
+
 def make_trees(n_estimators=200, seed=0):
     """ExtraTrees 先行（第 19 节）：快、稳、对特征尺度不敏感。
 
@@ -113,7 +119,7 @@ def run_synth(alpha, seed, n_ep_each, n_iter, verbose=True):
     data = fqi.collect(env_fn, lambda u, t: float(V[u, min(t, V.shape[1] - 1)]),
                        {"random": None, "myopic": Vm, "temporal_greedy": V},
                        n_ep_each=n_ep_each, seed=seed)
-    qa, qb, log = fqi.fit_double(data, w0.gamma, make_trees(seed=seed),
+    qa, qb, log = fqi.fit_double(data, BACKUP_GAMMA, make_trees(seed=seed),
                                  n_iter=n_iter, verbose=verbose)
     init, R, diag = fqi.rollout(env_fn, qa, qb, None, collect_q=True)
     v = float(sum(V[u, t] for u, t in init.items()))
@@ -171,7 +177,7 @@ def run_real(a, seed):
     data = fqi.collect(env_fn, lambda u, t: float(EV[u, min(t, EV.shape[1] - 1)]),
                        {"random": None, "myopic": EVm, "temporal_greedy": EV},
                        n_ep_each=a.ep_each, seed=seed)
-    qa, qb, log = fqi.fit_double(data, a.gamma, make_trees(seed=seed),
+    qa, qb, log = fqi.fit_double(data, BACKUP_GAMMA, make_trees(seed=seed),
                                  n_iter=a.n_iter)
     if getattr(a, "dump_model", False):
         # 落盘 Q 与训练数据的特征/即时回报，供 S3-B 的 Q 诊断复用 ——

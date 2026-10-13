@@ -39,7 +39,8 @@ def main():
     data = fqi.collect(env_fn, lambda u, t: float(EV[u, min(t, EV.shape[1] - 1)]),
                        {"random": None, "myopic": EVm, "temporal_greedy": EV},
                        n_ep_each=a.ep_each, seed=a.seed)
-    qa, qb, _ = fqi.fit_double(data, a.gamma, make_trees(seed=a.seed), verbose=False)
+    qa, qb, _ = fqi.fit_double(data, 1.0,  # rewards already discounted to year 0
+                               make_trees(seed=a.seed), verbose=False)
     init, _, _ = fqi.rollout(env_fn, qa, qb, None, collect_q=True)
     v = float(sum(EV[u, min(t, EV.shape[1] - 1)] for u, t in init.items()))
     out["value_based"] = {"ratio": v / v_orc, "seed": a.seed,

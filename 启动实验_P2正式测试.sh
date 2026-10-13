@@ -17,11 +17,14 @@
 #                      per-rule ratio summary. git is serialised with flock; a push counts as
 #                      landed only when the remote SHA equals HEAD; rejected pushes rebase and retry.
 #   SMOKE=1            tiny settings to test the pipeline (minutes, results meaningless)
+#   OUT=<dir>          output directory (default results_p2_formal_v2; results_p2_formal holds the
+#                      first registered run, made with the old backup gamma = 0.95)
+#   PILOT_REF=<csv>    optional local pilot to compare stage 1 (H = 1, seed 0) against
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT=$(pwd)
 PY=${PY:-python}
-OUT=${OUT:-results_p2_formal}
+OUT=${OUT:-results_p2_formal_v2}   # v2: rerun with the corrected FQI backup (scripts/p1_common.BACKUP_GAMMA = 1)
 FORCE=${FORCE:-0}
 AUTO_PUSH=${AUTO_PUSH:-1}
 export PYTHONPATH=src TPMORL_NJOBS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
@@ -150,8 +153,9 @@ else
   H=$(tail -n 1 "$OUT/stage1_selection.txt")
   cat "$OUT/stage1_selection.txt" | tee -a "$OUT/STATUS.txt"
   # self-check: the pilot (results_p2_val/D, H = 1, seed 0) must be reproduced exactly
-  if [ "${SMOKE:-0}" != 1 ] && [ -f results_p2_val/D/gen_s0_h1.csv ]; then
-    $PY - "$OUT/hval_h1/gen_s0_h1.csv" results_p2_val/D/gen_s0_h1.csv <<'EOF' | tee -a "$OUT/STATUS.txt"
+  # (v2: the pilot was run with the old backup, so this check only applies when PILOT_REF is set)
+  if [ "${SMOKE:-0}" != 1 ] && [ -n "${PILOT_REF:-}" ] && [ -f "${PILOT_REF:-}" ]; then
+    $PY - "$OUT/hval_h1/gen_s0_h1.csv" "$PILOT_REF" <<'EOF' | tee -a "$OUT/STATUS.txt"
 import sys, pandas as pd
 a, b = (pd.read_csv(p) for p in sys.argv[1:3])
 k = lambda d: d[d.rule == "value_based_multi"].set_index("eval_field").ratio

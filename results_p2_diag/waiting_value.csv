@@ -1,0 +1,101 @@
+field,info,use,ratio
+1,announced (rule in paper),rank,0.8869141259716238
+1,announced (rule in paper),rolling,0.8869141259716238
+1,"+ true P/B/C, announced infra",rank,0.8963146457185723
+1,"+ true P/B/C, announced infra",rolling,0.8951991672194797
+1,"frozen P/B/C, + true infra",rank,0.9190141811775302
+1,"frozen P/B/C, + true infra",rolling,0.9409703662407897
+1,true P/B/C and true infra,rank,0.9164289117888034
+1,true P/B/C and true infra,rolling,0.9793536038234387
+1,true EV table (check),rank,0.9164289117888034
+1,true EV table (check),rolling,0.9793536038234387
+2,announced (rule in paper),rank,0.8550017765059649
+2,announced (rule in paper),rolling,0.8550017765059649
+2,"+ true P/B/C, announced infra",rank,0.8591791830005224
+2,"+ true P/B/C, announced infra",rolling,0.8559045795020431
+2,"frozen P/B/C, + true infra",rank,0.8927915586929589
+2,"frozen P/B/C, + true infra",rolling,0.9376033779316987
+2,true P/B/C and true infra,rank,0.9000013411421504
+2,true P/B/C and true infra,rolling,0.9571551892171828
+2,true EV table (check),rank,0.9000013411421504
+2,true EV table (check),rolling,0.9571551892171828
+3,announced (rule in paper),rank,0.8565934556188248
+3,announced (rule in paper),rolling,0.8565934556188248
+3,"+ true P/B/C, announced infra",rank,0.8557334995701428
+3,"+ true P/B/C, announced infra",rolling,0.8768588154888068
+3,"frozen P/B/C, + true infra",rank,0.8719891649298455
+3,"frozen P/B/C, + true infra",rolling,0.9152906910143784
+3,true P/B/C and true infra,rank,0.8710918318207553
+3,true P/B/C and true infra,rolling,0.9456826498715551
+3,true EV table (check),rank,0.8710918318207553
+3,true EV table (check),rolling,0.9456826498715551
+4,announced (rule in paper),rank,0.8597291952412546
+4,announced (rule in paper),rolling,0.8597291952412546
+4,"+ true P/B/C, announced infra",rank,0.8623196695452605
+4,"+ true P/B/C, announced infra",rolling,0.8996867716933525
+4,"frozen P/B/C, + true infra",rank,0.8709188652449189
+4,"frozen P/B/C, + true infra",rolling,0.9432881669284564
+4,true P/B/C and true infra,rank,0.8601241180523999
+4,true P/B/C and true infra,rolling,0.9587815307829859
+4,true EV table (check),rank,0.8601241180523999
+4,true EV table (check),rolling,0.9587815307829859
+5,announced (rule in paper),rank,0.8722396241926723
+5,announced (rule in paper),rolling,0.8722396241926723
+5,"+ true P/B/C, announced infra",rank,0.8713095182044865
+5,"+ true P/B/C, announced infra",rolling,0.8922618544157678
+5,"frozen P/B/C, + true infra",rank,0.9220472717158144
+5,"frozen P/B/C, + true infra",rolling,0.9487026114767729
+5,true P/B/C and true infra,rank,0.9228338611548611
+5,true P/B/C and true infra,rolling,0.9705943295589581
+5,true EV table (check),rank,0.9228338611548611
+5,true EV table (check),rolling,0.9705943295589581
+6,announced (rule in paper),rank,0.8776788543900558
+6,announced (rule in paper),rolling,0.8776788543900558
+6,"+ true P/B/C, announced infra",rank,0.8920702175784019
+6,"+ true P/B/C, announced infra",rolling,0.8859858220528142
+6,"frozen P/B/C, + true infra",rank,0.894499754856266
+6,"frozen P/B/C, + true infra",rolling,0.9482369929976872
+6,true P/B/C and true infra,rank,0.8945264885173695
+6,true P/B/C and true infra,rolling,0.9739534568505731
+6,true EV table (check),rank,0.8945264885173695
+6,true EV table (check),rolling,0.9739534568505731
+7,announced (rule in paper),rank,0.8363278649499978
+7,announced (rule in paper),rolling,0.8363278649499978
+7,"+ true P/B/C, announced infra",rank,0.8321892796152264
+7,"+ true P/B/C, announced infra",rolling,0.8615827083341521
+7,"frozen P/B/C, + true infra",rank,0.8771492053317264
+7,"frozen P/B/C, + true infra",rolling,0.8906839487570976
+7,true P/B/C and true infra,rank,0.8777153222654303
+7,true P/B/C and true infra,rolling,0.9324354262180024
+7,true EV table (check),rank,0.8777153222654303
+7,true EV table (check),rolling,0.9324354262180024
+8,announced (rule in paper),rank,0.8831955600170555
+8,announced (rule in paper),rolling,0.8831955600170555
+8,"+ true P/B/C, announced infra",rank,0.8784435259660828
+8,"+ true P/B/C, announced infra",rolling,0.8763932203507249
+8,"frozen P/B/C, + true infra",rank,0.9115194347020933
+8,"frozen P/B/C, + true infra",rolling,0.9565881718852517
+8,true P/B/C and true infra,rank,0.9159630807715258
+8,true P/B/C and true infra,rolling,0.9747337011933596
+8,true EV table (check),rank,0.9159630807715258
+8,true EV table (check),rolling,0.9747337011933596
+9,announced (rule in paper),rank,0.9132957686999473
+9,announced (rule in paper),rolling,0.9132957686999473
+9,"+ true P/B/C, announced infra",rank,0.9096054582907165
+9,"+ true P/B/C, announced infra",rolling,0.900568641008806
+9,"frozen P/B/C, + true infra",rank,0.9222673930585175
+9,"frozen P/B/C, + true infra",rolling,0.9504638847651581
+9,true P/B/C and true infra,rank,0.935607003769216
+9,true P/B/C and true infra,rolling,0.9692824550639285
+9,true EV table (check),rank,0.935607003769216
+9,true EV table (check),rolling,0.9692824550639285
+10,announced (rule in paper),rank,0.8653388106872641
+10,announced (rule in paper),rolling,0.8653388106872641
+10,"+ true P/B/C, announced infra",rank,0.860694310899763
+10,"+ true P/B/C, announced infra",rolling,0.8520297538387156
+10,"frozen P/B/C, + true infra",rank,0.9141639655322631
+10,"frozen P/B/C, + true infra",rolling,0.9469272221912767
+10,true P/B/C and true infra,rank,0.9099754324412379
+10,true P/B/C and true infra,rolling,0.966940615334779
+10,true EV table (check),rank,0.9099754324412379
+10,true EV table (check),rolling,0.966940615334779

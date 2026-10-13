@@ -25,6 +25,11 @@ REPO = os.path.dirname(HERE)
 DATASET = os.path.join(REPO, "data", "processed", "gm_dataset_v1")
 
 DEFAULTS = dict(dataset=DATASET, horizon=25, quota=3, gamma=0.95, ep_each=10)
+# Discount factor of the FQI backup. The reward EV[u, t] is already discounted to year 0
+# (gamma ** completion year, src/tpmorl/eval/ev.py), so the continuation is added without
+# a further factor; this keeps the learned target equal to the scheduling objective.
+# (Up to 2026-10-13 the backup used gamma = 0.95 here, which discounted later initiations twice.)
+BACKUP_GAMMA = 1.0
 
 
 def args(**kw):
