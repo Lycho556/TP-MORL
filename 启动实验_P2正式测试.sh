@@ -46,6 +46,9 @@ BRANCH=$(git rev-parse --abbrev-ref HEAD)
 CODE_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo none)
 STAMP=$(date +%Y%m%d_%H%M%S)
 GIT_LOCK="$(git rev-parse --git-dir)/p2_publish.lock"     # inside .git: never committed
+# Run label from OUT, so v1 / v2 commits and tags are distinguishable on GitHub:
+# results_p2_formal -> p2-formal, results_p2_formal_v2 -> p2-formal-v2
+RUNLABEL=$(basename "$OUT" | sed 's/^results_//; s/_/-/g')
 
 # ---------------------------------------------------------------- git publishing
 # push_branch: push HEAD to origin/$BRANCH; landed only if the remote SHA equals HEAD
@@ -105,7 +108,7 @@ publish_job(){
     test)    stage="stage 2 (test fields 1-10 + main)" ;;
     *)       stage="$dir" ;;
   esac
-  commit_push "P2 formal ${stage} H=${h} seed ${seed}: ${st} ($(( secs / 60 )) min)
+  commit_push "[${RUNLABEL}] ${stage} H=${h} seed ${seed}: ${st} ($(( secs / 60 )) min)
 
 $(job_note "$dir" "$seed")
 
@@ -114,7 +117,7 @@ single-threaded (TPMORL_NJOBS=1); protocol fixed in docs/P2正式测试说明.md
     "$dir/gen_s${seed}.csv" "$dir/gen_s${seed}_h${h}.csv" "$dir/log_s${seed}.txt" "$OUT/STATUS.txt"
 }
 export -f push_branch commit_push job_note publish_job
-export PY OUT BRANCH CODE_SHA STAMP GIT_LOCK AUTO_PUSH NTRAIN EPEACH JOB_NOTE_PY
+export PY OUT BRANCH CODE_SHA STAMP GIT_LOCK AUTO_PUSH NTRAIN EPEACH JOB_NOTE_PY RUNLABEL
 
 log(){ echo "[$(date '+%F %T')] $*" | tee -a "$OUT/STATUS.txt"; }
 log "start: NPROC=$NPROC NTRAIN=$NTRAIN EPEACH=$EPEACH SEEDS=[$SEEDS] git=$(git rev-parse --short HEAD 2>/dev/null || echo none)"
@@ -165,7 +168,7 @@ print(f"self-check vs pilot D (local run, H = 1, seed 0): max |diff| = {d:.2e} -
 EOF
   fi
 fi
-commit_push "P2 formal stage 1 done: chosen H = $H
+commit_push "[${RUNLABEL}] stage 1 done: chosen H = $H
 
 $(cat "$OUT/stage1_selection.txt" 2>/dev/null)
 $(grep -h "self-check vs pilot" "$OUT/STATUS.txt" 2>/dev/null | tail -1)
@@ -198,7 +201,7 @@ log "done; summary in $OUT/SUMMARY.md"
 cat "$OUT/SUMMARY.md" | head -20
 
 if [ "$AUTO_PUSH" = 1 ]; then
-  commit_push "P2 formal transfer test complete (H=$H)
+  commit_push "[${RUNLABEL}] transfer test complete (H=$H)
 
 $(head -n 40 "$OUT/SUMMARY.md" 2>/dev/null)
 
@@ -207,9 +210,9 @@ $(grep -h "self-check" "$OUT/STATUS.txt" 2>/dev/null)
 run ${STAMP}, code ${CODE_SHA}, branch ${BRANCH}" \
     "$OUT" || true
   if [ "$(git rev-parse HEAD)" = "$(git ls-remote origin "refs/heads/$BRANCH" 2>/dev/null | cut -f1)" ]; then
-    git tag -f "p2-formal-complete-${STAMP}" -m "P2 formal transfer test, H=$H" >/dev/null 2>&1 || true
-    git push -q -f origin "p2-formal-complete-${STAMP}" >/dev/null 2>&1 \
-      && log "tagged p2-formal-complete-${STAMP}" || log "WARN: tag push failed"
+    git tag -f "${RUNLABEL}-complete-${STAMP}" -m "${RUNLABEL} transfer test, H=$H" >/dev/null 2>&1 || true
+    git push -q -f origin "${RUNLABEL}-complete-${STAMP}" >/dev/null 2>&1 \
+      && log "tagged ${RUNLABEL}-complete-${STAMP}" || log "WARN: tag push failed"
   else
     log "WARN: final push not landed; results committed locally, run: git push origin HEAD:$BRANCH"
   fi
