@@ -11,3 +11,5 @@ H=1: validation mean 0.8682  (results_p2_formal_v2/hval_h1)
 H=2: validation mean 0.8639  (results_p2_formal_v2/hval_h2)
 chosen H = 1 (best 0.8682; smallest H within 0.002)
 1
+[2026-10-15 02:36:20] stage 2: formal test with H = 1
+OK   results_p2_formal_v2/test s0
