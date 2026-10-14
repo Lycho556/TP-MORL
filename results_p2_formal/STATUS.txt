@@ -25,3 +25,4 @@ OK   results_p2_formal/test s4
 [git] pushed e3ac850: P2 formal stage 2 (test fields 1-10 + main) H=1 seed 4: OK (244 min)
 self-check announced baselines vs results_p2: max |diff| = 2.22e-16 -> PASS
 [2026-10-11 19:38:19] done; summary in results_p2_formal/SUMMARY.md
+[2026-10-11 19:38:23] tagged p2-formal-complete-20261010_113951
