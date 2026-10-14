@@ -211,9 +211,12 @@ run ${STAMP}, code ${CODE_SHA}, branch ${BRANCH}" \
     "$OUT" || true
   if [ "$(git rev-parse HEAD)" = "$(git ls-remote origin "refs/heads/$BRANCH" 2>/dev/null | cut -f1)" ]; then
     git tag -f "${RUNLABEL}-complete-${STAMP}" -m "${RUNLABEL} transfer test, H=$H" >/dev/null 2>&1 || true
+    # echo, not log: anything appended to STATUS.txt after the final commit leaves the
+    # tracked file dirty, and the next run's branch checkout on the server is then refused.
     git push -q -f origin "${RUNLABEL}-complete-${STAMP}" >/dev/null 2>&1 \
-      && log "tagged ${RUNLABEL}-complete-${STAMP}" || log "WARN: tag push failed"
+      && echo "[$(date '+%F %T')] tagged ${RUNLABEL}-complete-${STAMP}" \
+      || echo "[$(date '+%F %T')] WARN: tag push failed"
   else
-    log "WARN: final push not landed; results committed locally, run: git push origin HEAD:$BRANCH"
+    echo "[$(date '+%F %T')] WARN: final push not landed; results committed locally, run: git push origin HEAD:$BRANCH"
   fi
 fi
