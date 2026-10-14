@@ -3,3 +3,5 @@
 OK   results_p2_formal_v2/hval_h0 s0
 [git] pushed bda1ad6: [p2-formal-v2] stage 1 (validation fields 201-210) H=0 seed 0: OK (253 min)
 OK   results_p2_formal_v2/hval_h1 s0
+[git] pushed cabf353: [p2-formal-v2] stage 1 (validation fields 201-210) H=1 seed 0: OK (283 min)
+OK   results_p2_formal_v2/hval_h2 s0
