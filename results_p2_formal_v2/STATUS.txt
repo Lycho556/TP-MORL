@@ -15,3 +15,5 @@ chosen H = 1 (best 0.8682; smallest H within 0.002)
 OK   results_p2_formal_v2/test s0
 [git] pushed 45b61ec: [p2-formal-v2] stage 2 (test fields 1-10 + main) H=1 seed 0: OK (264 min)
 OK   results_p2_formal_v2/test s1
+[git] pushed 74466a2: [p2-formal-v2] stage 2 (test fields 1-10 + main) H=1 seed 1: OK (274 min)
+OK   results_p2_formal_v2/test s2
