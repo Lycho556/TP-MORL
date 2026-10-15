@@ -19,3 +19,5 @@ OK   results_p2_formal_v2/test s1
 OK   results_p2_formal_v2/test s2
 [git] pushed ca41b8c: [p2-formal-v2] stage 2 (test fields 1-10 + main) H=1 seed 2: OK (305 min)
 OK   results_p2_formal_v2/test s3
+[git] pushed 895b85e: [p2-formal-v2] stage 2 (test fields 1-10 + main) H=1 seed 3: OK (311 min)
+OK   results_p2_formal_v2/test s4
