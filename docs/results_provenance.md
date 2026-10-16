@@ -15,3 +15,9 @@
 | §5.2, Table D3–D5 | 初筛、无准入闸门、地铁、场敏感性 | 敏感性 | results_p1/tables/*.csv | scripts/p1_build_tables.py | 见各表注 |
 
 注意：主实验的公告规则 0.861 是主场 6 个 listing draws 的均值；迁移实验的 0.871 是 10 个测试场、listing draw 7 的均值。两者是不同评价集合，稿件 §4.2 和 §5.4 都写明了。
+
+## 2026-10-16 补充
+| 稿件位置 | 指标 | 结果文件 | 脚本 |
+|---|---|---|---|
+| §3.1 命题 1，附录 D.6 | 当前/公布预测的可分离性（最大相对偏差 0）；滚动规划与逐年排序逐单元相同 42/42（两种预测各一次） | results_p2/equivalence_check.csv, results_p2/separability_check.csv | scripts/p2_equivalence_check.py |
+| §5.2，Figure 6（时机走廊） | 站点 1.5 km 内"最好现在开工"49% vs 36%，差 0.13 [0.06, 0.20]，p<0.001；情景场对照 34% vs 32%，p=0.62；各距离带时机价值 41–45% | results_p2/start_now_by_distance.csv, results_p2/timing_stake_by_distance.csv, results_p2/timing_stake_units.csv | scripts/p3_timing_space_metro.py；作图 paper_ijgis/figsrc/fig7_timing_corridors.py |
