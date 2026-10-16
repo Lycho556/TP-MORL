@@ -1,0 +1,14 @@
+[s0] collected 3000 transitions / 60000 rows from 20 fields in 230s
+[s0] fitted in 3646s, rss 832 MB
+[s0] field1: multi 0.8643
+[s0] field2: multi 0.7986
+[s0] field3: multi 0.8343
+[s0] field4: multi 0.8107
+[s0] field5: multi 0.8549
+[s0] field6: multi 0.8303
+[s0] field7: multi 0.8214
+[s0] field8: multi 0.8610
+[s0] field9: multi 0.8864
+[s0] field10: multi 0.8661
+[s0] main: multi 0.8606
+[s0] done in 3971s, rss 923 MB
