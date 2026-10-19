@@ -176,7 +176,7 @@ chk("ann greedy text", "all of the 0.090 is the value of information")
 E = json.load(open(R + "results_figures/fig5_timing_efficiency.json"))
 assert f"{E['rl']['mean']:.2f}" == f"{E['temporal_greedy']['mean']:.2f}"
 _rl7 = json.load(open(R + "results_p3_metro/rl_schedule_main_ls7_s0.json"))["init"]; _tg7 = json.load(open(R + "results_figures/schedules.json"))["temporal_greedy"]["init"]
-chk("F4 rl overlap", f"selects {len(set(_rl7) & set(_tg7))}\nof the {len(_tg7)} units that trajectory-informed greedy selects and initiates {sum(_rl7[u] == _tg7[u] for u in _rl7 if u in _tg7)}\nof them in the same year")
+chk("F4 rl overlap", f"selects {len(set(_rl7) & set(_tg7))} of the {len(_tg7)} units that trajectory-informed greedy\nselects, without seeing the trajectories, and initiates {sum(_rl7[u] == _tg7[u] for u in _rl7 if u in _tg7)} of them in")
 chk("F4 rl ratio", f"{json.load(open(R + 'results_p3_metro/rl_schedule_main_ls7_s0.json'))['ratio']:.4f}"[:5])
 chk("F5 eff", f"{E['static_greedy']['mean']:.2f} for persistence greedy, {E['temporal_greedy']['mean']:.2f} for both\nreinforcement learning and trajectory-informed greedy, {E['rolling_full']['mean']:.2f} for the\nrolling horizon with full information, and {E['optimum']['mean']:.2f} for the reference\nschedule")
 
