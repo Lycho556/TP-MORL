@@ -282,7 +282,7 @@ chk("P3 diff", f"it is above the rule on all ten, by {f3(_fd.mean())} on\naverag
 assert (_fd > 0).all() and (_FP.sub(_FB.rank_announced, axis=0) > 0).values.all()
 chk("P3 seeds", f"seed means lie\nbetween {f3(_FP.mean(axis=0).min())} and {f3(_FP.mean(axis=0).max())}")
 chk("P3 gap", f"Of the {f3((_FB.trajectory - _FB.rank_announced).mean())} that separates the announced-plan rule from the rule told the true trajectories, the policy recovers {f3(_fd.mean())}")
-chk("P3 rhfull", f"remains {f3(_FB.rh_full.mean() - _fm.mean())} higher")
+chk("P3 rhfull", f"with full information reaches {f3(_FB.rh_full.mean())} on the test draws and so remains\n{f3(_FB.rh_full.mean() - _fm.mean())} higher")
 _mt = {}
 for _k in ("main", "metro"):
     _d = pd.concat([pd.read_csv(f) for f in sorted(_g.glob(R + f"results_p3_metro/{_k}_s*.csv"))])
