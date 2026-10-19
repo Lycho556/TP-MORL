@@ -90,7 +90,7 @@ VN = {"base": "Main configuration", "amp_low": "Amplitude $\\times 0.5$", "amp_h
 fi, fc = [], []
 for v, n in VN.items():
     q = FV[FV.variant == v]; r_ = q.ratio
-    chk(f"D4 {v}", f"{n} & {r_.persistence:.3f} & {r_.rh_announced:.3f} & {r_.trajectory:.3f} & {pm(r_.value_based, q.loc['value_based', 'sd'])} & {r_.rh_full:.3f} & {r_.trajectory - r_.persistence:.3f} & {r_.rh_full - r_.trajectory:.3f} \\\\")
+    chk(f"D4 {v}", f"{n} & {r_.persistence:.3f} & {r_.rh_announced:.3f} & {r_.trajectory:.3f} & {r_.rh_full:.3f} & {r_.trajectory - r_.persistence:.3f} & {r_.rh_full - r_.trajectory:.3f} \\\\")
     if v != "base": fi.append(r_.trajectory - r_.persistence); fc.append(r_.rh_full - r_.trajectory)
 chk("D4 text", f"ranges from {min(fi):.3f} to {max(fi):.3f}, following the amplitude of temporal variation, and that of coordination from {min(fc):.3f} to {max(fc):.3f}")
 # ---- Table D5 transfer to unseen fields (results_p2)
@@ -131,7 +131,7 @@ best = max(pos, key=lambda H: HT[H]["mean"]); assert best == 1
 assert all(HT[H]['d'] < 0 for H in pos)
 
 
-chk("D5 appx", f"in {below} of 50 field--seed pairs")
+chk("D5 appx", f"in {below}\nof 50 draw--seed combinations")
 chk("D5 main", f"reaches {Mn.loc['main', 'value_based_multi']:.3f}, against {Mn.loc['main', 'value_based_single']:.3f}")
 # ---- Table C1 (local deterministic runs, listing draw 7)
 T = pd.read_csv(R + "results_figures/table_main.csv").set_index("key")
@@ -146,17 +146,15 @@ S = pd.read_csv(R + "results_fqi/fqi_synth_summary.csv")
 for a in sorted(S.alpha.unique()):
     q = S[S.alpha == a].set_index("method")
     chk(f"D1 alpha={a}", f"{a:.2f} & {f3(q.loc['随机','相对oracle'])} & {f3(q.loc['纯空间排序','相对oracle'])} & "
-        f"{f3(q.loc['时间感知贪心','相对oracle'])} & {pm(q.loc['Double-FQI','相对oracle'], np.nan_to_num(q.loc['Double-FQI','标准差']))}")
-for f in ["results_rho/rho_summary.csv", "results_rho_tighten/rho_summary.csv"]:
-    for _, r in pd.read_csv(R + f).iterrows():
-        chk(f"D2 rho={r.rho:.2f}", f"{r.temporal_greedy:.4f} & {r.double_fqi:.4f}")
+        f"{f3(q.loc['时间感知贪心','相对oracle'])} & 1.000 \\\\")
+# Table D2 (rho sweep of the multi-step policy) removed from the paper in revision 25
 # ---- timing errors in space (results_p2/timing_space_summary.csv)
 TSp = pd.read_csv(R + "results_p2/timing_space_summary.csv")
 chk("TS I range", f"lies between ${TSp.I_err.min():.2f}$ and ${TSp.I_err.max():.2f}$")
 chk("TS p", f"($p \\ge {TSp.p_err.min():.2f}$")
 assert TSp.p_err.min() >= 0.05 and len(TSp) == 30
 on = TSp.groupby("rule").share_ontime.mean()
-chk("TS ontime", f"starts {100*on.persistence:.0f}\\% of its units in their best year, trajectory-informed greedy {100*on.trajectory:.0f}\\%, the coordinated schedule {100*on.rh_full:.0f}\\%, and the reference schedule {100*on.reference:.0f}\\%")
+chk("TS ontime", f"persistence greedy initiates {100*on.persistence:.0f}\\% of its units in their best year, trajectory-informed greedy {100*on.trajectory:.0f}\\%, the coordinated schedule {100*on.rh_full:.0f}\\%, and the reference schedule {100*on.reference:.0f}\\%")
 # ---- Fig 5c zoom window (results_p2/fig5_zoom_window.json)
 ZW = json.load(open(R + "results_p2/fig5_zoom_window.json"))
 zp = pd.DataFrame(ZW["persistence"]).set_index("unit"); zf = pd.DataFrame(ZW["rh_full"]).set_index("unit")
@@ -176,7 +174,11 @@ assert len(AGr) == 42
 chk("ann greedy text", "all of the 0.090 is the value of information")
 # ---- Figure 5 timing efficiency
 E = json.load(open(R + "results_figures/fig5_timing_efficiency.json"))
-chk("F5 eff", f"{E['static_greedy']['mean']:.2f} for persistence greedy, {E['temporal_greedy']['mean']:.2f} for trajectory-informed greedy, {E['rolling_full']['mean']:.2f} for the rolling horizon with full information, and {E['optimum']['mean']:.2f} for the reference schedule")
+assert f"{E['rl']['mean']:.2f}" == f"{E['temporal_greedy']['mean']:.2f}"
+_rl7 = json.load(open(R + "results_p3_metro/rl_schedule_main_ls7_s0.json"))["init"]; _tg7 = json.load(open(R + "results_figures/schedules.json"))["temporal_greedy"]["init"]
+chk("F4 rl overlap", f"selects {len(set(_rl7) & set(_tg7))}\nof the {len(_tg7)} units that trajectory-informed greedy selects and initiates {sum(_rl7[u] == _tg7[u] for u in _rl7 if u in _tg7)}\nof them in the same year")
+chk("F4 rl ratio", f"{json.load(open(R + 'results_p3_metro/rl_schedule_main_ls7_s0.json'))['ratio']:.4f}"[:5])
+chk("F5 eff", f"{E['static_greedy']['mean']:.2f} for persistence greedy, {E['temporal_greedy']['mean']:.2f} for both\nreinforcement learning and trajectory-informed greedy, {E['rolling_full']['mean']:.2f} for the\nrolling horizon with full information, and {E['optimum']['mean']:.2f} for the reference\nschedule")
 
 # ---- registered transfer test with 100 training draws (results_p2_formal, server)
 from scipy import stats as _st
@@ -246,7 +248,7 @@ assert _SP.max_rel_dev.max() < 1e-12 and _EQ.identical.all() and (_EQ.groupby("m
 chk("prop 42", "(42 of 42 configurations for each forecast;")
 _SN = pd.read_csv(R + "results_p2/start_now_by_distance.csv").set_index("field")
 _m, _c = _SN.loc["metro"], _SN.loc["cluster"]
-chk("corr metro", f"{100*_m.share_now_near:.0f}\\% of the units are best started now, against {100*_m.share_now_far:.0f}\\% farther away (difference {_m['diff']:.2f}, 95\\% bootstrap interval {_m.lo:.2f} to {_m.hi:.2f}")
+chk("corr metro", f"{100*_m.share_now_near:.0f}\\% of the units are best\ninitiated now, against {100*_m.share_now_far:.0f}\\% farther away (difference {_m['diff']:.2f}, 95\\% bootstrap interval {_m.lo:.2f} to {_m.hi:.2f}")
 assert _m.perm_p < 0.001
 chk("corr placebo", f"the shares are {100*_c.share_now_near:.0f}\\% and {100*_c.share_now_far:.0f}\\% ($p = {_c.perm_p:.2f}$)")
 _TB = pd.read_csv(R + "results_p2/timing_stake_by_distance.csv"); _tm = _TB[_TB.field == "metro"].mean_rel_stake
@@ -255,10 +257,10 @@ chk("corr stake", f"is {100*_tm.min():.0f}--{100*_tm.max():.0f}\\% of the best-y
 # ---- start years in the controlled simulation (results_fqi/fqi_synth_runs.csv) and Table infolearn
 _SR = pd.read_csv(R + "results_fqi/fqi_synth_runs.csv").groupby(["alpha", "method"])[["when_mae", "when_hit1"]].mean()
 for _a in sorted(_SR.index.get_level_values(0).unique()):
-    _sp, _tg, _vb = (_SR.loc[(_a, k)] for k in ("纯空间排序", "时间感知贪心", "Double-FQI"))
-    chk(f"synthyears {_a}", f"{_a:.2f} & {_sp.when_mae:.2f} & {_tg.when_mae:.2f} & {_vb.when_mae:.2f} & {100*_sp.when_hit1:.0f} & {100*_tg.when_hit1:.0f} & {100*_vb.when_hit1:.0f} \\\\")
+    _sp, _tg = (_SR.loc[(_a, k)] for k in ("纯空间排序", "时间感知贪心"))
+    chk(f"synthyears {_a}", f"{_a:.2f} & {_sp.when_mae:.2f} & {_tg.when_mae:.2f} & {100*_sp.when_hit1:.0f} & {100*_tg.when_hit1:.0f} \\\\")
 _spm = _SR.xs("纯空间排序", level=1).when_mae; _tgm = _SR.xs("时间感知贪心", level=1).when_mae
-chk("synthyears text", f"spatial ranking starts a parcel {_spm.mean():.1f} years from its optimal year on average, against {_tgm.min():.2f} to {_tgm.max():.1f} years")
+chk("synthyears text", f"spatial ranking initiates a parcel {_spm.mean():.1f} years from its optimal year on average, against {_tgm.min():.2f} to {_tgm.max():.1f} years")
 _U = lambda r: f3(_b.loc[_tf, r].mean())
 chk("infolearn cur", f"Current conditions & {f3(g.persistence)} & --- & {_U('persistence')} & --- \\\\")
 chk("infolearn ann", f"Announced plans & {f3(g.rh_announced)} & ${f3(g.value_based)}^{{a}}$ & {f3(_ann.mean())} & ${f3(_p.loc[_tf].values.mean())}^{{b}}$ \\\\")
@@ -275,9 +277,10 @@ _FB = _fo[_fo.seed == -1].pivot_table(index="eval_field", columns="rule", values
 _FP = _fo[_fo.rule == "residual_one_step"].pivot_table(index="eval_field", columns="seed", values="ratio").loc[_tt]
 _fm = _FP.mean(axis=1); _fd = _fm - _FB.rank_announced; _fh = _st.t.ppf(0.975, 9) * _fd.std(ddof=1) / np.sqrt(10)
 chk("P3 test", f"On the ten test draws the policy reaches {f3(_fm.mean())}, against {f3(_FB.rank_announced.mean())} for ranking on announced plans and {f3(_FB.trajectory.mean())} for trajectory-informed greedy")
-chk("P3 diff", f"rule on every draw and in all 50 draw--seed pairs, by {f3(_fd.mean())} on average (95\\% $t$-interval {f3(_fd.mean()-_fh)} to {f3(_fd.mean()+_fh)})")
+_tp = _st.ttest_1samp(_fd, 0).pvalue; _wp = _st.wilcoxon(_fd).pvalue
+chk("P3 diff", f"it is above the rule on all ten, by {f3(_fd.mean())} on\naverage (95\\% $t$-interval {f3(_fd.mean()-_fh)} to {f3(_fd.mean()+_fh)}; paired $t$-test\n$p = {_tp:.1e}".replace("e-0", " \\times 10^{-").replace("10^{-4", "10^{-4}") + f"$, Wilcoxon signed-rank $p = {_wp:.3f}$)")
 assert (_fd > 0).all() and (_FP.sub(_FB.rank_announced, axis=0) > 0).values.all()
-chk("P3 seeds", f"seeds lie between {f3(_FP.mean(axis=0).min())} and {f3(_FP.mean(axis=0).max())}")
+chk("P3 seeds", f"seed means lie\nbetween {f3(_FP.mean(axis=0).min())} and {f3(_FP.mean(axis=0).max())}")
 chk("P3 gap", f"Of the {f3((_FB.trajectory - _FB.rank_announced).mean())} that separates the announced-plan rule from the rule told the true trajectories, the policy recovers {f3(_fd.mean())}")
 chk("P3 rhfull", f"remains {f3(_FB.rh_full.mean() - _fm.mean())} higher")
 _mt = {}
@@ -304,7 +307,7 @@ _fabove = int((_FP.sub(_FB.rank_announced, axis=0) > 0).values.sum())
 chk("P3 T4 diff", f"Reinforcement learning minus ranking on announced plans}} & ${_fd.mean():+.3f}$ & ${_md.mean():+.3f}$ \\\\")
 chk("P3 T4 ci", f"& {f3(_fd.mean()-_fh)}--{f3(_fd.mean()+_fh)} & {f3(_md.mean()-_mh)}--{f3(_md.mean()+_mh)} \\\\")
 chk("P3 T4 above", f"Runs above ranking on announced plans}} & {_fabove} of {_FP.size} & {_mabove} of {len(_mr)} \\\\")
-chk("P3 T3 foot", f"exceeds ranking on announced plans by {f3(_md.mean())} (95\\% $t$-interval over listing draws {f3(_md.mean()-_mh)} to {f3(_md.mean()+_mh)}) and is higher in all {_mabove} runs")
+chk("P3 T3 foot", "Its difference to ranking on announced plans is given in Table~\\ref{tab:infolearn}")
 assert _mabove == len(_mr)
 _sel = pd.read_csv(R + "results_p3_explore/residual_steps_summary.csv")
 _one = _sel[_sel.method == "5 residual, one-step target"].iloc[0]
