@@ -182,6 +182,13 @@ INFRA_CLUSTERS = 6
 # 于是"规划先产生预期、建成以后才兑现"这句话在代码里是两条曲线而不是一句话。
 # 取 4 年：轨道线路从公布建设计划到通车通常是数年量级；**情景参数**，可扫。
 INFRA_ANNOUNCE_LEAD = 4.0
+# Training-scenario option (2026-10, P3): None = the announced layer leads the commissioned
+# layer by exactly INFRA_ANNOUNCE_LEAD years (all published results). (lo, hi) = each
+# infrastructure cluster draws its own lead uniformly in [lo, hi] from a separate generator
+# (seeded by the field seed), so the other fields are unchanged. Only the observed announced
+# layer moves; the announced forecast still reads commissioned infrastructure INFRA_ANNOUNCE_LEAD
+# years ahead, as in the metro field, whose announced layer is the construction start.
+ANNOUNCE_SHIFT_RANGE = None
 
 # 建筑老化。AGE0_* 是**基期建筑年龄**的抽样分布（无数据，情景参数）。
 AGE0_MEAN = 22.0
@@ -276,11 +283,19 @@ class OpportunityField:
                                  * _logistic((self.years[None, :]
                                               - self.infra_onset[:, None]) / RAMP_YEARS),
                                  0.0, 1.0)
+        if ANNOUNCE_SHIFT_RANGE is None:
+            ann_lead = INFRA_ANNOUNCE_LEAD
+        else:
+            lo_s, hi_s = ANNOUNCE_SHIFT_RANGE
+            c_lead = np.random.default_rng(int(self.seed) + 7919).uniform(
+                lo_s, hi_s, int(self.infra_cluster.max()) + 1)
+            ann_lead = c_lead[self.infra_cluster]
+        self.ann_lead = ann_lead
         # 公布层：同一条曲线整体左移 INFRA_ANNOUNCE_LEAD 年。左移而不是另抽一条
         # 随机曲线，是因为"公布"与"通车"说的是同一件工程，两者必须同序——
         # 另抽一条会出现"先通车后公布"这种无意义的样本。
         if OPP_SHAPE == "window":
-            ipk2 = self.infra_onset + self.window * 0.75 - INFRA_ANNOUNCE_LEAD
+            ipk2 = self.infra_onset + self.window * 0.75 - ann_lead
             self.infra_plan = np.clip(LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW) * np.exp(
                 -((self.years[None, :] - ipk2[:, None])
                   / np.maximum(self.window[:, None] * 0.75, 1e-6)) ** 2), 0.0, 1.0)
@@ -288,7 +303,7 @@ class OpportunityField:
             self.infra_plan = np.clip(
                 LEVEL_LOW + (LEVEL_HIGH - LEVEL_LOW)
                 * _logistic((self.years[None, :]
-                             - (self.infra_onset[:, None] - INFRA_ANNOUNCE_LEAD))
+                             - (self.infra_onset - ann_lead)[:, None])
                             / RAMP_YEARS), 0.0, 1.0)
 
         if INFRA_MODE == "metro":
@@ -635,6 +650,8 @@ def tag():
         s += f"W{WINDOW_YEARS_LO:g}-{WINDOW_YEARS_HI:g}".replace(".", "")
     if INFRA_ANNOUNCE_LEAD != 4.0:
         s += f"L{INFRA_ANNOUNCE_LEAD:g}".replace(".", "")
+    if ANNOUNCE_SHIFT_RANGE is not None:
+        s += f"A{ANNOUNCE_SHIFT_RANGE[0]:g}-{ANNOUNCE_SHIFT_RANGE[1]:g}".replace(".", "")
     if (ONSET_LO_FRAC, ONSET_HI_FRAC, RAMP_YEARS) != (0.15, 0.60, 3.0):
         s += f"N{ONSET_LO_FRAC:g}-{ONSET_HI_FRAC:g}-{RAMP_YEARS:g}".replace(".", "")
     return s
