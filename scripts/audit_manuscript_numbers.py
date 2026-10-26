@@ -40,7 +40,7 @@ NM = {"random": "Random", "persistence": "Persistence greedy", "supervised": "Su
 T3 = pd.read_csv(TB + "main_M20.csv", index_col=0)
 for k, n in NM.items():
     r = T3.loc[k]
-    tail = f"{pm(r.ratio, r.sd)} & {r.lo:.3f}--{r.hi:.3f} & {r.l_sel:.1f} & {r.l_tim:.1f} & {int(r.n)} \\\\"
+    tail = f"{pm(r.ratio, r.sd)} & {r.l_sel:.1f} & {r.l_tim:.1f} & {int(r.n)} \\\\"
     chkre(f"T3 {k}", re.escape(n) + r" & [^&]+ & [^&]+ & " + re.escape(tail), f"{n} & ... & ... & {tail}")
 g = T3.ratio
 RH = pd.read_csv(R + "results_p1/rolling/rolling_results.csv")
@@ -150,11 +150,17 @@ for a in sorted(S.alpha.unique()):
 # Table D2 (rho sweep of the multi-step policy) removed from the paper in revision 25
 # ---- timing errors in space (results_p2/timing_space_summary.csv)
 TSp = pd.read_csv(R + "results_p2/timing_space_summary.csv")
-chk("TS I range", f"lies between ${TSp.I_err.min():.2f}$ and ${TSp.I_err.max():.2f}$")
-chk("TS p", f"($p \\ge {TSp.p_err.min():.2f}$")
+_CR = pd.read_csv(R + "results_p4/correlogram_runs.csv"); _CR = _CR[_CR.rule != "rl_seed0"]
+_c15 = _CR[_CR.band_km <= 1.5]; _c25 = _CR[_CR.band_km >= 2.0]
+_m15 = _CR[_CR.band_km == 1.5].merge(TSp.rename(columns={"I_err": "I0"}), on=["rule", "listing_seed"])
+assert np.allclose(_m15.I, _m15.I0) and len(_m15) == 30
+_sig = _c25.groupby("band_km").p.apply(lambda p: int((p < 0.05).sum()))
+chk("TS I range", f"lies between ${_c15.I.min():.2f}$ and ${_c15.I.max():.2f}$ for every rule and listing draw at\ndistance bands of 1 and 1.5\\,km ($p \\ge {np.floor(_c15.p.min()*100)/100:.2f}$")
+chk("TS p", f"positive in some runs (at most {_c25.I.max():.2f}; significant in {_sig.min()} to {_sig.max()} of 30 runs")
+assert (_c15.p >= 0.05).all()
 assert TSp.p_err.min() >= 0.05 and len(TSp) == 30
 on = TSp.groupby("rule").share_ontime.mean()
-chk("TS ontime", f"persistence greedy initiates {100*on.persistence:.0f}\\% of its units in their best year, trajectory-informed greedy {100*on.trajectory:.0f}\\%, the coordinated schedule {100*on.rh_full:.0f}\\%, and the reference schedule {100*on.reference:.0f}\\%")
+chk("TS ontime", f"persistence greedy initiates {100*on.persistence:.0f}\\% of its units in their best year, trajectory-informed greedy {100*on.trajectory:.0f}\\%, the rolling horizon with\nfull information {100*on.rh_full:.0f}\\%, and the reference schedule {100*on.reference:.0f}\\%")
 # ---- Fig 5c zoom window (results_p2/fig5_zoom_window.json)
 ZW = json.load(open(R + "results_p2/fig5_zoom_window.json"))
 zp = pd.DataFrame(ZW["persistence"]).set_index("unit"); zf = pd.DataFrame(ZW["rh_full"]).set_index("unit")
@@ -163,7 +169,7 @@ assert list(zf.loc[[454, 471], "year"]) == [11, 12] and list(zf.loc[[499, 541], 
 assert zp.loc[45, "year"] - zp.loc[45, "best"] == 14 and set(zf.loc[[238, 503], "best"]) == {17}
 chk("zoom shares", f"years 17 and 20, when they deliver {100*zp.loc[471,'share']:.0f}\\% and {100*zp.loc[454,'share']:.0f}\\%")
 chk("zoom rh", f"in years 11 and 12, at {100*zf.loc[454,'share']:.0f}\\% and {100*zf.loc[471,'share']:.0f}\\%")
-chk("zoom mean", f"{zp.share.mean():.2f} of best-year value per unit and the coordinated schedule {zf.share.mean():.2f}")
+chk("zoom mean", f"{zp.share.mean():.2f} of best-year value per unit and the rolling horizon with full\ninformation {zf.share.mean():.2f}")
 # ---- announced-information greedy == announced rolling horizon (results_p2/announced_greedy.csv)
 AGr = pd.read_csv(R + "results_p2/announced_greedy.csv"); AGr = AGr[AGr.rule == "announced_greedy"]
 RHb = RH[RH.variant == "base"]
@@ -226,8 +232,8 @@ _row("All trajectories true", _chk_all)
 for _L in (8, 12):
     _row(f"Announced, {_L}-year lead", _ld[(_ld.lead == _L) & (~_ld.pbc_true)])
 _m = lambda i, u: _wv[(_wv["info"] == i) & (_wv.use == u)].ratio.mean()
-chk("abl text pbc", f"leaves ranking almost unchanged ({f3(_bs.mean())} to {f3(_m('+ true P/B/C, announced infra','rank'))}) and raises the coordinated schedule to {f3(_m('+ true P/B/C, announced infra','rolling'))}")
-chk("abl text inf", f"raises ranking to {f3(_m('frozen P/B/C, + true infra','rank'))} and the coordinated schedule to {f3(_m('frozen P/B/C, + true infra','rolling'))}, against {f3(_m('true P/B/C and true infra','rolling'))}")
+chk("abl text pbc", f"leaves ranking almost unchanged ({f3(_bs.mean())} to {f3(_m('+ true P/B/C, announced infra','rank'))}) and raises the rolling horizon to {f3(_m('+ true P/B/C, announced infra','rolling'))}")
+chk("abl text inf", f"raises ranking to {f3(_m('frozen P/B/C, + true infra','rank'))} and the\nrolling horizon to {f3(_m('frozen P/B/C, + true infra','rolling'))}, against {f3(_m('true P/B/C and true infra','rolling'))}")
 chk("abl lead8", f"reaches {f3(_ld[(_ld.lead == 8) & (~_ld.pbc_true) & (_ld.use == 'rank')].ratio.mean())} on the same draws, against {f3(_bs.mean())}")
 _sg = lambda x: f"${x:.3f}$" if x < 0 else f"{x:.3f}"
 chk("P2F ci", f"a difference of {_sg(_d.mean())} (95\\% interval over draws {_sg(_d.mean()-_hw)} to {_sg(_d.mean()+_hw)}), with the policy above the rule in {_pairs} of 50")
@@ -260,7 +266,7 @@ for _a in sorted(_SR.index.get_level_values(0).unique()):
     _sp, _tg = (_SR.loc[(_a, k)] for k in ("纯空间排序", "时间感知贪心"))
     chk(f"synthyears {_a}", f"{_a:.2f} & {_sp.when_mae:.2f} & {_tg.when_mae:.2f} & {100*_sp.when_hit1:.0f} & {100*_tg.when_hit1:.0f} \\\\")
 _spm = _SR.xs("纯空间排序", level=1).when_mae; _tgm = _SR.xs("时间感知贪心", level=1).when_mae
-chk("synthyears text", f"spatial ranking initiates a parcel {_spm.mean():.1f} years from its optimal year on average, against {_tgm.min():.2f} to {_tgm.max():.1f} years")
+chk("synthyears text", f"ranking initiates a parcel {_spm.min():.1f}--{_spm.max():.1f} years away from its optimal year on\naverage")
 _U = lambda r: f3(_b.loc[_tf, r].mean())
 chk("infolearn cur", f"Current conditions & {f3(g.persistence)} & --- & {_U('persistence')} & --- \\\\")
 chk("infolearn ann", f"Announced plans & {f3(g.rh_announced)} & ${f3(g.value_based)}^{{a}}$ & {f3(_ann.mean())} & ${f3(_p.loc[_tf].values.mean())}^{{b}}$ \\\\")
@@ -281,32 +287,34 @@ _tp = _st.ttest_1samp(_fd, 0).pvalue; _wp = _st.wilcoxon(_fd).pvalue
 chk("P3 diff", f"it is above the rule on all ten, by {f3(_fd.mean())} on\naverage (95\\% $t$-interval {f3(_fd.mean()-_fh)} to {f3(_fd.mean()+_fh)}; paired $t$-test\n$p = {_tp:.1e}".replace("e-0", " \\times 10^{-").replace("10^{-4", "10^{-4}") + f"$, Wilcoxon signed-rank $p = {_wp:.3f}$)")
 assert (_fd > 0).all() and (_FP.sub(_FB.rank_announced, axis=0) > 0).values.all()
 chk("P3 seeds", f"seed means lie\nbetween {f3(_FP.mean(axis=0).min())} and {f3(_FP.mean(axis=0).max())}")
-chk("P3 gap", f"Of the {f3((_FB.trajectory - _FB.rank_announced).mean())} that separates the announced-plan rule from the rule told the true trajectories, the policy recovers {f3(_fd.mean())}")
+chk("P3 gap", f"Of the {f3((_FB.trajectory - _FB.rank_announced).mean())} that separates\nranking on announced plans from the rule told the true trajectories, the policy recovers {f3(_fd.mean())}")
 chk("P3 rhfull", f"with full information reaches {f3(_FB.rh_full.mean())} on the test draws and so remains\n{f3(_FB.rh_full.mean() - _fm.mean())} higher")
 _mt = {}
 for _k in ("main", "metro"):
     _d = pd.concat([pd.read_csv(f) for f in sorted(_g.glob(R + f"results_p3_metro/{_k}_s*.csv"))])
     _mt[_k] = (_d[_d.seed == -1].pivot_table(index="listing_seed", columns="rule", values="ratio"), _d[_d.rule == "residual_one_step"])
 _mb, _mr = _mt["main"]
-chk("P3 T3 row", f"\\textbf{{Reinforcement learning}}$^{{\\dagger}}$ & announced plans; correction learned in simulation & no & $\\mathbf{{{f3(_mr.ratio.mean())} \\pm {f3(_mr.ratio.std(ddof=1))}}}$ & {f3(_mr.ratio.min())}--{f3(_mr.ratio.max())} & {_mr.loss_selection.mean():.1f} & {_mr.loss_timing.mean():.1f} & {len(_mr)}")
+chk("P3 T3 row", f"\\textbf{{Reinforcement learning}}$^{{\\dagger}}$ & announced plans; correction learned in simulation & no & $\\mathbf{{{f3(_mr.ratio.mean())} \\pm {f3(_mr.ratio.std(ddof=1))}}}$ & {_mr.loss_selection.mean():.1f} & {_mr.loss_timing.mean():.1f} & {len(_mr)}")
 chk("P3 main text", f"On the main field it reaches {f3(_mr.ratio.mean())} over 30 runs, against {f3(_mb.rank_announced.mean())}")
 _xb, _xr = _mt["metro"]
 chk("P3 metro text", f"ranking on announced plans reaches {f3(_xb.rank_announced.mean())}, against {f3(_xb.trajectory.mean())} for trajectory-informed greedy. There the policy, trained on the scenario fields, reaches {f3(_xr.ratio.mean())} and falls {f3(_xb.rank_announced.mean() - _xr.ratio.mean())} below the rule")
 chk("P3 S2 row", f"20 & {f3(_xb.persistence.mean())} & {f3(_xb.rank_announced.mean())} & ${f3(_xr.ratio.mean())} \\pm {f3(_xr.ratio.std(ddof=1))}$ & {f3(_xb.trajectory.mean())} & {f3(_xb.rh_full.mean())}")
 _sh = pd.concat([pd.read_csv(f) for f in sorted(_g.glob(R + "results_p3_shift/shift_s*.csv"))])
 chk("P3 shift", f"it reaches {f3(_sh[_sh.set == 'metro'].ratio.mean())}, and {f3(_sh[_sh.set == 'test'].ratio.mean())} on the")
-chk("P3 T4 ann", f"Ranking on announced plans & announced plans & {f3(_FB.rank_announced.mean())} & {f3(_mb.rank_announced.mean())} \\\\")
-chk("P3 T4 rl", f"\\textbf{{Reinforcement learning}}$^{{\\dagger}}$ & announced plans; learned correction & \\textbf{{{f3(_fm.mean())}}} & \\textbf{{{f3(_mr.ratio.mean())}}} \\\\")
-chk("P3 T4 pers", f"Persistence greedy & current conditions & {f3(_FB.persistence.mean())} & {f3(_mb.persistence.mean())} \\\\")
-chk("P3 T4 traj", f"Trajectory-informed greedy & true trajectories & {f3(_FB.trajectory.mean())} & {f3(_mb.trajectory.mean())} \\\\")
-chk("P3 T4 rh", f"Rolling horizon, full & true trajectories; re-planning & {f3(_FB.rh_full.mean())} & {f3(_mb.rh_full.mean())} \\\\")
+chk("P3 T4 ann", f"Ranking on announced plans & announced plans & {f3(_FB.rank_announced.mean())} & {f3(_mb.rank_announced.mean())} & {f3(_xb.rank_announced.mean())} \\\\")
+chk("P3 T4 rl", f"\\textbf{{Reinforcement learning}}$^{{\\dagger}}$ & announced plans + correction & \\textbf{{{f3(_fm.mean())}}} & \\textbf{{{f3(_mr.ratio.mean())}}} & \\textbf{{{f3(_xr.ratio.mean())}}} \\\\")
+chk("P3 T4 pers", f"Persistence greedy & current conditions & {f3(_FB.persistence.mean())} & {f3(_mb.persistence.mean())} & {f3(_xb.persistence.mean())} \\\\")
+chk("P3 T4 traj", f"Trajectory-informed greedy & true trajectories & {f3(_FB.trajectory.mean())} & {f3(_mb.trajectory.mean())} & {f3(_xb.trajectory.mean())} \\\\")
+chk("P3 T4 rh", f"Rolling horizon, full & true trajectories + re-planning & {f3(_FB.rh_full.mean())} & {f3(_mb.rh_full.mean())} & {f3(_xb.rh_full.mean())} \\\\")
 # Table 4 summary rows and Table 3 footnote: RL minus ranking on announced plans
 _md = _mr.groupby("listing_seed").ratio.mean() - _mb.rank_announced; _mh = _st.t.ppf(0.975, len(_md) - 1) * _md.std(ddof=1) / np.sqrt(len(_md))
 _mabove = int((_mr.ratio.values > _mb.rank_announced.reindex(_mr.listing_seed).values).sum())
 _fabove = int((_FP.sub(_FB.rank_announced, axis=0) > 0).values.sum())
-chk("P3 T4 diff", f"Reinforcement learning minus ranking on announced plans}} & ${_fd.mean():+.3f}$ & ${_md.mean():+.3f}$ \\\\")
-chk("P3 T4 ci", f"& {f3(_fd.mean()-_fh)}--{f3(_fd.mean()+_fh)} & {f3(_md.mean()-_mh)}--{f3(_md.mean()+_mh)} \\\\")
-chk("P3 T4 above", f"Runs above ranking on announced plans}} & {_fabove} of {_FP.size} & {_mabove} of {len(_mr)} \\\\")
+_xd = _xr.groupby("listing_seed").ratio.mean() - _xb.rank_announced; _xh = _st.t.ppf(0.975, len(_xd) - 1) * _xd.std(ddof=1) / np.sqrt(len(_xd))
+_xabove = int((_xr.ratio.values > _xb.rank_announced.reindex(_xr.listing_seed).values).sum())
+chk("P3 T4 diff", f"Reinforcement learning minus ranking on announced plans}} & ${_fd.mean():+.3f}$ & ${_md.mean():+.3f}$ & ${_xd.mean():+.3f}$ \\\\")
+chk("P3 T4 ci", f"& {f3(_fd.mean()-_fh)}--{f3(_fd.mean()+_fh)} & {f3(_md.mean()-_mh)}--{f3(_md.mean()+_mh)} & ${f3(_xd.mean()-_xh)}$--${f3(_xd.mean()+_xh)}$ \\\\")
+chk("P3 T4 above", f"Runs above ranking on announced plans}} & {_fabove} of {_FP.size} & {_mabove} of {len(_mr)} & {_xabove} of {len(_xr)} \\\\")
 chk("P3 T3 foot", "Its difference to ranking on announced plans is given in Table~\\ref{tab:infolearn}")
 assert _mabove == len(_mr)
 _sel = pd.read_csv(R + "results_p3_explore/residual_steps_summary.csv")
@@ -319,6 +327,25 @@ chk("P3 S2 All", f"All & {f3(_x0.persistence)} & {f3(_x0.rh_announced)} & --- & 
 for _i, _r in _sel.iterrows():
     _lo, _hi = [float(x) for x in _r.ci95.replace(" to ", " ").split()]
     chk(f"P3 S7 row {_i}", f"& {int(_r.seeds)} & {f3(_r['mean'])} & ${_r.diff_vs_rule:+.3f}$ & ${_lo:+.3f}$ to ${_hi:+.3f}$ & {int(_r.fields_above)} \\\\")
+
+# ---- revision 30 robustness (results_p4, scripts/p4_robustness.py)
+_Q = pd.read_csv(R + "results_p4/quota_summary.csv"); _Gm = pd.read_csv(R + "results_p4/gamma_summary.csv")
+_QR = pd.concat([pd.read_csv(R + "results_p4/quota_runs.csv"), pd.read_csv(R + "results_p4/gamma_runs.csv")])
+_qp = _QR.pivot_table(index=["quota", "gamma", "listing_seed"], columns="rule", values="ratio")
+assert ((_qp.trajectory - _qp.persistence) > 0).all() and ((_qp.rh_full - _qp.trajectory) > 0).all()
+_shr = pd.concat([_Q.ann_share_of_info, _Gm.ann_share_of_info])
+chk("R30 quota", f"($\\rho$ from {_Q.rho.max():.1f} to {_Q.rho.min():.1f})")
+chk("R30 share", f"recovers {100*_shr.min():.0f} to {100*_shr.max():.0f}\\% of the\nvalue of information")
+_MS = pd.read_csv(R + "results_p4/metro_start_now.csv")
+_h = _MS[(_MS.r_zero == 1500) & (_MS.premium == "held after opening")].iloc[0]
+_r1 = _MS[(_MS.r_zero == 1000) & (_MS.premium == "declines after opening")].iloc[0]
+_r2 = _MS[(_MS.r_zero == 2000) & (_MS.premium == "declines after opening")].iloc[0]
+chk("R30 held", f"the shares near and far from stations are the same ({100*_h.catch_near:.0f}\\% and {100*_h.catch_far:.0f}\\%,\n$p = {_h.catch_p:.2f}$)")
+chk("R30 radius", f"the difference remains ({_r1.catch_diff:.2f} and {_r2.catch_diff:.2f}; Supplementary")
+_OV = pd.read_csv(R + "results_p4/overlap_runs.csv")
+_OV = _OV[~_OV.a.isin(["rl_seed0", "reference"]) & ~_OV.b.isin(["rl_seed0", "reference"])]
+_ovm = _OV.groupby(["a", "b"])[["common", "same_year"]].mean()
+chk("R30 overlap", f"share {_ovm.common.min():.0f} to {_ovm.common.max():.0f} of their 75\nunits on average over the listing draws, but initiate only {_ovm.same_year.min():.0f} to {_ovm.same_year.max():.0f} of")
 
 bad = [c for c in checks if not c[2]]
 print(f"{len(checks)} checks, {len(bad)} not found")
