@@ -1,0 +1,4 @@
+grp,learned,rank_announced,trajectory,rh_full,diff,diff_min,diff_max,runs_positive,runs
+early,0.9529,0.9505,0.9549,0.9854,0.0024,-0.0161,0.0164,32,50
+metro,0.9355,0.9408,0.9486,0.9792,-0.0053,-0.01,-0.0001,0,30
+test,0.8774,0.8706,0.9004,0.9629,0.0068,-0.0229,0.0253,40,50

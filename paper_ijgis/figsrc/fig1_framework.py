@@ -1,167 +1,163 @@
+"""Figure 1 — from spatial prioritization to spatio-temporal scheduling.
+
+(a) change of decision object; (b) where each time-varying field enters the renewal
+pipeline and how the expected-value table feeds the scheduling rules.
+Drawn at the 34 pc text width (5.65 in), so font sizes are final printed sizes (>= 6.5 pt).
+"""
+import os as _os
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Rectangle
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Polygon, Rectangle
 
-META_GREY = "#888888"
+_ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..")) + "/"
+OUT = _ROOT + "paper_ijgis/figures/"
 
+mpl.rcParams.update({
+    "font.family": "sans-serif", "font.size": 7, "pdf.fonttype": 42, "ps.fonttype": 42,
+    "savefig.dpi": 300, "savefig.bbox": "tight", "mathtext.fontset": "dejavusans",
+})
+GREEN, DGREEN, CREAM, ORANGE, INK, GREY = "#3C5A7D", "#24405F", "#F2F4F7", "#D9822B", "#222222", "#5E5E5E"
+F_PANEL, F_HEAD, F_KEY, F_SUB = 8.0, 7.5, 7.0, 6.5      # panel titles, box headers, key labels, secondary labels
 
-def apply_figure_style(*, frame="open", font=None, sizes=(8, 7, 6), grid=False):
-    import matplotlib as mpl
-    try:
-        import os, sys, glob, matplotlib.font_manager as fm
-        fdir = os.path.join(os.environ.get("CONDA_PREFIX") or sys.prefix, "fonts")
-        if os.path.isdir(fdir):
-            known = {f.fname for f in fm.fontManager.ttflist}
-            for f in glob.glob(os.path.join(fdir, "*.ttf")):
-                if f not in known:
-                    fm.fontManager.addfont(f)
-    except Exception:
-        pass
-    base, secondary, tick = sizes
-    boxed = (frame == "boxed")
-    rc = {
-        "font.family": "sans-serif",
-        "font.size": base,
-        "axes.labelsize": base,
-        "axes.titlesize": base,
-        "legend.fontsize": secondary,
-        "xtick.labelsize": tick,
-        "ytick.labelsize": tick,
-        "axes.linewidth": 0.6,
-        "xtick.direction": "out", "ytick.direction": "out",
-        "xtick.major.size": 3, "ytick.major.size": 3,
-        "xtick.major.width": 0.6, "ytick.major.width": 0.6,
-        "axes.spines.top": boxed, "axes.spines.right": boxed,
-        "axes.spines.left": frame != "none", "axes.spines.bottom": frame != "none",
-        "axes.grid": bool(grid),
-        "legend.frameon": False,
-        "figure.dpi": 200,
-        "savefig.dpi": 300,
-        "savefig.bbox": "tight",
-        "axes.titleweight": "normal",
-        "axes.titlelocation": "left",
-        "axes.labelweight": "normal",
-        "lines.linewidth": 1.2,
-        "patch.linewidth": 0.6,
-        "pdf.fonttype": 42, "ps.fonttype": 42,
-    }
-    if font:
-        rc["font.sans-serif"] = [font, "DejaVu Sans"]
-    mpl.rcParams.update(rc)
+fig = plt.figure(figsize=(5.65, 4.42))
+ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, 100); ax.set_ylim(0, 78); ax.axis("off")
 
 
-def panel_letter(ax, letter, dx=-0.18, dy=1.02, case="lower", fontsize=None):
-    import matplotlib.pyplot as plt
-    if fontsize is None:
-        fontsize = plt.rcParams.get("font.size", 8) + 1
-    s = letter.lower() if case == "lower" else letter.upper()
-    ax.text(dx, dy, s, transform=ax.transAxes,
-            fontweight="bold", fontsize=fontsize, va="bottom", ha="left")
+def rbox(x, y, w, h, fc="white", ec=GREEN, lw=1.0, r=1.2, ls="-", z=2):
+    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle=f"round,pad=0,rounding_size={r}",
+                                fc=fc, ec=ec, lw=lw, ls=ls, zorder=z))
 
 
-apply_figure_style(sizes=(8, 7, 6))
+def header_box(x, y, w, h, title, bullets, hh=5.2, tag=None, tag_c=GREEN, fs=F_KEY, step=3.3, sub_step=2.8):
+    rbox(x, y, w, h, fc="white", ec=GREEN, lw=1.1)
+    ax.add_patch(FancyBboxPatch((x, y + h - hh), w, hh, boxstyle="round,pad=0,rounding_size=1.2",
+                                fc=GREEN, ec=GREEN, lw=1.1, zorder=3))
+    ax.add_patch(Rectangle((x, y + h - hh), w, hh / 2, fc=GREEN, ec="none", zorder=3))
+    ax.text(x + w / 2, y + h - hh / 2, title, ha="center", va="center", color="white",
+            fontsize=F_HEAD, fontweight="bold", zorder=4)
+    yy = y + h - hh - 2.8
+    for b in bullets:
+        if b.startswith("  "):
+            ax.text(x + 4.4, yy + 0.6, b.strip(), ha="left", va="center", fontsize=F_SUB, color=GREY, zorder=4)
+            yy -= sub_step
+        else:
+            ax.text(x + 1.8, yy, "–  " + b, ha="left", va="center", fontsize=fs, color=INK, zorder=4)
+            yy -= step
+    if tag:
+        ax.text(x + w / 2, y + 2.6, tag, ha="center", va="center", fontsize=F_HEAD, fontweight="bold",
+                color=tag_c, zorder=4)
 
-plt.close("all")
+
+def chevron(x, y, w, h, txt, first=False, fs=F_KEY):
+    d = 1.8
+    pts = [(x, y), (x + w - d, y), (x + w, y + h / 2), (x + w - d, y + h), (x, y + h)]
+    if not first:
+        pts.append((x + d, y + h / 2))
+    ax.add_patch(Polygon(pts, closed=True, fc=GREEN, ec="none", zorder=2))
+    ax.text(x + w / 2 + (0 if first else d / 2), y + h / 2, txt, ha="center", va="center",
+            color="white", fontsize=fs, zorder=3, linespacing=1.05)
 
 
-def box(ax, x, y, w, h, txt, fc="#f7f7f7", ec="#555555", fs=7, bold=False, ha="center", lw=0.8, color="black"):
-    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.4,rounding_size=1.2", fc=fc, ec=ec, lw=lw))
-    ax.text(x + (w / 2 if ha == "center" else 1.2), y + h / 2, txt, ha=ha, va="center", fontsize=fs,
-            fontweight="bold" if bold else "normal", color=color, linespacing=1.3)
+def arrow(x0, y0, x1, y1, c=INK, lw=0.9):
+    ax.add_patch(FancyArrowPatch((x0, y0), (x1, y1), arrowstyle="-|>", mutation_scale=8, color=c,
+                                 lw=lw, zorder=5, shrinkA=0, shrinkB=0))
 
 
-def arrow(ax, x0, y0, x1, y1, c="#444444", lw=1.0, style="-|>"):
-    ax.add_patch(FancyArrowPatch((x0, y0), (x1, y1), arrowstyle=style, mutation_scale=9, color=c, lw=lw))
+# ------------------------------------------------------------------ panel a
+rbox(1.5, 49.0, 97, 25.0, fc=CREAM, ec="none", r=1.8, z=0)
+ax.text(0.5, 76.2, "a", fontsize=9, fontweight="bold", va="center")
+ax.text(50, 76.2, "Change of decision object", fontsize=F_PANEL, fontweight="bold", ha="center", va="center")
+header_box(3.0, 51.0, 27, 21.0, "Spatial prioritization",
+           ["decision: which units", "one planning moment", "output: ranked list"], tag="WHERE")
+arrow(31.2, 61.5, 35.3, 61.5, lw=1.2)
+header_box(36.5, 51.0, 35.5, 21.0, "Spatio-temporal scheduling",
+           ["decision: unit and year $y_i$", "annual capacity $K$ couples years", "output: annual schedule"],
+           tag="WHERE + WHEN", tag_c=ORANGE)
+# capacity inset: K = 3 slots per year; years 1-3 full, year 4 free; u takes the last year-2 slot, so v waits
+FREE_FC, FREE_EC = "#EEF1F4", "#A7AFB8"
+cw, chh, gp, vg = 4.2, 2.7, 2.0, 0.4
+ncol = 4; gw = ncol * cw + (ncol - 1) * gp
+gx = 73.5 + (24.5 - gw) / 2; gy = 59.9
+taken = {(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (2, 0), (2, 1)}
+def cell(c, r):
+    return gx + c * (cw + gp), gy + r * (chh + vg)
+for c in range(ncol):
+    for r in range(3):
+        x, y = cell(c, r)
+        if (c, r) in ((1, 2), (2, 2)): fc, ec = ORANGE, ORANGE
+        elif (c, r) in taken:           fc, ec = GREEN, GREEN
+        else:                           fc, ec = FREE_FC, FREE_EC
+        ax.add_patch(Rectangle((x, y), cw, chh, fc=fc, ec=ec, lw=0.8, zorder=3))
+    ax.text(cell(c, 0)[0] + cw / 2, gy - 1.5, f"Year {c + 1}", ha="center", va="center", fontsize=F_SUB, color=INK)
+ux, uy = cell(1, 2); vx, vy = cell(2, 2)
+for (x, y, lab) in ((ux, uy, "$u$"), (vx, vy, "$v$")):
+    ax.text(x + cw / 2, y + chh / 2, lab, ha="center", va="center", fontsize=F_KEY, color="white",
+            fontweight="bold", zorder=4)
+ax.add_patch(FancyArrowPatch((ux + cw / 2, uy + chh + 0.15), (vx + cw / 2, vy + chh + 0.15),
+                             arrowstyle="-|>", mutation_scale=11, color=ORANGE, lw=2.1,
+                             connectionstyle="arc3,rad=-0.6", zorder=5, shrinkA=0, shrinkB=0))
+gmid = gx + gw / 2
+ax.text((ux + vx + cw) / 2, 72.7, "capacity forces delay", ha="center", va="center", fontsize=F_SUB,
+        color=ORANGE, fontweight="bold")
+# legend directly under the year labels
+ls_ = 1.6; lx = gmid - 8.6; ly = 56.3
+ax.add_patch(Rectangle((lx, ly - ls_ / 2), ls_, ls_, fc=GREEN, ec=GREEN, lw=0.8, zorder=3))
+ax.text(lx + ls_ + 0.7, ly, "taken", ha="left", va="center", fontsize=F_SUB, color=GREY)
+ax.add_patch(Rectangle((lx + 9.6, ly - ls_ / 2), ls_, ls_, fc=FREE_FC, ec=FREE_EC, lw=0.8, zorder=3))
+ax.text(lx + 9.6 + ls_ + 0.7, ly, "free", ha="left", va="center", fontsize=F_SUB, color=GREY)
+# short text block
+ax.text(gmid, 54.1, "$K = 3$ slots / year", ha="center", va="center", fontsize=F_KEY, color=INK, fontweight="bold")
+ax.text(gmid, 52.1, "$u$ fills year 2", ha="center", va="center", fontsize=F_SUB, color=INK)
+ax.text(gmid, 50.3, "\u2192 $v$ waits until year 3", ha="center", va="center", fontsize=F_SUB, color=INK)
 
+# ------------------------------------------------------------------ panel b
+ax.text(0.5, 46.2, "b", fontsize=9, fontweight="bold", va="center")
+ax.text(50, 46.2, "Where planning and implementation information enters", fontsize=F_PANEL, fontweight="bold",
+        ha="center", va="center")
+stages = [("Listing", "gate $a_{i,t}$"), ("Conformity\nreview", "factor $a_{i,y}$"),
+          ("Approval\nwindow", "hazard $h_{i,j}$"), ("Construction", "$b_i$ years"), ("Delivery", "value at $t_c$")]
+x0, cwid, cy, chg = 1.5, 14.6, 35.6, 6.4
+cx = []
+for k, (name, sub) in enumerate(stages):
+    x = x0 + k * cwid; cx.append(x + cwid / 2 + (0 if k == 0 else 0.9))
+    chevron(x, cy, cwid, chg, name, first=(k == 0))
+    ax.text(cx[k], cy - 2.3, sub, ha="center", va="center", fontsize=F_SUB, color=GREY)
+chevron(76.0, cy, 22.5, chg, "Scheduling")
 
-fig = plt.figure(figsize=(6.9, 5.0))
-ax = fig.add_axes([0, 0, 1, 1])
-ax.set_xlim(0, 100)
-ax.set_ylim(0, 72)
-ax.axis("off")
+fy, fh = 21.5, 8.2
+def field(xa, xb, title, sub):
+    rbox(xa, fy, xb - xa, fh, fc=CREAM, ec=GREEN, lw=1.0, r=1.0, z=3)
+    ax.text((xa + xb) / 2, fy + fh * 0.70, title, ha="center", va="center", fontsize=F_KEY, fontweight="bold",
+            color=DGREEN, zorder=4)
+    ax.text((xa + xb) / 2, fy + fh * 0.30, sub, ha="center", va="center", fontsize=F_SUB, color=INK, zorder=4,
+            linespacing=1.05)
+pad = 0.8
+field(x0 + pad, x0 + 2 * cwid - pad, "Planning support $P_{i,t}$", "admission probability")
+field(x0 + 2 * cwid + pad, x0 + 3 * cwid - pad, "$B_{i,t}$, $C_{i,t}$", "obsolescence,\nreadiness")
+field(x0 + 4 * cwid + pad, x0 + 5 * cwid - pad, "$I_{i,t}$", "infrastructure\nat $t_c$")
+for k in (0, 1, 2, 4):
+    arrow(cx[k], fy + fh, cx[k], cy - 3.9, c=DGREEN, lw=1.0)
 
-for y, t in [(69, "a  The decision"), (44.5, "b  Planning information"), (15.5, "c  Model")]:
-    ax.text(1, y, t, fontsize=8, fontweight="bold", va="center")
+# expected value table (key element)
+ex0, ex1 = x0 + pad, x0 + 5 * cwid - pad
+rbox(ex0, 3.5, ex1 - ex0, 9.6, fc="white", ec=ORANGE, lw=1.5, r=1.0, z=3)
+ax.text((ex0 + ex1) / 2, 10.0, "Expected value $\\mathrm{EV}_{i,y}$ of initiating unit $i$ in year $y$",
+        ha="center", va="center", fontsize=F_HEAD, fontweight="bold", color=ORANGE, zorder=4)
+ax.text((ex0 + ex1) / 2, 6.2, "the rules differ in how they forecast this table",
+        ha="center", va="center", fontsize=F_SUB, color=INK, zorder=4)
+mid_bc = x0 + 2.5 * cwid
+arrow(mid_bc, fy, mid_bc, 13.1, c=INK, lw=1.0)
 
-box(ax, 2, 50, 27, 15, "", fc="white")
-ax.text(15.5, 62.5, "Static spatial prioritization", ha="center", fontsize=7.5, fontweight="bold")
-ax.text(15.5, 59.3, "Which units should be renewed?", ha="center", fontsize=6.5, style="italic")
-for i, (xx, yy) in enumerate([(5, 54), (9.8, 56.5), (14.6, 53.5), (19.4, 56), (24.2, 54)]):
-    ax.add_patch(Rectangle((xx, yy), 3.2, 2.4, fc="#E69F00", ec="#444444", lw=0.5))
-    ax.text(xx + 1.6, yy + 1.2, str(i + 1), ha="center", va="center", fontsize=6)
-ax.text(15.5, 51.3, "units ranked once", ha="center", fontsize=6, color="#555555")
+# scheduling rules and output
+header_box(76.5, 10.8, 22.0, 23.0, "Rules under $K$",
+           ["greedy ranking", "rolling horizon", "  current, announced,", "  or full forecast", "learned policy"],
+           hh=4.8, step=3.5)
+ax.plot([ex1, 74.5, 74.5], [8.3, 8.3, 24.0], color=INK, lw=1.0, zorder=4, solid_capstyle="butt")
+arrow(74.5, 24.0, 76.5, 24.0, c=INK, lw=1.0)
+arrow(87.5, 10.8, 87.5, 8.8, c=INK, lw=1.0)
+rbox(76.5, 3.5, 22.0, 5.3, fc=GREEN, ec=GREEN, lw=1.0, r=1.0, z=3)
+ax.text(87.5, 6.15, "Annual schedule", ha="center", va="center", fontsize=F_HEAD, color="white",
+        fontweight="bold", zorder=4)
 
-arrow(ax, 30, 57.5, 41, 57.5, lw=1.4)
-ax.text(35.5, 56.4, "decision object:\nunit → (unit, year)", ha="center", va="top", fontsize=5.5)
-
-box(ax, 42, 50, 56, 15, "", fc="white")
-ax.text(70, 63.2, "Spatio-temporal scheduling", ha="center", fontsize=7.5, fontweight="bold")
-ax.text(70, 60.3, "Which units use this year's capacity, and which wait?", ha="center", fontsize=6.5, style="italic")
-
-yrs_x = [47, 58.5, 70, 81.5, 93]
-ax.plot([44, 97], [52.2, 52.2], color="#888888", lw=0.8)
-for k, xx in enumerate(yrs_x):
-    ax.plot([xx, xx], [51.7, 52.7], color="#888888", lw=0.8)
-    ax.text(xx, 50.6, f"year {k + 1}" if k < 4 else "…", ha="center", fontsize=5.5, color="#555555")
-    ax.add_patch(Rectangle((xx - 4.5, 53.3), 9, 4.4, fc="none", ec="#0072B2", lw=0.7, ls="--"))
-ax.text(97, 58.3, "dashed box: capacity of K units per year", ha="right", fontsize=5.5, color="#0072B2")
-
-for dx in [-3, 0, 3]:
-    ax.add_patch(Rectangle((47 + dx - 1.1, 54.3), 2.2, 2.2, fc="#0072B2", ec="none"))
-for tx in [58.5, 70]:
-    ax.add_patch(Rectangle((tx - 1.1, 54.3), 2.2, 2.2, fc="#9ecae1", ec="none"))
-
-arrow(ax, 50.5, 55.4, 57.2, 55.4, c="#9ecae1", lw=0.9)
-arrow(ax, 61.8, 55.4, 68.7, 55.4, c="#9ecae1", lw=0.9)
-
-ax.text(47, 53.1, "ACT NOW", ha="center", va="top", fontsize=5.5, color="#0072B2", fontweight="bold")
-ax.text(64.2, 53.1, "WAIT", ha="center", va="top", fontsize=5.5, color="#3182bd", fontweight="bold")
-
-# Fix label positions
-for t in ax.texts:
-    s = t.get_text()
-    if s == "ACT NOW":
-        t.set_position((47, 58.3))
-        t.set_va("bottom")
-    if s == "WAIT":
-        t.set_position((58.5, 58.3))
-        t.set_va("bottom")
-
-facs = [
-    ("Statutory planning", "can the unit\nbe proposed?"),
-    ("Infrastructure", "is completion\nworth more later?"),
-    ("Building obsolescence", "will the plan\nbe approved?"),
-    ("Implementation\nreadiness", "will the plan\nbe approved?"),
-]
-for i, (f, q) in enumerate(facs):
-    x = 2 + i * 16.5
-    ax.add_patch(FancyBboxPatch((x, 32), 15, 9, boxstyle="round,pad=0.4,rounding_size=1.2",
-                                fc="#f4f6f8", ec="#555555", lw=0.8))
-    ax.text(x + 7.5, 39.3, f, ha="center", va="top", fontsize=6, fontweight="bold", linespacing=1.1)
-    ax.text(x + 7.5, 34.8 if "\n" not in f else 34.3, q, ha="center", va="center",
-            fontsize=6, style="italic", linespacing=1.15)
-    arrow(ax, x + 7.5, 31.3, 52, 27.8, c="#888888", lw=0.7)
-
-box(ax, 40, 22.5, 24, 5, "time-varying renewal opportunity", fc="#e8f1f8", ec="#0072B2", fs=7)
-arrow(ax, 52, 22, 52, 19.8, lw=1.0)
-
-box(ax, 70, 24, 28, 17, "", fc="white", ec="#0072B2")
-ax.text(84, 38.6, "When does timing matter?", ha="center", fontsize=7, fontweight="bold", color="#0072B2")
-ax.text(84, 31.2,
-        "units differ in how opportunity changes\n+ annual capacity binds\n↓\nwaiting has an opportunity cost\n↓\nthe implementation year becomes\na decision variable",
-        ha="center", va="center", fontsize=6, linespacing=1.25)
-
-box(ax, 2, 6, 20, 7, "Spatio-temporal\nscheduling model", fc="#f4f6f8", fs=7)
-box(ax, 28, 10.5, 18, 5, "myopic temporal rule", fc="#dbe9f6", ec="#0072B2", fs=6.5)
-box(ax, 28, 3.5, 18, 5, "value-based policy", fc="#e7f4fb", ec="#56B4E9", fs=6.5)
-box(ax, 53, 6, 18, 7, "annual renewal\nschedule", fc="#f4f6f8", fs=7)
-box(ax, 78, 6, 20, 7, "compared with the\nfull-information\nreference schedule", fc="white", fs=6.5)
-
-arrow(ax, 22.8, 9.5, 27.2, 13)
-arrow(ax, 22.8, 9.5, 27.2, 6)
-arrow(ax, 46.8, 13, 52.2, 10.3)
-arrow(ax, 46.8, 6, 52.2, 8.7)
-arrow(ax, 71.8, 9.5, 77.2, 9.5)
-
-fig.savefig("fig1_framework.png", dpi=300)
-fig.savefig("fig1_framework.pdf")
+fig.savefig(OUT + "fig1_framework.pdf")
+fig.savefig(OUT + "fig1_framework.png", dpi=300)

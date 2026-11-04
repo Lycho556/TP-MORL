@@ -1,0 +1,88 @@
+\section{Spatial constraints, spillovers, and the choice-set benchmark}
+\label{sec:spatialext}
+\emph{Subdistricts.} Each candidate unit was assigned to one of the six
+subdistricts of Guangming by the position of its centroid in the
+boundaries of OpenStreetMap (administrative level 8, relations
+9692940--9692945, map data: OpenStreetMap contributors, ODbL). The 41
+centroids that fall just outside the polygons, where the OpenStreetMap
+boundary and the district raster differ, were assigned to the nearest
+subdistrict. Units and balanced quotas (largest-remainder shares of the
+75 slots): Fenghuang 90 (quota 9), Gongming 109 (quota 11), Guangming 121 (quota 13), Matian 145 (quota 15), Xinhu 159 (quota 17), Yutang 93 (quota 10). The reference schedule and every
+rolling-horizon year were solved as integer programs with HiGHS
+(scipy.optimize.milp, relative gap 0); greedy rules rank the listed units
+and skip a unit whose subdistrict limit is reached.
+
+\emph{Spillover.} Adjacency is a shared cell edge on the 100\,m grid
+between two candidate units (1{,}038 pairs; 673 units have at least one
+neighbour). Two adjacent units that are both initiated, in years at most
+$\Delta = 2$ apart, add $\beta\,\min(\mathrm{EV}_{i,y_i}, \mathrm{EV}_{j,y_j})$ to the objective.
+The best-found schedule starts from the additive reference schedule and
+applies 80{,}000 local-search moves (move a unit to a year with a free
+slot, swap the years of two units, or replace a selected unit by an
+unselected neighbour or candidate), accepting improvements only. The
+spillover-aware greedy rules add to each unit's score the bonus it would
+earn with neighbours already initiated within $\Delta$ years.
+
+\emph{Choice-set benchmark.} Listing and approval draws share one random
+stream in the simulator, so the pools a rule faces depend on its earlier
+decisions. The choice-set-matched benchmark is therefore the
+full-information rolling horizon run on the same listing draws and the
+same prescreen as the practical rules.
+
+
+\begin{table}[H]
+\centering
+\caption{Subdistrict limits: ratio to the reference schedule under the same limits, mean $\pm$ standard deviation over six listing draws, $M = 20$. The reference schedule under the per-year cap and the balanced quotas is 0.9953 and 0.9937 of the unconstrained one.}
+\label{tab:E1}
+\footnotesize
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Rule & None & Per-year cap & Balanced quotas \\
+\midrule
+Persistence greedy & $0.770 \pm 0.007$ & $0.799 \pm 0.010$ & $0.757 \pm 0.007$ \\
+Rolling horizon, current & $0.770 \pm 0.007$ & $0.798 \pm 0.010$ & $0.756 \pm 0.007$ \\
+Ranking on announced plans & $0.861 \pm 0.005$ & $0.862 \pm 0.008$ & $0.846 \pm 0.004$ \\
+Rolling horizon, announced & $0.861 \pm 0.005$ & $0.862 \pm 0.008$ & $0.849 \pm 0.005$ \\
+Trajectory-informed greedy & $0.901 \pm 0.009$ & $0.907 \pm 0.007$ & $0.889 \pm 0.009$ \\
+Rolling horizon, full & $0.968 \pm 0.001$ & $0.960 \pm 0.001$ & $0.956 \pm 0.002$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Neighbour spillover: ratio to the best schedule found by local search under the spillover objective, means over six listing draws, $M = 20$; in parentheses, adjacent pairs initiated within two years. Best found: value, of which spillover bonus.}
+\label{tab:E2}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Rule & $\beta = 0$ & $\beta = 0.1$ & $\beta = 0.25$ & $\beta = 0.5$ \\
+\midrule
+Persistence greedy & 0.770 (3.3) & 0.769 (3.3) & 0.763 (3.3) & 0.734 (3.3) \\
+\quad spillover-aware & --- & 0.770 (5.0) & 0.764 (6.0) & 0.740 (6.7) \\
+Ranking on announced plans & 0.861 (2.3) & 0.858 (2.3) & 0.849 (2.3) & 0.815 (2.3) \\
+\quad spillover-aware & --- & 0.859 (3.0) & 0.852 (5.3) & 0.821 (6.2) \\
+Trajectory-informed greedy & 0.901 (2.3) & 0.898 (2.3) & 0.888 (2.3) & 0.851 (2.3) \\
+\quad spillover-aware & --- & 0.900 (6.0) & 0.894 (9.0) & 0.866 (9.0) \\
+Rolling horizon, full (additive) & 0.968 (4.0) & 0.965 (4.0) & 0.956 (4.0) & 0.918 (4.0) \\
+Best found & 6876 (0) & 6920 (55) & 7033 (235) & 7393 (795) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Choice-set-matched benchmark: the full-information rolling horizon on the same listing draws and prescreen, as a share of the reference schedule, and the practical rules as a share of that benchmark; means over six listing draws.}
+\label{tab:E3}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & $M = 10$ & $M = 20$ & $M = 50$ & All \\
+\midrule
+Rolling horizon, full / reference & 0.922 & 0.968 & 0.995 & 1.000 \\
+Persistence greedy / benchmark & 0.858 & 0.796 & 0.750 & 0.736 \\
+Ranking on announced plans / benchmark & 0.933 & 0.889 & 0.882 & 0.872 \\
+Trajectory-informed greedy / benchmark & 0.975 & 0.932 & 0.934 & 0.926 \\
+\bottomrule
+\end{tabular}
+\end{table}

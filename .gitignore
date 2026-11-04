@@ -32,3 +32,23 @@ paper_ijgis/*.md
 paper_ijgis/_C_parts/
 paper_ijgis/word/ms*
 paper_ijgis/word/IJGIS_manuscript_EN.docx
+
+# 本地编译与分享文件夹（rev35 起）
+.tbuild/
+.tectonic_cache/
+.apacite_src/
+_share/
+# 稿件工具、审稿意见、修改说明与备份：只留本地
+paper_ijgis/_*
+paper_ijgis/*.png
+paper_ijgis/*.txt
+paper_ijgis/build_all.sh
+paper_ijgis/make_*_bbl.py
+paper_ijgis/word/
+paper_ijgis/figsrc/*_old.py
+paper_ijgis/figsrc/*_pre*.py
+# 拟合模型（各约 3 GB），由脚本重建
+results_p5_spatial/models/
+results_p6_shift/models_early/
+# 单元划分敏感性的派生数据集（指向本机路径的符号链接），由 p5_unit_delineation.py 重建
+data/processed/gm_dataset_v1_units*/

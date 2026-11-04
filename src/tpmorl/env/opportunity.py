@@ -172,6 +172,12 @@ LEVEL_NEVER = 0.10    # "一直不好"型的恒定水平
 # **注意取整**：实现用 nb × nb 的等分位网格，nb = ceil(sqrt(k))，故实际片区数是
 # nb² 而不是 k（k=6 时实际为 9）。`eff()` 报的是**实际**片区数，不是这个目标值。
 INFRA_CLUSTERS = 6
+# Optional override of the infrastructure commissioning onsets, in model years (lo, hi).
+# None (default) leaves every published result bit-identical. When set, the onsets drawn
+# from U(lo_y, hi_y) are mapped linearly onto U(lo, hi) AFTER drawing, so the random stream
+# and therefore the planning, obsolescence and readiness fields are unchanged.
+# Used by scripts/p6_early_infra.py ("programme ends early", as in the observed metro field).
+INFRA_ONSET_YEARS = None
 
 # 设施的**公布**比**建成**早多少年。这一条是 Liang et al. 那套"未来规划替换"
 # 机制在本模型里的落点：同一条地铁线有两个状态——
@@ -267,6 +273,9 @@ class OpportunityField:
         # ---- 基础设施场（按片区共享投用年份）----
         self.infra_cluster = self._clusters(row, col, rng)
         c_onset = rng.uniform(lo_y, hi_y, int(self.infra_cluster.max()) + 1)
+        if INFRA_ONSET_YEARS is not None:
+            _lo, _hi = INFRA_ONSET_YEARS
+            c_onset = _lo + (c_onset - lo_y) / max(hi_y - lo_y, 1e-9) * (_hi - _lo)
         self.infra_onset = c_onset[self.infra_cluster]
         # 设施场不分三型：设施要么早就有、要么某年建成，没有"永远不好"的读法，
         # 故对全体单元一律用爬升曲线，差别只在投用年份的早晚。

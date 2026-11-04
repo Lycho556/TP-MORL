@@ -1,3 +1,5 @@
+import os as _os2
+_FIGDIR = _os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)), "..", "figures")
 import json, os, sys
 import numpy as np, pandas as pd
 import matplotlib as mpl, matplotlib.pyplot as plt
@@ -86,7 +88,7 @@ CH_COL = {1: "#8c6bb1", 2: "#e6550d", 3: "#3182bd", 5: "#31a354"}
 CH_NAME = {1: "P1 industrial redevelopment", 2: "P2 old residential",
            3: "P3 commercial-service", 5: "P5 agricultural conversion"}
 
-apply_figure_style(sizes=(8, 7, 6))
+apply_figure_style(sizes=(8.5, 8, 8))
 
 # ── load data ─────────────────────────────────────────────────────────────────
 os.makedirs(FD, exist_ok=True)
@@ -120,9 +122,9 @@ LUG = {0: ("Restricted", "#e3e3e3"), 1: ("Residential", "#fbf2c4"),
        11: ("Ecological and green", "#d8ecd6"), 12: ("Public utilities", "#dde6ee")}
 
 H, W = L0.shape
+BG = "#E4E4E4"                       # all non-candidate land inside the district, one neutral tone
 rgb = np.ones((H, W, 3))
-for k, (n, c) in LUG.items():
-    rgb[L0 == k] = mpl.colors.to_rgb(c)
+rgb[L0 != 255] = mpl.colors.to_rgb(BG)
 
 urgb = np.zeros((H, W, 4))
 for u, c in chan_of.items():
@@ -192,7 +194,7 @@ for f in gj["features"]:
     if gm:
         c = np.array(geoms[0][0]).mean(0)
         axa.annotate("Guangming", c,
-                     xytext=(c[0] + 0.05, c[1] + 0.13), fontsize=7, ha="center",
+                     xytext=(c[0] + 0.05, c[1] + 0.13), fontsize=8, ha="center",
                      arrowprops=dict(arrowstyle="-", lw=0.5))
 axa.set_xlim(113.72, 114.65)
 axa.set_ylim(22.42, 22.92)
@@ -211,11 +213,11 @@ axb.axis("off")
 axb.set_title("Guangming: 717 candidate renewal units", loc="left")
 
 x0, y0 = 4, H - 6
-axb.plot([x0, x0 + 20], [y0, y0], color="black", lw=1.5)
-axb.text(x0 + 10, y0 - 2, "2 km", ha="center", va="bottom", fontsize=6)
-axb.annotate("", xy=(W - 6, 10), xytext=(W - 6, 22),
-             arrowprops=dict(arrowstyle="-|>", lw=0.8, color="black"))
-axb.text(W - 6, 8, "N", ha="center", va="bottom", fontsize=7)
+axb.plot([x0, x0 + 20], [y0, y0], color="black", lw=2.6, solid_capstyle="butt")
+axb.text(x0 + 10, y0 - 2.5, "2 km", ha="center", va="bottom", fontsize=8)
+axb.annotate("", xy=(W - 10, H - 34), xytext=(W - 10, H - 16),
+             arrowprops=dict(arrowstyle="-|>", lw=1.4, color="black", mutation_scale=12))
+axb.text(W - 10, H - 36, "N", ha="center", va="bottom", fontsize=9, fontweight="bold")
 axb.add_patch(Rectangle((c0 - 0.5, r0 - 0.5), S, S, fill=False, ec="black", lw=0.9))
 
 # (c) zoom
@@ -236,22 +238,18 @@ for s in axc.spines.values():
 axc.set_title("Decision units on the 100 m grid", loc="left")
 axc.legend(handles=[Line2D([], [], color="#222222", lw=1.2, label="renewal unit (decision unit)"),
                     Line2D([], [], color="#bbbbbb", lw=0.8, label="100 m grid cell")],
-           loc="upper left", bbox_to_anchor=(0, -0.02), frameon=False, fontsize=6)
+           loc="upper left", bbox_to_anchor=(0, -0.02), frameon=False, fontsize=8)
 
 # legends
 hch = [mpatches.Patch(color=CH_COL[c], label=CH_NAME[c]) for c in [1, 2, 3, 5]]
-hlu = [mpatches.Patch(color=c, label=n)
-       for n, c in dict((v[0], v[1]) for v in LUG.values()).items()]
+hch.append(mpatches.Patch(fc=BG, ec="#999999", lw=0.5, label="non-candidate land"))
 fig.legend(handles=hch, loc="upper left", bbox_to_anchor=(0.01, 0.42),
-           frameon=False, fontsize=6, title="Institutional channel",
-           title_fontsize=6, alignment="left")
-fig.legend(handles=hlu, loc="upper left", bbox_to_anchor=(0.71, 0.25),
-           frameon=False, fontsize=5.5, ncol=2,
-           title="Current land use (background)", title_fontsize=6, alignment="left")
+           frameon=False, fontsize=8, title="Renewal channel",
+           title_fontsize=8, alignment="left", handlelength=1.2, labelspacing=0.35)
 
 for a_, l in [(axa, "a"), (axb, "b"), (axc, "c")]:
     panel_letter(a_, l)
 
-fig.savefig("fig4_study_area.png", dpi=300)
-fig.savefig("fig4_study_area.pdf")
+fig.savefig(_os2.path.join(_FIGDIR, "fig4_study_area.png"), dpi=300)
+fig.savefig(_os2.path.join(_FIGDIR, "fig4_study_area.pdf"))
 print(overlaps(fig))

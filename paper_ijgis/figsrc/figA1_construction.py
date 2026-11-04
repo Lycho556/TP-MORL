@@ -1,4 +1,6 @@
 
+import os as _os2
+_FIGDIR = _os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)), "..", "figures")
 import matplotlib as mpl, matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 mpl.rcParams.update({"font.family": "sans-serif", "font.size": 7, "mathtext.fontset": "dejavusans",
@@ -16,10 +18,13 @@ def arr(x0, y0, x1, y1, col=DK, ls="-"):
 # ---- row 1: planning, listing, initiation, conformity, approval window
 Y1, H1 = 40, 14
 box(1, Y1, 14, H1, "Planning support", "$P_{i,t}\\in[0,1]$\nscenario-based\nfield")
-box(19, Y1, 17, H1, "Listing gate", "listed in year $t$ with\nprobability $a_{i,t}$ (Eq. 7),\nredrawn every year", fc=GATE)
+import re as _re, os as _os2
+_AUX = _os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)), "..", "IJGIS_manuscript_EN.aux")
+_EQ = dict(_re.findall(r"\\newlabel\{(eq:[^}]+)\}\{\{([^}]*)\}", open(_AUX).read()))  # equation numbers of the paper
+box(19, Y1, 17, H1, "Listing gate", "listed in year $t$ with\nprobability $a_{i,t}$ (Eq. "+_EQ["eq:admit"]+"),\nredrawn every year", fc=GATE)
 box(40, Y1, 14, H1, "Initiation", "year $y$, chosen by\nthe rule; at most\n$K$ units per year")
-box(58, Y1, 15, H1, "Conformity gate", "value scaled by\n$a_{i,y}$ (Eq. 11)", fc=GATE)
-box(77, Y1, 22, H1, "Approval window", "$j = 1,\\dots,\\tau_{\\max}=5$ years\n$h_{i,j}(y)=\\min\\{1,\\ h_j\\,m_{i,y+j-1}\\}$\n(Eq. 8)")
+box(58, Y1, 15, H1, "Conformity gate", "value scaled by\n$a_{i,y}$ (Eq. "+_EQ["eq:ev"]+")", fc=GATE)
+box(77, Y1, 22, H1, "Approval window", "$j = 1,\\dots,\\tau_{\\max}=5$ years\n$h_{i,j}(y)=\\min\\{1,\\ h_j\\,m_{i,y+j-1}\\}$\n(Eq. "+_EQ["eq:hazardmult"]+")")
 for a, b in [(15.3, 19), (36.3, 40), (54.3, 58), (73.3, 77)]:
     arr(a, Y1 + H1 / 2, b - 0.3, Y1 + H1 / 2)
 # side input: obsolescence and readiness
@@ -28,12 +33,12 @@ ax.text(82.5, 58.3, "$m_{i,t}=[1+A_B(2B_{i,t}-1)]\\,[1+A_C(2C_{i,t}-1)]$", ha="c
 arr(88, 56.7, 88, Y1 + H1 + 0.3)
 # ---- row 2 (right to left): outcomes, construction, completion, value
 Y2, H2 = 19, 13
-box(61, Y2, 17, H2, "Approved", "in window year $k$\n$t_a = y + k$  (Eq. 9)\n$\\Pr_i(k\\mid y)$ (Eq. 10)")
+box(61, Y2, 17, H2, "Approved", "in window year $k$\n$t_a = y + k$\n$\\Pr_i(k\\mid y)$ (Eq. "+_EQ["eq:hazard"]+")")
 box(83, Y2, 16, H2, "Lapsed", "not approved within\nthe window; baseline\nprobability 0.294", fc=GREY, ec="#777777", tcol="#555555")
 arr(81, Y1 - 0.3, 72, Y2 + H2 + 0.3); arr(91, Y1 - 0.3, 91, Y2 + H2 + 0.3, col="#777777")
-box(40, Y2, 18, H2, "Construction", "$b_i$ = 3\u20135 years\nby institutional channel\n(Appendix B)")
-box(19, Y2, 17, H2, "Completion", "$t_c = t_a + 1 + b_i$\n(Eq. 9)")
-box(1, Y2, 14, H2, "Delivered value", "$\\mathrm{FL}(u_i)\\,(1+A_I I_{i,t_c})$\n$\\times\\,\\gamma^{t_c}$ (Eqs 4, 11)", fc=VAL, ec="#2e7d32", tcol="#1b5e20")
+box(40, Y2, 18, H2, "Construction", "$b_i$ = 5 years for\ndemolition and\nreconstruction (App. A.2)")
+box(19, Y2, 17, H2, "Completion", "$t_c = t_a + 1 + b_i$\n(Eq. "+_EQ["eq:ev"]+")")
+box(1, Y2, 14, H2, "Delivered value", "$\\mathrm{FL}(u_i)\\,(1+A_I I_{i,t_c})$\n$\\times\\,\\gamma^{t_c}$ (Eqs "+_EQ["eq:value"]+", "+_EQ["eq:ev"]+")", fc=VAL, ec="#2e7d32", tcol="#1b5e20")
 arr(60.7, Y2 + H2 / 2, 58.3, Y2 + H2 / 2)
 arr(39.7, Y2 + H2 / 2, 36.3, Y2 + H2 / 2); arr(18.7, Y2 + H2 / 2, 15.3, Y2 + H2 / 2)
 # side input: infrastructure
@@ -52,4 +57,4 @@ for a0, a1, lab in [(8, 11, "window year $k=3$"), (12, 17, "construction $b_i=5$
     ax.annotate("", xy=(sc(a1), yl - 2.0), xytext=(sc(a0), yl - 2.0), arrowprops=dict(arrowstyle="<->", lw=0.7, color="#555555"))
     ax.text((sc(a0) + sc(a1)) / 2, yl - 2.7, lab, ha="center", va="top", fontsize=5.8, color="#555555")
 ax.text(T0 - 1.5, yl, "Example timeline\n(one approval path)", ha="right", va="center", fontsize=6.3, color="#222222")
-fig.savefig("figA1_construction.png", dpi=300); fig.savefig("figA1_construction.pdf")
+fig.savefig(_os2.path.join(_FIGDIR, "figA1_construction.png"), dpi=300); fig.savefig(_os2.path.join(_FIGDIR, "figA1_construction.pdf"))

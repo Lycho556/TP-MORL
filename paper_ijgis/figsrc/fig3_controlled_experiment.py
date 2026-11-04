@@ -1,3 +1,5 @@
+import os as _os2
+_FIGDIR = _os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)), "..", "figures")
 import sys, os, json
 import numpy as np
 import pandas as pd
@@ -60,7 +62,7 @@ syn["key"] = syn.method.map(m)
 shade = ["#9aa5b1", "#5d6d7e", "#2c3e50"]
 lab = {"early": "early peak", "late": "middle peak", "verylate": "late peak"}
 order = [("random", "Random"), ("static", "Spatial ranking"),
-         ("temporal", "Trajectory-informed greedy"), ("value", "Value-based")]
+         ("temporal", "Trajectory-informed greedy")]
 
 pos_fix = {"early": (1.05, 0.975, "left"), "late": (5.5, 0.975, "center"),
            "verylate": (9.0, 1.03, "center")}
@@ -100,7 +102,6 @@ def fig3():
         "random": ("Random", 0),
         "static": ("Spatial ranking", 0),
         "temporal": ("Trajectory-informed greedy", 0.0),
-        "value": ("Value-based (open circles)", -0.065)
     }
     tg1 = float(syn[(syn.key == "temporal") & (syn.alpha == 1.0)]["相对oracle"].iloc[0])
     for key, (txt, dy) in lbl.items():
@@ -134,5 +135,5 @@ def fig3b():
 
 
 f3 = fig3b()
-f3.savefig("fig3_controlled_experiment.png", dpi=300)
-f3.savefig("fig3_controlled_experiment.pdf")
+f3.savefig(_os2.path.join(_FIGDIR, "fig3_controlled_experiment.png"), dpi=300)
+f3.savefig(_os2.path.join(_FIGDIR, "fig3_controlled_experiment.pdf"))

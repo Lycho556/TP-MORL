@@ -1,0 +1,42 @@
+{
+ "names": [
+  "Fenghuang Sub-District",
+  "Gongming Sub-district",
+  "Guangming Sub-district",
+  "Matian Sub-district",
+  "Xinhu Sub-district",
+  "Yutang Sub-District"
+ ],
+ "n_per_subdistrict": [
+  90,
+  109,
+  121,
+  145,
+  159,
+  93
+ ],
+ "balanced_quota": [
+  9,
+  11,
+  13,
+  15,
+  17,
+  10
+ ],
+ "n_edges": 1038,
+ "delta": 2,
+ "v_ref_unconstrained": 6876.246054424286,
+ "seeds": [
+  7,
+  0,
+  1,
+  2,
+  3,
+  4
+ ],
+ "E1_reference": {
+  "None": 6876.246054424286,
+  "cap1": 6843.766212953197,
+  "balanced": 6832.817149243732
+ }
+}

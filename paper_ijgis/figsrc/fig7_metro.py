@@ -7,6 +7,8 @@
     x five training seeds), bars span min-max.
 Inputs: data/processed/gm_dataset_v1/metro/, results_p1/tables/main_M20.csv, metro.csv
 """
+import os as _os2
+_FIGDIR = _os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)), "..", "figures")
 import json
 import numpy as np
 import pandas as pd
@@ -113,6 +115,6 @@ fig.text(0.465, 0.955, "Information and coordination raise value under both fiel
 lh = [mpl.lines.Line2D([], [], marker="o", mfc="white", mec="#444444", ls="none", ms=4, label="scenario field"),
       mpl.lines.Line2D([], [], marker="D", mfc="#444444", mec="#444444", ls="none", ms=4, label="observed metro field")]
 axb.legend(handles=lh, loc="lower left", frameon=False, fontsize=6, borderaxespad=0.1)
-fig.savefig("fig7_metro.png", dpi=300)
-fig.savefig("fig7_metro.pdf")
+fig.savefig(_os2.path.join(_FIGDIR, "fig7_metro.png"), dpi=300)
+fig.savefig(_os2.path.join(_FIGDIR, "fig7_metro.pdf"))
 print("units within 1.5 km:", int(np.isfinite(D.min(1)).sum()))

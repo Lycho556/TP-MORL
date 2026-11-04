@@ -1,3 +1,5 @@
+import os as _os2
+_FIGDIR = _os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)), "..", "figures")
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -82,5 +84,5 @@ ax.set_ylim(-0.6, n - 0.4)
 ax.set_xlabel("Value gap to the reference schedule (objective units)")
 ax.text(1900, n - 0.45, "ratio to reference", ha="right", va="bottom", fontsize=7)
 fig.subplots_adjust(left=0.36, right=0.97, bottom=0.16, top=0.92)
-fig.savefig("fig6_decomposition.png", dpi=300)
-fig.savefig("fig6_decomposition.pdf")
+fig.savefig(_os2.path.join(_FIGDIR, "fig6_decomposition.png"), dpi=300)
+fig.savefig(_os2.path.join(_FIGDIR, "fig6_decomposition.pdf"))

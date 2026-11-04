@@ -59,18 +59,21 @@ def panel_letter(ax, letter, dx=-0.18, dy=1.02, case="lower", fontsize=None):
             fontweight="bold", fontsize=fontsize, va="bottom", ha="left")
 
 
+import os as _os2
+_FIGDIR = _os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)), "..", "figures")
 import json, os, sys
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.patheffects
 
 import os as _os
 _ROOT = _os.path.abspath(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "..")) + "/"  # repository root
 R = _ROOT + ""
 FD = R + "results_figures/"
 COL = {"random": "#8a8a8a", "static": "#E69F00", "supervised": "#CC79A7",
-       "temporal": "#0072B2", "value": "#56B4E9", "rolling": "#D55E00", "optimum": "black"}
+       "temporal": "#0072B2", "value": "#56B4E9", "rolling": "#D55E00", "optimum": "black", "rl": "#2E7EC1"}
 TIM, SEL = "#34495e", "#c9d3dd"
 CH_COL = {1: "#8c6bb1", 2: "#e6550d", 3: "#3182bd", 5: "#31a354"}
 CH_NAME = {1: "P1 industrial redevelopment", 2: "P2 old residential",
@@ -85,7 +88,7 @@ def overlaps(fig):
             for i, (a, ba) in enumerate(t) for b, bb in t[i + 1:] if ba.overlaps(bb)]
 
 
-apply_figure_style(sizes=(8, 7, 6))
+apply_figure_style(sizes=(8.5, 8, 8))
 
 G = R + "data/processed/gm_dataset_v1/"
 uid = np.load(G + "zones_v0/unit_id.npy")
@@ -106,7 +109,15 @@ _RR = pd.read_csv(R + "results_p1/rolling/rolling_results.csv")
 _rr = _RR[(_RR.infra_mode == "cluster") & (_RR.conformity) & (_RR.variant == "base")
           & (_RR.M == 20) & (_RR.listing_seed == 7) & (_RR.rule == "rh_full")].ratio.iloc[0]
 SCH["rolling_full"] = dict(ratio=float(_rr), init={str(k): int(v) for k, v in _RS.items()})
+_RL = json.load(open(R + "results_p3_metro/rl_schedule_main_ls7_s0.json"))   # training seed 0, listing draw 7
+SCH["rl"] = dict(ratio=float(_RL["ratio"]), init=_RL["init"])
+# (a) maps: four rules; (b) strip: the same four plus trajectory-informed greedy
+rules_map = [("static_greedy", "Persistence greedy", "static"),
+             ("rl", "Learned value\ncorrection", "rl"),
+             ("rolling_full", "Rolling horizon, full", "rolling"),
+             ("optimum", "Reference schedule", "optimum")]
 rules = [("static_greedy", "Persistence greedy", "static"),
+         ("rl", "Learned value correction", "rl"),
          ("temporal_greedy", "Trajectory-informed greedy", "temporal"),
          ("rolling_full", "Rolling horizon, full", "rolling"),
          ("optimum", "Reference schedule", "optimum")]
@@ -164,8 +175,9 @@ ZX, ZY, ZW = 492900.0, 2521200.0, 3000.0
 zc0, zc1 = (ZX - X00) / 100.0, (ZX + ZW - X00) / 100.0
 zr0, zr1 = (Y00 - (ZY + ZW)) / 100.0, (Y00 - ZY) / 100.0
 
-cmap = plt.get_cmap("viridis")
-norm = mpl.colors.Normalize(1, 25)
+YEAR_BANDS = ["1\u20135", "6\u201310", "11\u201315", "16\u201320", "21\u201325"]
+cmap = mpl.colors.ListedColormap(["#2D1E5B", "#2C6E8E", "#2FA37A", "#A8D25A", "#F2E33A"])
+norm = mpl.colors.BoundaryNorm([0.5, 5.5, 10.5, 15.5, 20.5, 25.5], cmap.N)
 
 plt.close("all")
 EVT = np.load(FD + "ev_table_main.npy")
@@ -175,12 +187,13 @@ fig = plt.figure(figsize=(6.9, 6.6))
 mpl.rcParams["savefig.bbox"] = "standard"
 gtop = fig.add_gridspec(1, 4, left=0.003, right=0.997, top=0.935, bottom=0.675, wspace=0.0)
 gbot = fig.add_gridspec(1, 4, left=0.075, right=0.99, top=0.555, bottom=0.335, wspace=0.07)
-axc = fig.add_axes([0.215, 0.43, 0.705, 0.13])
+axc = fig.add_axes([0.31, 0.462, 0.585, 0.13])
 
 eff = {}
-for j, (k, name, ck) in enumerate(rules):
+for k, _, _ in rules:
+    eff[k] = np.array([EVT[int(u), int(t)] / BEST[int(u)] for u, t in SCH[k]["init"].items()])
+for j, (k, name, ck) in enumerate(rules_map):
     init = {int(u): int(t) for u, t in SCH[k]["init"].items()}
-    eff[k] = np.array([EVT[u, t] / BEST[u] for u, t in init.items()])
     img = np.ones((H, W, 4))
     img[inside] = (0.97, 0.97, 0.97, 1)
     img[cand] = (0.83, 0.83, 0.83, 1)
@@ -193,10 +206,16 @@ for j, (k, name, ck) in enumerate(rules):
     ax.set_ylim(H - 0.5, -0.5)
     ax.axis("off")
     ax.add_patch(mpl.patches.Rectangle((zc0, zr0), zc1 - zc0, zr1 - zr0, fill=False, ec="#d62728", lw=0.8))
-    ax.text(0.02, 1.0, f"{name}\n{SCH[k]['ratio']:.3f} of reference", transform=ax.transAxes,
-            fontsize=7, ha="left", va="bottom")
+    ax.text(0.07, 1.0, f"{name}\n{SCH[k]['ratio']:.3f} of reference", transform=ax.transAxes,
+            fontsize=8, ha="left", va="bottom")
     if j == 0:
         ax.text(0.0, 1.13, "a", transform=ax.transAxes, fontsize=9, fontweight="bold", va="bottom")
+        # scale bar (2 km = 20 cells of 100 m) and north arrow, shared by the four maps
+        ax.plot([6, 26], [H - 6, H - 6], color="black", lw=1.6, solid_capstyle="butt")
+        ax.text(16, H - 9, "2 km", ha="center", va="bottom", fontsize=6.5)
+        ax.annotate("", xy=(W - 14, H - 42), xytext=(W - 14, H - 24),
+                    arrowprops=dict(arrowstyle="-|>", lw=1.0, color="black", mutation_scale=8))
+        ax.text(W - 14, H - 44, "N", ha="center", va="bottom", fontsize=7, fontweight="bold")
     if SHOW_B:
         axm = fig.add_subplot(gbot[0, j])
         axm.scatter([t + 1 for t in init.values()], [rowpos[u] for u in init],
@@ -230,24 +249,25 @@ for i, (k, name, ck) in enumerate(rules):
     axc.scatter(e, y + rng.uniform(-0.22, 0.22, len(e)), s=4, color=COL[ck], alpha=0.55, lw=0)
     m = e.mean()
     axc.plot([m, m], [y - 0.34, y + 0.34], color=COL[ck], lw=1.6)
-    axc.text(1.012, y, f"mean {m:.2f}", va="center", ha="left", fontsize=6, color="#333333", transform=mpl.transforms.blended_transform_factory(axc.transAxes, axc.transData))
-    axc.text(-0.012, y, name, va="center", ha="right", fontsize=7, transform=mpl.transforms.blended_transform_factory(axc.transAxes, axc.transData))
+    axc.text(1.012, y, f"mean {m:.2f}", va="center", ha="left", fontsize=7.5, color="#333333", transform=mpl.transforms.blended_transform_factory(axc.transAxes, axc.transData))
+    axc.text(-0.012, y, name, va="center", ha="right", fontsize=8, transform=mpl.transforms.blended_transform_factory(axc.transAxes, axc.transData))
 axc.set_xlim(0.2, 1.0)
 axc.set_xticks([0.2, 0.4, 0.6, 0.8, 1.0])
 axc.set_ylim(-0.6, len(rules) - 0.4)
 axc.set_yticks([])
 axc.spines["left"].set_visible(False)
 axc.set_xlabel("Value in the chosen initiation year / value in the unit's best year")
-axc.text(-0.19, 1.12, "b", transform=axc.transAxes, fontsize=9, fontweight="bold", va="bottom")
-axc.text(-0.19, 1.12, "      Timing of each selected unit relative to its best year", transform=axc.transAxes,
-         fontsize=7, va="bottom")
+axc.text(-0.30, 1.12, "b", transform=axc.transAxes, fontsize=9, fontweight="bold", va="bottom")
+axc.text(-0.30, 1.12, "      Timing of each selected unit relative to its best year", transform=axc.transAxes,
+         fontsize=8, va="bottom")
 
 cax = fig.add_axes([0.36, 0.652, 0.3, 0.012])
 cb = fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation="horizontal")
-cb.set_ticks([1, 5, 10, 15, 20, 25])
-cb.ax.tick_params(labelsize=6)
-fig.text(0.35, 0.658, "Initiation year", ha="right", va="center", fontsize=7)
-fig.text(0.67, 0.658, "grey: candidate not initiated", ha="left", va="center", fontsize=6, color="#555555")
+cb.set_ticks([3, 8, 13, 18, 23]); cb.set_ticklabels(YEAR_BANDS); cb.ax.tick_params(length=0)
+cb.ax.tick_params(labelsize=8)
+fig.text(0.35, 0.658, "Initiation year", ha="right", va="center", fontsize=8)
+fig.patches.append(mpl.patches.Rectangle((0.68, 0.650), 0.018, 0.016, transform=fig.transFigure, fc=(0.83, 0.83, 0.83), ec="#555555", lw=0.5))
+fig.text(0.703, 0.658, "candidate not initiated", ha="left", va="center", fontsize=8, color="#222222")
 
 
 # c: zoom on one window, persistence greedy vs rolling horizon with full information
@@ -257,7 +277,7 @@ PINYIN = {"中大": "Zhongda", "圳美": "Zhenmei", "深理工": "Shenligong", "
 smap = mpl.cm.ScalarMappable(norm=mpl.colors.Normalize(0.2, 1.0), cmap=plt.get_cmap("YlOrRd_r"))
 zoom_rules = [("static_greedy", "Persistence greedy"), ("rolling_full", "Rolling horizon, full")]
 for j, (k, name) in enumerate(zoom_rules):
-    axz = fig.add_axes([0.13 + j * 0.30, 0.035, 0.268, 0.28])
+    axz = fig.add_axes([0.095 + j * 0.33, 0.05, 0.30, 0.30])
     init = {int(u): int(t) for u, t in SCH[k]["init"].items()}
     img = np.ones((H, W, 4))
     img[inside] = (0.97, 0.97, 0.97, 1)
@@ -267,40 +287,44 @@ for j, (k, name) in enumerate(zoom_rules):
         m = uid == idx2uid[u]
         img[m] = smap.to_rgba(EVT[u, t] / BEST[u])
         rr, cc = np.where(m)
-        if zc0 <= cc.mean() <= zc1 and zr0 <= rr.mean() <= zr1:
-            lab.append((cc.mean(), rr.mean(), t + 1))
+        w_ = (cc >= zc0 + 0.5) & (cc <= zc1 - 0.5) & (rr >= zr0 + 0.5) & (rr <= zr1 - 0.5)
+        if w_.sum() >= 6:   # label the part of the unit inside the window, kept clear of the frame
+            lab.append((float(np.clip(cc[w_].mean(), zc0 + 1.6, zc1 - 1.6)),
+                        float(np.clip(rr[w_].mean(), zr0 + 1.4, zr1 - 1.4)), t + 1))
     axz.imshow(img, interpolation="nearest")
     draw_units(axz, lw=0.25)
     for x_, y_, t_ in lab:
-        axz.text(x_, y_, str(t_), ha="center", va="center", fontsize=5.5, color="black",
-                 fontweight="bold")
+        axz.text(x_, y_, str(t_), ha="center", va="center", fontsize=8, color="black",
+                 fontweight="bold", path_effects=[mpl.patheffects.withStroke(linewidth=2.2, foreground="white")])
     for _, r_ in ST.iterrows():
         sc, sr = (r_.x - X00) / 100.0, (Y00 - r_.y) / 100.0
         if zc0 <= sc <= zc1 and zr0 <= sr <= zr1:
-            axz.plot(sc, sr, marker="o", ms=4, mfc="white", mec="black", mew=0.7)
-            axz.text(sc + 0.6, sr - 0.6, PINYIN.get(r_.station, r_.station), fontsize=5.5,
-                     ha="left", va="bottom", color="#222222")
+            axz.plot(sc, sr, marker="o", ms=5, mfc="white", mec="black", mew=0.9)
+            left = PINYIN.get(r_.station) == "Zhenmei"
+            axz.text(sc + (-0.8 if left else 0.6), sr + (0.0 if left else -0.6), PINYIN.get(r_.station, r_.station),
+                     fontsize=7.5, ha=("right" if left else "left"), va=("center" if left else "bottom"), color="#222222",
+                     path_effects=[mpl.patheffects.withStroke(linewidth=1.8, foreground="white")])
     axz.set_xlim(zc0, zc1); axz.set_ylim(zr1, zr0)
     axz.set_xticks([]); axz.set_yticks([])
     for sp in axz.spines.values():
-        sp.set_edgecolor("#d62728"); sp.set_linewidth(0.8)
-    axz.set_title(f"{name}", fontsize=7, loc="left")
+        sp.set_visible(True); sp.set_edgecolor("#d62728"); sp.set_linewidth(1.0)
+    axz.set_title(f"{name}", fontsize=8, loc="left")
     if j == 1:
         frac = 10.0 / (zc1 - zc0)                      # 10 cells = 1 km
-        axz.plot([0.0, frac], [-0.05, -0.05], transform=axz.transAxes, color="black", lw=1.2,
+        axz.plot([0.0, frac], [-0.05, -0.05], transform=axz.transAxes, color="black", lw=2.2,
                  solid_capstyle="butt", clip_on=False)
-        axz.text(frac / 2, -0.07, "1 km", transform=axz.transAxes, ha="center", va="top", fontsize=5.5)
+        axz.text(frac / 2, -0.07, "1 km", transform=axz.transAxes, ha="center", va="top", fontsize=8)
     if j == 0:
-        axz.text(-0.30, 1.10, "c", transform=axz.transAxes, fontsize=9, fontweight="bold", va="bottom")
-        axz.text(-0.30, 1.10, "      Window marked in (a): numbers are initiation years", transform=axz.transAxes,
-                 fontsize=7, va="bottom")
-caxz = fig.add_axes([0.75, 0.06, 0.012, 0.22])
+        axz.text(-0.12, 1.10, "c", transform=axz.transAxes, fontsize=9, fontweight="bold", va="bottom")
+        axz.text(-0.12, 1.10, "      Window marked in (a): numbers are initiation years", transform=axz.transAxes,
+                 fontsize=8, va="bottom")
+caxz = fig.add_axes([0.77, 0.075, 0.018, 0.25])
 cbz = fig.colorbar(smap, cax=caxz)
-cbz.ax.tick_params(labelsize=6)
-cbz.set_label("Share of best-year value", fontsize=6.5)
+cbz.ax.tick_params(labelsize=8)
+cbz.set_label("Share of best-year value", fontsize=8)
 
 json.dump({k: dict(mean=float(v.mean()), median=float(np.median(v)), share_ge_0p9=float((v >= 0.9).mean()), n=int(len(v)))
            for k, v in eff.items()}, open(FD + "fig5_timing_efficiency.json", "w"), indent=1)
 print("overlaps:", overlaps(fig))
-fig.savefig("fig5_schedules.png", dpi=300)
-fig.savefig("fig5_schedules.pdf")
+fig.savefig(_os2.path.join(_FIGDIR, "fig5_schedules.png"), dpi=300)
+fig.savefig(_os2.path.join(_FIGDIR, "fig5_schedules.pdf"))
