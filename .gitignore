@@ -52,3 +52,5 @@ results_p5_spatial/models/
 results_p6_shift/models_early/
 # 单元划分敏感性的派生数据集（指向本机路径的符号链接），由 p5_unit_delineation.py 重建
 data/processed/gm_dataset_v1_units*/
+# 投稿信只留本地
+paper_ijgis/cover/
