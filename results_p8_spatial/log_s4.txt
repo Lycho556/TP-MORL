@@ -1,0 +1,2 @@
+[s4] trained 247s, rows used: G-free 24657, M-free 35343
+[s4] done 407s

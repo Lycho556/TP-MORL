@@ -54,3 +54,4 @@ results_p6_shift/models_early/
 data/processed/gm_dataset_v1_units*/
 # 投稿信只留本地
 paper_ijgis/cover/
+results_p8_spatial/models/

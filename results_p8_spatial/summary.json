@@ -1,0 +1,30 @@
+{
+ "test_learned": 0.8957308092331759,
+ "test_rank": 0.8706315036274661,
+ "test_diff": 0.02509930560570988,
+ "test_ci": [
+  0.015808391434902928,
+  0.03439021977651684
+ ],
+ "test_draws_positive": 10,
+ "test_runs_positive": 47,
+ "test_runs": 50,
+ "seed_means": [
+  0.0263,
+  0.0236,
+  0.0241,
+  0.0267,
+  0.0248
+ ],
+ "wilcoxon_p": 0.001953125,
+ "metro_learned": 0.9166496098086628,
+ "metro_rank": 0.940815514757362,
+ "metro_diff": -0.024165904948699038,
+ "metro_ci": [
+  -0.03103176061114519,
+  -0.017300049286252887
+ ],
+ "metro_runs_positive": 0,
+ "metro_runs": 30,
+ "verdict": "strongly supported"
+}

@@ -321,7 +321,7 @@ chk("P3 T3 foot", "Its difference to ranking on announced plans is given in Tabl
 assert _mabove == len(_mr)
 _sel = pd.read_csv(R + "results_p3_explore/residual_steps_summary.csv")
 _one = _sel[_sel.method == "5 residual, one-step target"].iloc[0]
-chk("P3 S7 selected", f"One-step, correction to the announced forecast (selected) & 5 & {f3(_one['mean'])} & ${_one.diff_vs_rule:+.3f}$")
+chk("P3 S7 selected", f"One-step, correction to the announced forecast\\textsuperscript{{a}} & 5 & {f3(_one['mean'])} & ${_one.diff_vs_rule:+.3f}$")
 
 # metro "All" row (rule-based columns; RL not run at M = All) and every row of Table S7
 _x0 = MT[MT.M == 0].ratio
@@ -358,6 +358,18 @@ _AJ = json.load(open(R + "results_p8_approval/summary.json"))
 chk("P8 appr A1", f"gives {100*_AJ['share5_adjusted']:.0f}\\% approval within five\nyears (bootstrap 95\\% interval {100*_AJ['share5_ci'][0]:.0f}--{100*_AJ['share5_ci'][1]:.0f}\\%)")
 chk("P8 appr S18 row", f"Within five years & 77 & {_AJ['share5_paper']:.3f} & {_AJ['share5_adjusted']:.3f} ({_AJ['share5_ci'][0]:.2f}--{_AJ['share5_ci'][1]:.2f})")
 chk("P8 appr cv", f"${_AJ['cv_logscore_adjusted']:.3f}$ per pair for the window-adjusted estimate and ${_AJ['posthoc_cv_logscore_lifetable_refit']:.3f}$")
+
+# ---- P8: spatial hold-out (Table S27) and announcement errors (Table S28)
+_SH = json.load(open(R + "results_p8_spatial/summary.json"))
+chk("S27 diff", f"Difference & ${_SH['test_diff']:+.3f}$ & ${_SH['metro_diff']:+.3f}$")
+chk("S27 ci", f"95\\% $t$-interval & {f3(_SH['test_ci'][0])} to {f3(_SH['test_ci'][1])} & ${f3(_SH['metro_ci'][0])}$ to ${f3(_SH['metro_ci'][1])}$")
+chk("S27 main text", f"the policy reaches {f3(_SH['test_learned'])} on the test draws, a gain of\n{f3(_SH['test_diff'])} (95\\% $t$-interval {f3(_SH['test_ci'][0])} to {f3(_SH['test_ci'][1])};")
+assert _SH["verdict"] == "strongly supported"
+_AE = pd.read_csv(R + "results_p8_annerr/summary.csv")
+for _, _r in _AE.iterrows():
+    chk(f"S28 {_r.kind}{_r.e}", f"& {f3(_r.rank_mean)} & {_r.share_mean:.2f} ({_r.share_lo:.2f}--{_r.share_hi:.2f}) & {_r.share_min:.2f} & {_r.main_share:.2f} \\\\")
+_s2 = _AE[(_AE.kind == "sym") & (_AE.e == 2)].iloc[0]; _s0 = _AE[_AE.kind == "none"].iloc[0]
+chk("S28 main text", f"still recovers {_s2.share_mean:.2f} of the value of information on average over the\nsame eleven fields, against {_s0.share_mean:.2f} without error")
 
 # ---- revision 30 robustness (results_p4, scripts/p4_robustness.py)
 _Q = pd.read_csv(R + "results_p4/quota_summary.csv"); _Gm = pd.read_csv(R + "results_p4/gamma_summary.csv")
