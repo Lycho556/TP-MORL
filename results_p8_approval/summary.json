@@ -1,0 +1,67 @@
+{
+ "n": 109,
+ "share5_adjusted": 0.749736481775733,
+ "share5_ci": [
+  0.5177809372677508,
+  0.9129022275847805
+ ],
+ "share5_paper": 0.705983044653256,
+ "median_bin_adjusted": 3,
+ "median_bin_ci": [
+  2.0,
+  5.0
+ ],
+ "hazards_adjusted": [
+  0.228,
+  0.26,
+  0.258,
+  0.262,
+  0.2
+ ],
+ "hazards_ci": [
+  [
+   0.1154928521068515,
+   0.35384919868080245
+  ],
+  [
+   0.13462519067381498,
+   0.412918957165571
+  ],
+  [
+   0.12908768692974062,
+   0.44887078508366257
+  ],
+  [
+   0.11316888883420587,
+   0.4846250570655925
+  ],
+  [
+   0.05748166653647844,
+   0.46660002882030593
+  ]
+ ],
+ "hazards_paper": [
+  0.174,
+  0.212,
+  0.239,
+  0.277,
+  0.179
+ ],
+ "cv_logscore_adjusted": -1.66922349591811,
+ "cv_logscore_paper": -1.5737977814482298,
+ "cv_diff": -0.09542571446988009,
+ "cv_diff_ci": [
+  -0.17150930819994165,
+  -0.01934212073981853
+ ],
+ "naive_share5": 0.7064220183486238,
+ "naive_median_lag": 3.0,
+ "posthoc_cv_logscore_lifetable_refit": -1.6466601387033548,
+ "posthoc_cv_diff_adjusted_minus_lifetable_refit": -0.022563357214755254,
+ "posthoc_cv_diff_ci": [
+  -0.08697246541018644,
+  0.04184575098067592
+ ],
+ "posthoc_note": "not pre-registered: the paper life table refitted on the training folds, for a like-for-like comparison",
+ "verdict_check1": "supported"
+}

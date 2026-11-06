@@ -1,6 +1,6 @@
 # Reproducing the manuscript results
 
-*Spatio-temporal scheduling of urban renewal under planning and implementation constraints* (IJGIS submission).
+Capacity-constrained scheduling of urban renewal initiations in Guangming District, Shenzhen.
 
 All commands are run from the repository root. Scripts put `scripts/` on the import path themselves;
 set `PYTHONPATH=src` so that the `tpmorl` package is found.
@@ -29,9 +29,9 @@ rebuild this dataset (`bash scripts/fetch_raw.sh`, then `python -m tpmorl.data.b
 ## Manuscript item -> script -> output
 
 Table and figure numbers refer to the submitted manuscript (Tables 1-5, Figures 1-7, A1) and its
-supplementary material (Tables S1-S24, Figure S1). `python scripts/audit_manuscript_numbers.py`
+supplementary material (Tables S1-S26, Figure S1). `python scripts/audit_manuscript_numbers.py`
 recomputes the numbers in the text and tables from the result files below and reports
-`119 checks, 0 not found`.
+`126 checks, 0 not found`.
 
 ### Main text
 
@@ -60,11 +60,13 @@ recomputes the numbers in the text and tables from the result files below and re
 | Section S8 text | `python scripts/p5_make_supp.py` | `paper_ijgis/supp_S8.tex` |
 | S16 (announced plans 2010-2018) | `python scripts/p5_external_check.py` | `results_p5_spatial/external/` |
 | S17 (without the agricultural-conversion channel) | `python scripts/p5_no_p5.py` | `results_p5_spatial/external/no_P5_rules.csv` |
-| S18 (construction duration b = 3, 5, 7) | `python scripts/p5_build_years.py` | `results_p5_spatial/build_years.csv` |
-| S19 (unit delineation, 8 / 12 / 18 cells) | `python scripts/p5_unit_delineation.py` (rebuilds the units in `data/processed/gm_dataset_v1_units{8,18}/`, not committed) | `results_p5_spatial/unit_delineation.csv` |
-| S20 (runtimes) | timings of the commands above | - |
-| S22, S23, Figure S1 (controlled simulation) | `python scripts/exp_fqi_local.py --stage L2 --seeds 0 1 2` | `results_fqi/` |
-| S24 (distribution-shift tests; pre-registered in `results_p6_shift/PREREGISTRATION.md`) | A1: `python scripts/p6_shift_diag.py --seed S` (models saved by `p5_learned_spatial.py`); A2: `python scripts/p6_early_infra.py --seed S`, then `python scripts/p6_shift_diag.py --seed S --models results_p6_shift/models_early --tag a1early` and `python scripts/p6_orig_on_early.py S`, for S = 0-4; summaries `python scripts/p6_summary.py` | `results_p6_shift/` |
+| S18 (approval timing against the record; pre-registered in `results_p8_approval/PREREGISTRATION.md`) | `python scripts/p8_approval_check.py` | `results_p8_approval/` |
+| S21 (unit delineation across eleven fields; pre-registered in `results_p8_delineation/PREREGISTRATION.md`) | `python scripts/p8_delineation_fields.py --target T` for T = 8, 12, 18, then `python scripts/p8_delineation_summary.py` | `results_p8_delineation/` |
+| S19 (construction duration b = 3, 5, 7) | `python scripts/p5_build_years.py` | `results_p5_spatial/build_years.csv` |
+| S20 (unit delineation, 8 / 12 / 18 cells) | `python scripts/p5_unit_delineation.py` (rebuilds the units in `data/processed/gm_dataset_v1_units{8,18}/`, not committed) | `results_p5_spatial/unit_delineation.csv` |
+| S22 (runtimes) | timings of the commands above | - |
+| S24, S25, Figure S1 (controlled simulation) | `python scripts/exp_fqi_local.py --stage L2 --seeds 0 1 2` | `results_fqi/` |
+| S26 (distribution-shift tests; pre-registered in `results_p6_shift/PREREGISTRATION.md`) | A1: `python scripts/p6_shift_diag.py --seed S` (models saved by `p5_learned_spatial.py`); A2: `python scripts/p6_early_infra.py --seed S`, then `python scripts/p6_shift_diag.py --seed S --models results_p6_shift/models_early --tag a1early` and `python scripts/p6_orig_on_early.py S`, for S = 0-4; summaries `python scripts/p6_summary.py` | `results_p6_shift/` |
 
 Fitted models (`results_p5_spatial/models/`, `results_p6_shift/models_early/`, about 3 GB each)
 are not committed; the scripts above recreate them.
@@ -94,5 +96,5 @@ simulator by one-off code and are provided as data rather than regenerated:
 
 ## Runtimes
 
-See Supplementary Table S20. The rule-based rules run in under a second per schedule; training the
+See Supplementary Table S22. The rule-based rules run in under a second per schedule; training the
 learned value correction takes several minutes to about half an hour per seed, single-threaded.

@@ -73,4 +73,4 @@ python scripts/audit_manuscript_numbers.py        # 核对稿件中的全部数�
 - [x] 空间底图、制度通道分区与 717 个候选更新单元
 - [x] 时序机会场、审批管线与年度容量
 - [x] 排期规则（贪心、滚动规划、价值学习策略）与参照排期
-- [x] IJGIS 稿件对应的全部实验、表格与图（见 REPRODUCE.md）
+- [x] 论文对应的全部实验、表格与图（见 REPRODUCE.md）

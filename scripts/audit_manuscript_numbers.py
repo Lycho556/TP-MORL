@@ -347,6 +347,18 @@ _A2 = pd.read_csv(R + "results_p6_shift/a2_summary.csv").set_index("grp")
 _c = lambda g: f"${_A2['diff'][g]:+.3f}$ ({int(_A2.runs_positive[g])} of {int(_A2.runs[g])})"
 chk("S24 early row", f"Early-ending programmes & {_c('test')} & {_c('metro')} & {_c('early')}")
 
+# ---- P8: delineation across fields (Table S21) and approval timing (Table S18, Appendix A.1)
+_DS = pd.read_csv(R + "results_p8_delineation/summary.csv").set_index("target")
+for _t, _r in _DS.iterrows():
+    _lab = f"{_t} (paper)" if _t == 12 else f"{_t}"
+    chk(f"S21 target={_t}", f"{_lab} & {f3(_r.persistence)} & {f3(_r.info_mean)} ({f3(_r.info_min)}--{f3(_r.info_max)}) & {f3(_r.coord_mean)} ({f3(_r.coord_min)}--{f3(_r.coord_max)}) & {int(_r.coord_gt_info)} of {int(_r.fields)}")
+chk("P8 delin text", f"the value of information is {f3(_DS.info_mean[8])} and {f3(_DS.info_mean[18])} (" + f"{f3(_DS.info_mean[12])} at\n12 cells) and that of coordination {f3(_DS.coord_mean[8])} and {f3(_DS.coord_mean[18])} ({f3(_DS.coord_mean[12])})")
+assert _DS.coord_gt_info[8] == 0 and _DS.coord_gt_info[12] == 0 and _DS.coord_gt_info[18] == 2 and (_DS.diff_hi < 0).all()
+_AJ = json.load(open(R + "results_p8_approval/summary.json"))
+chk("P8 appr A1", f"gives {100*_AJ['share5_adjusted']:.0f}\\% approval within five\nyears (bootstrap 95\\% interval {100*_AJ['share5_ci'][0]:.0f}--{100*_AJ['share5_ci'][1]:.0f}\\%)")
+chk("P8 appr S18 row", f"Within five years & 77 & {_AJ['share5_paper']:.3f} & {_AJ['share5_adjusted']:.3f} ({_AJ['share5_ci'][0]:.2f}--{_AJ['share5_ci'][1]:.2f})")
+chk("P8 appr cv", f"${_AJ['cv_logscore_adjusted']:.3f}$ per pair for the window-adjusted estimate and ${_AJ['posthoc_cv_logscore_lifetable_refit']:.3f}$")
+
 # ---- revision 30 robustness (results_p4, scripts/p4_robustness.py)
 _Q = pd.read_csv(R + "results_p4/quota_summary.csv"); _Gm = pd.read_csv(R + "results_p4/gamma_summary.csv")
 _QR = pd.concat([pd.read_csv(R + "results_p4/quota_runs.csv"), pd.read_csv(R + "results_p4/gamma_runs.csv")])
