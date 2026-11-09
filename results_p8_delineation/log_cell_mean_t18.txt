@@ -1,0 +1,11 @@
+mode mean target 18 field None done
+mode mean target 18 field 1 done
+mode mean target 18 field 2 done
+mode mean target 18 field 3 done
+mode mean target 18 field 4 done
+mode mean target 18 field 5 done
+mode mean target 18 field 6 done
+mode mean target 18 field 7 done
+mode mean target 18 field 8 done
+mode mean target 18 field 9 done
+mode mean target 18 field 10 done

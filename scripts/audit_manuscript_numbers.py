@@ -371,6 +371,15 @@ for _, _r in _AE.iterrows():
 _s2 = _AE[(_AE.kind == "sym") & (_AE.e == 2)].iloc[0]; _s0 = _AE[_AE.kind == "none"].iloc[0]
 chk("S28 main text", f"still recovers {_s2.share_mean:.2f} of the value of information on average over the\nsame eleven fields, against {_s0.share_mean:.2f} without error")
 
+# ---- P8: delineation with a common cell-level future (Table S29)
+_CS = pd.read_csv(R + "results_p8_delineation/cell_summary.csv"); _CP = pd.read_csv(R + "results_p8_delineation/cell_paired.csv")
+_cp = lambda m, c: _CP[(_CP["mode"] == m) & (_CP.contrast == c) & (_CP.quantity == "cmi")].iloc[0]
+for _, _r in _CS.iterrows():
+    chk(f"S29 {_r['mode']}{_r.target}", f"& {_r.target} & {f3(_r.persistence)} & {f3(_r['info'])} & {f3(_r.coord)} & {int(_r.coord_gt_info)} of {int(_r.fields)} & ${_r.cmi:+.3f}$")
+_d18, _d8 = _cp("rep", "18 - 12"), _cp("rep", "8 - 12")
+chk("S29 main text", f"in coordination minus information ${_d18['mean']:+.3f}$, 95\\% $t$-interval\n${_d18.lo:+.3f}$ to ${_d18.hi:+.3f}$), and 8-cell units shift it toward\ninformation (${_d8['mean']:+.3f}$, ${_d8.lo:+.3f}$ to ${_d8.hi:+.3f}$;")
+assert _d18.lo < 0 < _d18.hi and _d8.hi < 0 and (_CS.coord_gt_info <= 1).all()
+
 # ---- revision 30 robustness (results_p4, scripts/p4_robustness.py)
 _Q = pd.read_csv(R + "results_p4/quota_summary.csv"); _Gm = pd.read_csv(R + "results_p4/gamma_summary.csv")
 _QR = pd.concat([pd.read_csv(R + "results_p4/quota_runs.csv"), pd.read_csv(R + "results_p4/gamma_runs.csv")])

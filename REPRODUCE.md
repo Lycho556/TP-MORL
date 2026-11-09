@@ -29,9 +29,9 @@ rebuild this dataset (`bash scripts/fetch_raw.sh`, then `python -m tpmorl.data.b
 ## Manuscript item -> script -> output
 
 Table and figure numbers refer to the submitted manuscript (Tables 1-5, Figures 1-7, A1) and its
-supplementary material (Tables S1-S28, Figure S1). `python scripts/audit_manuscript_numbers.py`
+supplementary material (Tables S1-S29, Figure S1). `python scripts/audit_manuscript_numbers.py`
 recomputes the numbers in the text and tables from the result files below and reports
-`137 checks, 0 not found`.
+`144 checks, 0 not found`.
 
 ### Main text
 
@@ -69,6 +69,7 @@ recomputes the numbers in the text and tables from the result files below and re
 | S26 (distribution-shift tests; pre-registered in `results_p6_shift/PREREGISTRATION.md`) | A1: `python scripts/p6_shift_diag.py --seed S` (models saved by `p5_learned_spatial.py`); A2: `python scripts/p6_early_infra.py --seed S`, then `python scripts/p6_shift_diag.py --seed S --models results_p6_shift/models_early --tag a1early` and `python scripts/p6_orig_on_early.py S`, for S = 0-4; summaries `python scripts/p6_summary.py` | `results_p6_shift/` |
 | S27 (spatial hold-out of the learned correction; pre-registered in `results_p8_spatial/PREREGISTRATION.md`) | `python scripts/p8_spatial_holdout.py --seed S` for S = 0-4 (`--sanity` checks the cross-fitted rollout against `fqi.rollout`), then `python scripts/p8_spatial_summary.py` | `results_p8_spatial/` |
 | S28 (announcement timetable errors; pre-registered in `results_p8_annerr/PREREGISTRATION.md`) | `python scripts/p8_announce_error.py --field F` for F = main, 1-10, then `python scripts/p8_announce_error_summary.py` | `results_p8_annerr/` |
+| S29 (unit delineation with a common cell-level future; pre-registered in `results_p8_delineation/PREREGISTRATION_cellfield.md`) | `python scripts/p8_cellfield_delineation.py --target T --mode M` for T = 8, 12, 18 and M = rep, mean (uses `opportunity.CELL_FIELD`; default `None` leaves every other result unchanged), then `python scripts/p8_cellfield_summary.py` | `results_p8_delineation/cell_*` |
 
 Fitted models (`results_p5_spatial/models/`, `results_p6_shift/models_early/`, about 3 GB each)
 are not committed; the scripts above recreate them.

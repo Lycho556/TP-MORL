@@ -1,0 +1,11 @@
+mode rep target 8 field None done
+mode rep target 8 field 1 done
+mode rep target 8 field 2 done
+mode rep target 8 field 3 done
+mode rep target 8 field 4 done
+mode rep target 8 field 5 done
+mode rep target 8 field 6 done
+mode rep target 8 field 7 done
+mode rep target 8 field 8 done
+mode rep target 8 field 9 done
+mode rep target 8 field 10 done

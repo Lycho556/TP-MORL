@@ -195,6 +195,10 @@ INFRA_ANNOUNCE_LEAD = 4.0
 # layer moves; the announced forecast still reads commissioned infrastructure INFRA_ANNOUNCE_LEAD
 # years ahead, as in the metro field, whose announced layer is the construction start.
 ANNOUNCE_SHIFT_RANGE = None
+# Delineation check (P8, 2026-11): None (default) leaves every published result bit-identical.
+# dict(cell_row, cell_col, rep={uid: cell index}, cells={uid: cell indices}, mode="rep"|"mean")
+# draws the fields on the 100 m cells and assigns them to units (OpportunityField._from_cells).
+CELL_FIELD = None
 
 # 建筑老化。AGE0_* 是**基期建筑年龄**的抽样分布（无数据，情景参数）。
 AGE0_MEAN = 22.0
@@ -247,6 +251,9 @@ class OpportunityField:
 
     def __init__(self, n, T, T_total=None, row=None, col=None, seed=None,
                  uid=None):
+        if CELL_FIELD is not None:
+            self._from_cells(n, T, T_total, seed, uid)
+            return
         self.n = int(n)
         self.T = int(T)
         self.T_total = int(T if T_total is None else T_total)
@@ -331,6 +338,31 @@ class OpportunityField:
                              * _logistic((self.years[None, :]
                                           - self.ready_onset[:, None]) / RAMP_YEARS),
                              0.0, 1.0)
+
+    def _from_cells(self, n, T, T_total, seed, uid):
+        """CELL_FIELD option: draw the fields once on the 100 m cells, then give each unit the
+        field of its representative cell ("rep") or the mean over its cells ("mean"; categorical
+        arrays always from the representative cell). The same cell-level future then underlies
+        every delineation of the candidate units."""
+        global CELL_FIELD
+        cf = CELL_FIELD
+        saved, CELL_FIELD = CELL_FIELD, None
+        try:
+            child = OpportunityField(len(cf["cell_row"]), T, T_total, row=cf["cell_row"], col=cf["cell_col"], seed=seed)
+        finally:
+            CELL_FIELD = saved
+        uids = [int(x) for x in uid]
+        assert len(uids) == int(n)
+        rep = np.array([cf["rep"][u] for u in uids], int)
+        nc = len(cf["cell_row"])
+        for k, v in child.__dict__.items():
+            if isinstance(v, np.ndarray) and v.ndim >= 1 and v.shape[0] == nc:
+                if cf["mode"] == "mean" and np.issubdtype(v.dtype, np.floating) and k not in ("infra_onset", "plan_onset", "ready_onset"):
+                    v = np.stack([v[cf["cells"][u]].mean(axis=0) for u in uids])
+                else:
+                    v = v[rep]
+            setattr(self, k, v)
+        self.n = int(n)
 
     def _apply_metro(self, uid):
         """用实测地铁站替换 self.infra / self.infra_plan（只在 INFRA_MODE="metro" 时调用）。
@@ -661,6 +693,8 @@ def tag():
         s += f"L{INFRA_ANNOUNCE_LEAD:g}".replace(".", "")
     if ANNOUNCE_SHIFT_RANGE is not None:
         s += f"A{ANNOUNCE_SHIFT_RANGE[0]:g}-{ANNOUNCE_SHIFT_RANGE[1]:g}".replace(".", "")
+    if CELL_FIELD is not None:
+        s += f"C{CELL_FIELD['mode'][0].upper()}{len(CELL_FIELD['rep'])}"
     if (ONSET_LO_FRAC, ONSET_HI_FRAC, RAMP_YEARS) != (0.15, 0.60, 3.0):
         s += f"N{ONSET_LO_FRAC:g}-{ONSET_HI_FRAC:g}-{RAMP_YEARS:g}".replace(".", "")
     return s
