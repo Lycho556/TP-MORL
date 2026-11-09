@@ -352,7 +352,7 @@ _DS = pd.read_csv(R + "results_p8_delineation/summary.csv").set_index("target")
 for _t, _r in _DS.iterrows():
     _lab = f"{_t} (paper)" if _t == 12 else f"{_t}"
     chk(f"S21 target={_t}", f"{_lab} & {f3(_r.persistence)} & {f3(_r.info_mean)} ({f3(_r.info_min)}--{f3(_r.info_max)}) & {f3(_r.coord_mean)} ({f3(_r.coord_min)}--{f3(_r.coord_max)}) & {int(_r.coord_gt_info)} of {int(_r.fields)}")
-chk("P8 delin text", f"the value of information is {f3(_DS.info_mean[8])} and {f3(_DS.info_mean[18])} (" + f"{f3(_DS.info_mean[12])} at\n12 cells) and that of coordination {f3(_DS.coord_mean[8])} and {f3(_DS.coord_mean[18])} ({f3(_DS.coord_mean[12])})")
+# "P8 delin text" retired: the main text now reports the common-future comparison (Table S29) only
 assert _DS.coord_gt_info[8] == 0 and _DS.coord_gt_info[12] == 0 and _DS.coord_gt_info[18] == 2 and (_DS.diff_hi < 0).all()
 _AJ = json.load(open(R + "results_p8_approval/summary.json"))
 chk("P8 appr A1", f"gives {100*_AJ['share5_adjusted']:.0f}\\% approval within five\nyears (bootstrap 95\\% interval {100*_AJ['share5_ci'][0]:.0f}--{100*_AJ['share5_ci'][1]:.0f}\\%)")
@@ -377,7 +377,9 @@ _cp = lambda m, c: _CP[(_CP["mode"] == m) & (_CP.contrast == c) & (_CP.quantity 
 for _, _r in _CS.iterrows():
     chk(f"S29 {_r['mode']}{_r.target}", f"& {_r.target} & {f3(_r.persistence)} & {f3(_r['info'])} & {f3(_r.coord)} & {int(_r.coord_gt_info)} of {int(_r.fields)} & ${_r.cmi:+.3f}$")
 _d18, _d8 = _cp("rep", "18 - 12"), _cp("rep", "8 - 12")
-chk("S29 main text", f"in coordination minus information ${_d18['mean']:+.3f}$, 95\\% $t$-interval\n${_d18.lo:+.3f}$ to ${_d18.hi:+.3f}$), and 8-cell units shift it toward\ninformation (${_d8['mean']:+.3f}$, ${_d8.lo:+.3f}$ to ${_d8.hi:+.3f}$;")
+chk("S29 main text", f"between 12 and 18 cells (paired difference in coordination minus\ninformation ${_d18['mean']:+.3f}$, 95\\% $t$-interval ${_d18.lo:+.3f}$ to ${_d18.hi:+.3f}$), and 8-cell\nunits shift it toward information (${_d8['mean']:+.3f}$, ${_d8.lo:+.3f}$ to ${_d8.hi:+.3f}$;")
+_rp = _CS[_CS["mode"] == "rep"].set_index("target")
+chk("S29 main values", f"information is {f3(_rp.loc[8, 'info'])}, {f3(_rp.loc[12, 'info'])}, and {f3(_rp.loc[18, 'info'])} at 8, 12, and 18 cells and that of\ncoordination {f3(_rp.loc[8, 'coord'])}, {f3(_rp.loc[12, 'coord'])}, and {f3(_rp.loc[18, 'coord'])}.")
 assert _d18.lo < 0 < _d18.hi and _d8.hi < 0 and (_CS.coord_gt_info <= 1).all()
 
 # ---- revision 30 robustness (results_p4, scripts/p4_robustness.py)
